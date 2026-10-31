@@ -321,9 +321,6 @@ async def cancel_setup_handler(_, message: Message):
 async def setup_input_handler(_, message: Message):
     user_id = message.from_user.id if message.from_user else 0
     stage = setup_states.get(user_id)
-    if not stage:
-        return
-
     raw_value = (message.text or message.caption or "").strip()
     session = channel_sessions.get(user_id)
     if session and session.get("input_mode"):
@@ -334,7 +331,7 @@ async def setup_input_handler(_, message: Message):
             session["input_mode"] = mode
             return await message.reply_text(str(exc))
         return await send_channel_options(message, user_id)
-    if not stage and re.match(r"https?://(?:www\\.)?javtiful\\.com/channel/", raw_value, re.I):
+    if not stage and re.match(r"https?://(?:www[.])?javtiful[.]com/channel/", raw_value, re.I):
         status = await message.reply_text("🔎 Inspecting channel and pagination…")
         try:
             info = await asyncio.to_thread(JavtifulChannelScraper().inspect, raw_value)
@@ -343,6 +340,8 @@ async def setup_input_handler(_, message: Message):
         channel_sessions[user_id] = {"info": info, "pages": [], "screenshots": True,
             "skip_existing": True, "parallelism": active_parallelism}
         return await send_channel_options(status, user_id)
+    if not stage:
+        return
     if raw_value.upper() == "CANCEL":
         setup_states.pop(user_id, None)
         return await message.reply_text("Channel setup cancelled.")
