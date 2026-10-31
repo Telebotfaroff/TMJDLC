@@ -46,3 +46,16 @@ playwright install chromium
 ## Security
 
 Never commit `.env`, Telegram session strings, API credentials or database connection strings.
+
+## Player inspection
+
+Use **Actions → Inspect Player → Run workflow**. The default input is the post URL from the supplied capture; replace it with another post URL when needed.
+
+The workflow uses `requests` to:
+- Fetch the post HTML.
+- Save a sanitized HTML copy.
+- Extract inline player configuration and playback endpoint candidates.
+- Download referenced player JavaScript assets.
+- Save script hashes, status codes and a JSON inspection report.
+
+It does not call the playback endpoint or store the temporary playback ticket. Review the resulting artifact before implementing the playback request. Playwright remains a fallback for cases where the HTTP inspection does not expose the required behavior.
