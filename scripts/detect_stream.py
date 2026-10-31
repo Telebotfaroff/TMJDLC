@@ -53,6 +53,7 @@ def main() -> int:
         "--resolved-output",
         help="Write the selected full media URL to a private machine-readable file for the downloader.",
     )
+    parser.add_argument("--quality", type=int, help="Prefer this detected media quality, e.g. 720")
     parser.add_argument("--headed", action="store_true", help="Run headed (not recommended in CI)")
     args = parser.parse_args()
 
@@ -309,7 +310,11 @@ def main() -> int:
                     return int(match.group(1))
             return None
 
-        selected = media[0]
+        matching_quality = [
+            item for item in media
+            if args.quality is not None and quality_from_item(item) == args.quality
+        ]
+        selected = matching_quality[0] if matching_quality else media[0]
         resolved_payload = {
             "url": next(
                 (raw_url for raw_url in requests_seen if redact_url(raw_url) == selected["redacted_url"]),
