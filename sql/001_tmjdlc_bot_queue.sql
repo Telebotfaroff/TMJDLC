@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.tmjdlc_bot_jobs (
     started_at TIMESTAMPTZ,
     completed_at TIMESTAMPTZ
 );
+ALTER TABLE public.tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE;
 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
     ON public.tmjdlc_bot_jobs(priority, created_at) WHERE status='queued';
 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_lease_idx
