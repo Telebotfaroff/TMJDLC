@@ -34,7 +34,6 @@ The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_set
 ## Commands
 
 - `/dl POST_URL [720]` — enqueue one Javtiful post.
-- `/channel @sourcechannel [limit]` — scan recent channel captions/text for Javtiful post URLs and enqueue unique posts.
 - `/queue` — show queue counts and recent jobs.
 - `/cancel JOB_ID` — cancel a queued or failed job.
 - `/retry JOB_ID` — requeue a failed job.
