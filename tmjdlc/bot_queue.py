@@ -300,6 +300,20 @@ class JobQueue:
             """).fetchall()
             return len(rows)
 
+    def save_media(self, video_id: str, job_id: int, file_path: str,
+                   file_size: int, duration_seconds: float,
+                   width: int | None = None, height: int | None = None) -> None:
+        with self.connect() as conn:
+            conn.execute("""
+                INSERT INTO tmjdlc_media
+                  (video_id,job_id,file_path,file_size,duration_seconds,width,height,updated_at)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,now())
+                ON CONFLICT(video_id) DO UPDATE SET
+                  job_id=EXCLUDED.job_id,file_path=EXCLUDED.file_path,
+                  file_size=EXCLUDED.file_size,duration_seconds=EXCLUDED.duration_seconds,
+                  width=EXCLUDED.width,height=EXCLUDED.height,updated_at=now()
+            """, (video_id, job_id, file_path, file_size, duration_seconds, width, height))
+
     def get(self, job_id: int) -> dict[str, Any] | None:
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM tmjdlc_bot_jobs WHERE id=%s", (job_id,)).fetchone()
