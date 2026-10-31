@@ -1,14 +1,13 @@
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from tmjdlc.models.stream import StreamResult
 
