@@ -70,7 +70,8 @@ class JavtifulProvider:
                 )
                 stream = self.resolve(post_url, quality=quality)
                 self._progress(
-                    f"Resolved {stream.format} source ({stream.label or stream.quality or 'quality unknown'}); starting download."
+                    f"Resolved {stream.format} source "
+                    f"({stream.label or stream.quality or 'quality unknown'}); starting download."
                 )
                 attempt_name = filename if attempt == 1 else f"{filename}.retry{attempt}"
                 path = self.downloader.download(
