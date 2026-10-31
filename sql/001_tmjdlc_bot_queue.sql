@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS public.tmjdlc_bot_jobs (
     video_id TEXT NOT NULL UNIQUE,
     post_url TEXT NOT NULL,
     quality INTEGER,
+    upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE,
     status TEXT NOT NULL DEFAULT 'queued'
         CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
     attempts INTEGER NOT NULL DEFAULT 0,
