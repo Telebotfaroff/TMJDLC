@@ -59,3 +59,37 @@ The workflow uses `requests` to:
 - Save script hashes, status codes and a JSON inspection report.
 
 It does not call the playback endpoint or store the temporary playback ticket. Review the resulting artifact before implementing the playback request. Playwright remains a fallback for cases where the HTTP inspection does not expose the required behavior.
+
+## Javtiful stream detection
+
+The reusable Playwright detector is available as
+`tmjdlc.providers.javtiful.JavtifulStreamDetector`. It opens a Javtiful post,
+starts the player, captures the playback API response and resolves the selected
+HLS, DASH or direct-media source. It prefers an explicitly requested quality;
+otherwise it selects the highest quality returned by the player.
+
+Example:
+
+```python
+from tmjdlc.providers.javtiful import JavtifulStreamDetector
+
+detector = JavtifulStreamDetector(timeout_ms=45_000, capture_ms=20_000)
+stream = detector.detect(
+    "https://javtiful.com/video/113371/dvmm-444",
+    preferred_quality=720,
+)
+
+# Pass the live URL and headers to the downloader in memory.
+download_url = stream.stream_url
+yt_dlp_options = stream.to_ytdlp_options()
+ffmpeg_headers = stream.to_ffmpeg_headers()
+
+# Safe for logs/job history; signed query values are redacted.
+print(stream.to_public_dict())
+```
+
+The result retains the live signed URL and browser request headers in memory for
+the downloader. Do not log `stream.stream_url`, `stream.headers`, or the
+FFmpeg header string. Use `to_public_dict()` for diagnostics and persistent
+job metadata. The detector does not download media itself; it provides a
+download target to the existing/future download worker.
