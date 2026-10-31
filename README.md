@@ -2,9 +2,9 @@
 
 [![Open Download Test in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
-## Test downloads in Google Colab
+## Test Javtiful downloads in Google Colab
 
-Open the [TMJDLC Download Test notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). It installs the repository, asks for an original video page URL and quality, fetches metadata, downloads through the current MissAV provider, checks the output with FFprobe, and offers the completed file for download. Stream resolution and downloading run in the same Colab runtime because media URLs may be temporary and session/IP-bound. The notebook does not print or save temporary stream URLs.
+Open the [TMJDLC Javtiful Download Test notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). It installs the repository and Chromium, accepts an original Javtiful page URL and quality, captures the playback API source, resolves relative media paths, and downloads with yt-dlp. Failed download attempts trigger a fresh playback resolution rather than reusing an expired signed URL. The resolver and downloader run in the same Colab runtime/network. The notebook displays only a redacted stream report and validates the completed file with FFprobe.
 
 ## Primary provider: MissAV
 
@@ -44,9 +44,9 @@ For Google Colab, use top-level `await` instead of `asyncio.run()`.
 - Persistent database: Neon PostgreSQL
 - Scraping order: provider API first; generic HTML inspection only for diagnostics
 
-## Javtiful status
+## Javtiful provider
 
-Javtiful is retired from the active Colab workflow. Its old detector and smoke-test notebook are retained temporarily for reference and rollback; they are not used by the MissAV provider.
+`tmjdlc.providers.javtiful.JavtifulProvider` resolves the original post URL immediately before downloading. It captures the playback API response, supports relative source URLs, selects the requested quality, and refreshes the temporary URL on a failed download attempt. Signed URLs, including Cloudflare R2 signature parameters, are redacted from public metadata. The existing MissAV provider remains a separate integration.
 
 ## HTML investigation workflow
 
