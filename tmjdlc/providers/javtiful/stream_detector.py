@@ -148,6 +148,7 @@ class JavtifulStreamDetector:
             "Referer": post_url,
             "User-Agent": self.user_agent,
         }
+        browser_cookies: list[dict[str, Any]] = []
 
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(
@@ -236,14 +237,7 @@ class JavtifulStreamDetector:
                     duration = None
 
                 final_url = page.url
-                cookies = context.cookies()
-                cookie_header = "; ".join(
-                    f"{cookie['name']}={cookie['value']}"
-                    for cookie in cookies
-                    if cookie.get("domain", "").lstrip(".").endswith("javtiful.com")
-                )
-                if cookie_header:
-                    request_headers["Cookie"] = cookie_header
+                browser_cookies = context.cookies()
                 context.close()
             finally:
                 browser.close()
@@ -272,6 +266,17 @@ class JavtifulStreamDetector:
             quality = source.get("size")
             label = source.get("label")
             mime = source.get("type", "")
+
+        stream_host = (urlsplit(stream_url).hostname or "").lower()
+        matching_cookies = []
+        for cookie in browser_cookies:
+            cookie_domain = str(cookie.get("domain", "")).lstrip(".").lower()
+            if stream_host and (
+                stream_host == cookie_domain or stream_host.endswith("." + cookie_domain)
+            ):
+                matching_cookies.append(f"{cookie['name']}={cookie['value']}")
+        if matching_cookies:
+            request_headers["Cookie"] = "; ".join(matching_cookies)
 
         path = urlsplit(stream_url).path.lower()
         if path.endswith(".m3u8") or "mpegurl" in str(mime).lower():
