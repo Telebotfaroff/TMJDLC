@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import os
 import re
@@ -81,7 +82,7 @@ async def deny(message) -> bool:
 async def status_edit(chat_id, message_id, text):
     if chat_id and message_id:
         try:
-            await app.edit_message_text(chat_id, message_id, text[:4000])
+            await app.edit_message_text(chat_id, message_id, text[:4000], parse_mode=ParseMode.HTML)
         except Exception:
             log.exception("Could not edit status message chat_id=%s message_id=%s", chat_id, message_id)
 
@@ -356,7 +357,7 @@ async def process_job(job: dict, identity: str):
             await asyncio.to_thread(queue.set_status, jid, identity, state,
                                     error=error, lease_seconds=LEASE)
             await status_edit(chat_id, message_id,
-                              f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} {vid}: {error}")
+                              f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} {vid}: {html.escape(error)}")
     finally:
         stop.set()
         heartbeat_task.cancel()
