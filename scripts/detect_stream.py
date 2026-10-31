@@ -18,7 +18,7 @@ MEDIA_TYPES = (
     "video/mp4",
     "video/webm",
 )
-SECRET_KEYS = {"ticket", "token", "authorization", "auth", "key", "signature", "sig"}
+SECRET_KEYS = {"ticket", "token", "authorization", "auth", "key", "signature", "sig", "verify", "expires", "exp", "jwt"}
 
 
 def is_media_url(url: str, content_type: str = "") -> bool:
@@ -84,7 +84,7 @@ def main() -> int:
             url = request.url
             if is_media_url(url):
                 requests_seen[url] = {
-                    "url": url,
+                    "url": redact_url(url),
                     "redacted_url": redact_url(url),
                     "method": request.method,
                     "resource_type": request.resource_type,
@@ -98,7 +98,7 @@ def main() -> int:
                 item = requests_seen.setdefault(
                     url,
                     {
-                        "url": url,
+                        "url": redact_url(url),
                         "redacted_url": redact_url(url),
                         "method": response.request.method,
                         "resource_type": response.request.resource_type,
@@ -126,7 +126,11 @@ def main() -> int:
                         if isinstance(sources, list):
                             item["sources"] = [
                                 {
-                                    key: value
+                                    key: (
+                                        redact_url(value)
+                                        if key.lower() in {"src", "fallbacksrc"} and isinstance(value, str)
+                                        else value
+                                    )
                                     for key, value in source.items()
                                     if key.lower() not in SECRET_KEYS
                                 }
@@ -135,7 +139,7 @@ def main() -> int:
                             ]
                         fallback = payload.get("fallbackSrc") if isinstance(payload, dict) else None
                         if fallback:
-                            item["fallback_source"] = fallback
+                            item["fallback_source"] = redact_url(fallback)
                 except Exception as exc:
                     item["body_parse_error"] = type(exc).__name__
                 api_responses.append(item)
