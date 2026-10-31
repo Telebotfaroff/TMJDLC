@@ -1,5 +1,12 @@
 # TMJDLC
 
+[![Open in Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Javtiful_Colab_Smoke_Test.ipynb)
+
+## Run in Google Colab
+
+Open the [Javtiful Downloader Colab notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Javtiful_Colab_Smoke_Test.ipynb) to set the post URL and quality, resolve the stream, download, validate the video, and generate screenshots.
+
+
 A provider-based downloader and Telegram publishing project.
 
 ## Current implementation stage
