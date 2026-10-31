@@ -1,10 +1,10 @@
 # TMJDLC
 
-[![Open Javtiful Download Test in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
+[![Open latest TMJDLC Javtiful DEV notebook in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
 ## Test Javtiful downloads in Google Colab
 
-Open the [TMJDLC Javtiful Download Test notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). It installs the repository and Chromium, accepts an original Javtiful page URL and quality, captures the playback API source, resolves relative media paths, and downloads with yt-dlp. Failed download attempts trigger a fresh playback resolution rather than reusing an expired signed URL. The resolver and downloader run in the same Colab runtime/network. The notebook displays only a redacted stream report and validates the completed file with FFprobe.
+Open the [latest TMJDLC Javtiful DEV notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). After the setup cell, run the **build verification** cell: it prints a visible development build marker and the checked-out Git commit, then confirms that the notebook's provider calls the same `scripts/detect_stream.py` used by GitHub Actions. If the marker or checks are missing, restart the runtime and reopen the notebook from this link. The notebook installs the repository and Chromium, accepts an original Javtiful page URL and quality, detects the actual media request with the shared Actions detector, and downloads it with yt-dlp. Failed download attempts trigger a fresh stream resolution. Signed media URLs are passed through a private temporary file and are not printed; FFprobe validates the completed download.
 
 ## Primary provider: MissAV
 
