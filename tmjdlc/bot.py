@@ -163,7 +163,6 @@ async def help_handler(_, message: Message):
     await message.reply_text(
         "TMJDLC Durable Queue Bot\n\n"
         "/dl URL [quality] — enqueue a post\n"
-        "/channel @source [limit] — scan and enqueue channel posts\n"
         "/queue — show counts and recent jobs\n"
         "/cancel JOB_ID — cancel a queued job\n"
         "/retry JOB_ID — retry a failed job\n"
@@ -195,7 +194,7 @@ async def cancel_setup_handler(_, message: Message):
 
 @app.on_message(filters.private & filters.user(list(ADMIN_IDS)) & ~filters.command(
     ["start", "help", "setup", "cancelsetup", "setupload", "setimages", "settings",
-     "queue", "cancel", "retry", "dl", "channel"]
+     "queue", "cancel", "retry", "dl"]
 ))
 async def setup_input_handler(_, message: Message):
     user_id = message.from_user.id if message.from_user else 0
@@ -333,40 +332,6 @@ async def download_handler(_, message: Message):
     except ValueError as exc:
         return await message.reply_text(str(exc))
     await enqueue_url(args[0], await message.reply_text("Adding to durable queue…"), quality)
-
-
-@app.on_message(filters.command("channel") & admin_filter())
-async def channel_handler(_, message: Message):
-    args = message.command[1:]
-    if not args:
-        return await message.reply_text("Usage: /channel @sourcechannel [limit]")
-    try:
-        limit = max(1, min(5000, int(args[1]))) if len(args) > 1 else 500
-    except ValueError:
-        return await message.reply_text("Limit must be a number.")
-    status = await message.reply_text(f"🔎 Scanning {args[0]}…")
-    found: dict[str, str] = {}
-    try:
-        async for post in app.get_chat_history(args[0], limit=limit):
-            caption = " ".join(x for x in (post.text, post.caption) if x)
-            for match in POST_RE.findall(caption):
-                clean = match.rstrip(".,!?]")
-                try:
-                    found[get_video_id(clean)] = clean
-                except ValueError:
-                    continue
-        added = duplicates = 0
-        for vid, url in found.items():
-            job, created = await asyncio.to_thread(
-                queue.enqueue, vid, url, None,
-                requested_by=message.from_user.id if message.from_user else None,
-                status_chat_id=status.chat.id, status_message_id=status.id,
-            )
-            added += int(created)
-            duplicates += int(not created)
-        await status.edit_text(f"✅ Scan complete\nFound: {len(found)}\nQueued: {added}\nAlready known: {duplicates}")
-    except Exception as exc:
-        await status.edit_text(f"Channel scan failed: {type(exc).__name__}: {str(exc)[:600]}")
 
 
 @app.on_message(filters.private & ~filters.user(list(ADMIN_IDS)))
