@@ -79,7 +79,15 @@ class JavtifulStreamDetector:
             ]
             if exact:
                 return exact[0]
-        return max(valid, key=lambda item: int(item.get("size") or 0))
+        def source_quality(item: dict[str, Any]) -> int:
+            value = item.get("size")
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                digits = "".join(character for character in str(value or "") if character.isdigit())
+                return int(digits or 0)
+
+        return max(valid, key=source_quality)
 
     def _progress(self, message: str) -> None:
         if self.progress_callback is not None:
@@ -184,7 +192,7 @@ class JavtifulStreamDetector:
                             const video = document.querySelector('#front-player video, video');
                             if (video) {
                                 video.muted = true;
-                                try { await video.play(); } catch (_) {}
+                                try { const pending = video.play(); if (pending && pending.catch) pending.catch(() => {}); } catch (_) {}
                             }
                         }"""
                     )
