@@ -314,6 +314,14 @@ class JobQueue:
                   width=EXCLUDED.width,height=EXCLUDED.height,updated_at=now()
             """, (video_id, job_id, file_path, file_size, duration_seconds, width, height))
 
+    def clear_media_path(self, video_id: str) -> None:
+        """Forget the temporary local path after its media has been uploaded and cleaned."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE tmjdlc_media SET file_path=NULL,updated_at=now() WHERE video_id=%s",
+                (video_id,),
+            )
+
     def get(self, job_id: int) -> dict[str, Any] | None:
         with self.connect() as conn:
             row = conn.execute("SELECT * FROM tmjdlc_bot_jobs WHERE id=%s", (job_id,)).fetchone()
