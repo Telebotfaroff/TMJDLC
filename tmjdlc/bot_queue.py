@@ -107,6 +107,46 @@ class JobQueue:
                 return dict(row), True
             return dict(existing), False
 
+
+    def enqueue_many(
+        self, items: list[tuple[str, str, int | None, int | None, bool]], *,
+        skip_existing: bool = True,
+    ) -> tuple[int, int]:
+        """Insert a channel batch in one DB connection; return (added, skipped)."""
+        added = skipped = 0
+        with self.connect() as conn:
+            for video_id, post_url, quality, requested_by, upload_screenshots in items:
+                row = conn.execute("""
+                    INSERT INTO tmjdlc_bot_jobs
+                        (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots)
+                    VALUES (%s,%s,%s,%s,100,%s,%s)
+                    ON CONFLICT(video_id) DO NOTHING
+                    RETURNING id
+                """, (video_id, post_url, quality, requested_by,
+                      self.max_attempts, upload_screenshots)).fetchone()
+                if row:
+                    added += 1
+                    continue
+                if skip_existing:
+                    skipped += 1
+                    continue
+                existing = conn.execute(
+                    "SELECT status FROM tmjdlc_bot_jobs WHERE video_id=%s",
+                    (video_id,),
+                ).fetchone()
+                if existing and existing["status"] in {"failed", "cancelled"}:
+                    conn.execute("""
+                        UPDATE tmjdlc_bot_jobs SET post_url=%s, quality=%s, status='queued',
+                            attempts=0, last_error=NULL, output_path=NULL, worker_id=NULL,
+                            lease_until=NULL, requested_by=%s, upload_screenshots=%s,
+                            updated_at=now()
+                        WHERE video_id=%s
+                    """, (post_url, quality, requested_by, upload_screenshots, video_id))
+                    added += 1
+                else:
+                    skipped += 1
+        return added, skipped
+
     def claim(self, worker_id: str, lease_seconds: int = 900) -> dict[str, Any] | None:
         with self.connect() as conn:
             row = conn.execute("""
