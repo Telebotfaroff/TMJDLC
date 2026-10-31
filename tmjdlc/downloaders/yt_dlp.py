@@ -17,7 +17,7 @@ class YtDlpStreamDownloader:
         filename: str,
         *,
         progress_hook: Callable[[dict[str, Any]], None] | None = None,
-        concurrent_fragments: int = 4,
+        concurrent_fragments: int = 8,
     ) -> dict[str, Any]:
         if stream.format not in {"hls", "dash", "mp4"}:
             raise ValueError(f"Unsupported stream format: {stream.format}")
@@ -40,6 +40,7 @@ class YtDlpStreamDownloader:
             "continuedl": True,
             "overwrites": False,
             "concurrent_fragment_downloads": max(1, concurrent_fragments),
+            "buffersize": 1024 * 1024,
             "merge_output_format": "mp4",
             "progress_hooks": hooks,
         }
