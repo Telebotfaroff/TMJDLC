@@ -46,7 +46,7 @@ For Google Colab, use top-level `await` instead of `asyncio.run()`.
 
 ## Javtiful provider
 
-`tmjdlc.providers.javtiful.JavtifulProvider` resolves the original post URL immediately before downloading. It captures the playback API response, supports relative source URLs, selects the requested quality, and refreshes the temporary URL on a failed download attempt. Signed URLs, including Cloudflare R2 signature parameters, are redacted from public metadata. The existing MissAV provider remains a separate integration.
+`tmjdlc.providers.javtiful.JavtifulProvider` invokes the same `scripts/detect_stream.py` browser detector used by GitHub Actions. It captures actual playback media requests, selects the requested quality when available, and refreshes the temporary URL on a failed download attempt. When playback does not initialize, the detector reports player controls, JavaScript errors, playback API events, and video element state to help compare Colab with Actions. Signed URLs, including Cloudflare R2 signature parameters, are redacted from public diagnostics. The existing MissAV provider remains a separate integration.
 
 ## HTML investigation workflow
 
