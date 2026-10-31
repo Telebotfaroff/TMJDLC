@@ -1,0 +1,1394 @@
+{
+  "requested_url": "https://javtiful.com/video/107145/mida-625",
+  "final_page_url": "https://javtiful.com/video/107145/mida-625",
+  "captured_at": "2026-10-31T14:33:45.885293+00:00",
+  "navigation_error": null,
+  "play_click_attempts": [
+    "button[aria-label*='play' i]"
+  ],
+  "capture_seconds_after_play": 30,
+  "media_request_count": 1,
+  "media_requests": [
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "redacted_url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "source": "request",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
+  "all_links_count": 114,
+  "all_links": [
+    {
+      "url": "https://javtiful.com/video/107145/mida-625",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts/manrope-latin.woff2",
+      "method": "GET",
+      "resource_type": "font",
+      "status": 200,
+      "content_type": "font/woff2"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/font.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/css/bootstrap.min.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.css",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/base.css?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts.css?v=3e550&rev=1791560352",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/layout.css?v=3e550&rev=1793429318",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/home-live.css?v=3e550&rev=1791986781",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/theme.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/announcement.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/watch.css?v=3e550&rev=1791984860",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/bWxCba7.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/on.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/site/logo/2026/04/27/215c2694af8e5a2a3b487b6711f22866.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/13/fdd41fee30b9d22da1e04c7bf6a29aa9.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/99ae4c330a0caee56bea15fe38369c00.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/6281d81f48e4d8e7ad29d5ef18aa90a5.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=518",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/bn.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn2.tapioni.com/adgpt.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/collections/actresses/2026/04/27/7a134713397be6dadb18c0eaa5ee6a32.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/users/avatars/2026/08/18/4faddb89da74b3e9993e00fc09a8fc81-xs.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/03/834aa06fd45a3563226b8a0eee9cc4cb.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/05/25/dd031381751cbdfcf46001b2ff0d187e.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/12/02/6b19fc81c1f6f5edf1d1b79f7e23955b.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/04/2b8e67ab27fd935e483094a41bcc9314.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/03/02/bead97deb056e8391012b3ad5a857e02.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/26/a7300a1d865433259d6fcf79fee595c1.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/ee0392c65861121c3611b7fd1670a860.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/05/4c0bb3fbc4ea3a24b1a45e38ce0ebc5b.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&sid=41204b97-fd0a-4f41-ac85-8758837a856d&kw=creampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/solid.gif?z=1871231&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=rDMjQP8GQJCaIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=pa3YG7maHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTA3MTQ1L21pZGEtNjI1&afid=4058185684430596&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=2&pload=710&rlp=%5B0%2C139.1999999999898%2C121.80000000000291%2C67.40000000000146%2C3473.200000000019%2C2133.4000000000306%2C1004.5000000000146%2C1627.9000000000306%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/get/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=rDMjQP8GQJCaIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=pa3YG7maHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTA3MTQ1L21pZGEtNjI1&afid=4058185684430596&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=2&pload=710&rlp=%5B0%2C139.1999999999898%2C121.80000000000291%2C67.40000000000146%2C3473.200000000019%2C2133.4000000000306%2C1004.5000000000146%2C1627.9000000000306%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_cldkmvejuadbwpwvvbdgvu&uf=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/get/2004725?id=2004725&pid=__clb-spot_2004725_nca_1&dr=52&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=rDMjQP8GQJCaIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=XHO1L52aHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTA3MTQ1L21pZGEtNjI1&afid=6309985498137348&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=2&pload=749&rlp=%5B0%2C205.79999999998836%2C181.70000000000437%2C96.70000000000437%2C4282.500000000029%2C2675.3000000000247%2C1300.8000000000247%2C2169.8000000000247%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_clcwkwbggjjvoozhazgbpo&bp=1&uf=0&freq=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/pr/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=rDMjQP8GQJCaIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=pa3YG7maHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTA3MTQ1L21pZGEtNjI1&afid=4058185684430596&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=2&pload=710&rlp=%5B0%2C139.1999999999898%2C121.80000000000291%2C67.40000000000146%2C3473.200000000019%2C2133.4000000000306%2C1004.5000000000146%2C1627.9000000000306%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_cldkmvejuadbwpwvvbdgvu&uf=0",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://coosync.com/sn/c?zoneid=1871231&eucx=3&srp=BVVMKUqg2v50X4liVyXnDFJ6fLTYntKp06t55Iwlkz6ZW5gEwz9nNbs33rm5ZabJuUbM4qev06JCnszD4J0hrptnEhzME2xq1LsrQuJiLoZMKCDvnijTyxChUhBpBwLTPWkD&im=0&wcks=1&ix=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile/1871231/avatar.gif?psp=8E2gEPI1bXHWSodKMHAngxP7VBjhFXMj_U8g7AOccUgUdSwyeRdAidDmuCK1uwaalsyunITCWSlBs9Mmj6Uh1W62jo7pL_DhyUhJiin-Ai89x_jXZInqDGNKv2D0Li_kwWe7X1B6iUBSVTPKtbZzKUzvVVevyyep0BcdwxPKCw43A-2ODo47XC3Nt6LY8lWcAGWqURDgsVKnuXVsdtrjgcZDq3hFvwh9G57qrJsFXENZ_FZchrCCIeAuPezsRQ_DUCbBjSvKijcYBx_3vmOXeoBErsx4FvxRiWpx_DMTKYQa_bU8Y4onEuGIHjKydW0cJnf5bENbTx0%3D&eucx=3&nojs=0&bavar=0&febuild=1.1.92&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=rDMjQP8GQJCaIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=7Ii7UERaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTA3MTQ1L21pZGEtNjI1&afid=7717360381721348&dl=10&tuid=7702839982126775564&eclog=1&tp=288230376151712260&tl=zQIAgqFs0mrl_CehYwE&vp=0&pkw=2&pload=863&rlp=%5B0%2C205.79999999998836%2C181.70000000000437%2C96.70000000000437%2C4297.700000000026%2C2876.0000000000364%2C1496.500000000029%2C2370.5000000000364%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=1",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://loud-hall.com/a.W-ZzyAPB2CQ_9EMFTGcH5-MJzKQL1MN_zOEP5QMRT-cT0UNVTWU_0YNZjaYb0-OdSeZfpgc_2i1j1kblH-RnpodpGqF_nsPtTuhvm-NxzyFzmAZ_jCID1EMFW-MH2IMJjKh_hMYN2OFPm-NRDSlTiUY_TWJXlYOZD-VblcMdGeU_3gNhDiIj3-Jlmm1n1ob_HqRrpsdtG-FvnwYxmyF_uAbBmCVDy-PFXGRHyId_WKULmMcNn-JPpQZRDS0_4UZVjWcXx-ZZmaYbycN_TeFfjgNhj-Ij4kYlWmN_hoZpjqQr5-YtmuEvywZ_Tygz1AZBT-BDlENFzGQ_yINJyKZL6-bN2O5PlQa_WSQT9UNVT-YXxYNZTaQ_3cMdAe?iframeId=vjvtqj",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html;charset=UTF-8"
+    },
+    {
+      "url": "https://cm.pxltag.com/sync?platform_id=9ef109b86e194f8bb28ca2c41fc61b21&external_id=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": ""
+    },
+    {
+      "url": "https://s.uuidksinc.net/match/1924/?remote_uid=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/ps/1871231?eucx=3&im=0&ix=1&puid=16926212018981551375&so=1&wcks=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/b.b.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=b3RkJ8Vtz81yFhHtwGfudF_948l6iYgRPGaV7fZNJsGRx_pfhzyDk9TfMzn7FOeGp8Mm03S1IZT5J_uRwwcEYpgdQ3I9dhd7dUKG5F0PcGd3XMnV_gUIDRUi&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=njqMsqUuQvJJ59hfTJ6ozDc6b12sLhKOkWkBvZEa2UPTXB8pUXyxwOc9FCZnY7E4AHbK2KkiLmHHpQwNAMy3j8sE2vSPESLPRCbGq7C7VSbsEP9m_gUIDRUi&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=fDeHeQWBBPW9lyeqbI8b89crFWv3x23A9p4wjblYMD09BjYzf87_F5VxArel7MRyAIzDyOmJbOFp9vImEQsADNsuV9I5O3iUlr95qvB8nxzKXbLB_gUIDRUi&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=ttaMtoTGxkB64sieJ-cH6wbe11jDA4A61n6mwlbkxuz6SrRX4tuNk12C1654c_7CTZlcfyBEwjXaRt6aNBtHs6K0VbpbPlpSPs8Re2iFJxNHbBG9_gUIDRUi&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=jmgRCe23bj8mPdvfFTgsEXyKEiDmYVgRd0BjtD_UJcIXsgDuy_AgGNPWrDPgF5GrLVZzsHEIdaL2XL8cfgCvdRwnc_aZAkmh_bsj_Cve7jNUye1Q_gUIDRUi&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/native/native.min.js?v=5.7",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript;charset=UTF-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zCyHSyEEGBpkYMlqYGXOwBQ0bZm60wFEjR4wWNnCMGSPGRg0xZWDUkCHiYZg6YzKGgVGmBowYN2C0IGPGjFIaKcWsvFEjTIswRm3cwFqGTA4ZNXpCJGNnYcydMx7CqSNmoQytLn3CgbNwBo0ZMmA8nANnoo6dDXHAsPGwDV-_gGMIxvFwTBu6DFvaoBGDhk-mbm88FOPGzcLFM2rYqNjGDUYdbxXLSCsCTunTNik_rBMjIxo6dODM0fHiBUk3Ise4GPOmjW85BemksVNmzos6bpYjnBOGzQs3YZQzf_FjTho9ZXrMgAEDTwzyXOqQf1uHTpsvY8I8DpPmjJse9F0ksZMl_Xob7b1HnBt0lEFgD6CJFoN_MLxlxhsEwvcGG2_I0UNTZjD4lhgRrXGGHG9AR4aEFFpIHgwa2kBHGHKcUQYdPdARohwpVpiGgSsqB2EPc9AhB31n3JbiHDH0IMYMUqyhBA5W0KEHDjHkYQQaSNBxxxFm1EGGEV_kQAMObNiQRhZnSAHFEWFYcYMZWjihxBxHSIHHF3CYgYYeeRCxRg5UmNGEHm7cYMQTZRwBBw5NtAHDDFPEkIQWVNSgxBd1SHHHHWMUkQUcZ5ARxQxJcIQGGTeQUcUSR9RgBAxQjHEEGTNg0YQbVnxxRhVJECFFFWmkuEYZedxRIRlz9HBFdmOgsUITuQYBE1grKNHCGHXAsUISbjDXY33ZVbiCFAaucEcadCh7xBtqhPhtuA_KsYIZyJWxQnbRhmGHclmyUYIMQ4yBnHxw3LjvEHNM-IawcqwxMHY95jEwGiySQRxyAxN3xxlpyKEvv8rhlkeWYyjM77np1rGuGwM38cQTRGShxcBDGFgwcmSk3OyzNUQ7bbXXZtuccmd06y64bqxQwg1D1HtvGvkO3EYaZIQxsA1gpQgHcnbceMcXbbxxUA9ovMGcHGKRUVxGatiLbx1sDHd2Y9kttIVejIHEAlIsgMXCDDF0oZYcQTFURguDbWbGQjC4sF5jrtEJOOKKk8eYCHy5NXjhIshhB2R5PVTGGK5BTl5FddSRRkYOjlEZDjS0EENRNrRQg1eDcyjDSyOthpcYVeFUhlhpQCZCXi7EYEMOLtQwQ_IwiCXHF8GjnrjxyCvPvFh1hJFRE2_okQYbbITxQg2Kg4ACFg3tAAITabhRBx4g4IGDDV9MlgIIQczFRhlXlCHGEuQa3wxu4IIZ2MB8S0ACFZrABBaAgA1p-BUIjvC5NbzhfkNAA4jaUIYXgIR8iQshCKYQBjOwKA0CJKABxTKTjFRhCmKpEHwCJ4IXioUNNFSBCspWBjt8ATlsoEgNqBKDGrCOPA9pkWd0MIMciOYhB_GhGMimg8lFkWtecwuULCMCMoCIIlAE0RfGZhYbDJAwIniDQlDztzfgIQ8LqUESHedGOP4FinlYoo_qUAYo9vALTspI85JYhsPpYCC40Q1vXpC2peXLbcYRyx0yEgMDhuUhaMhIDsgjFjjMICOGcYEaFLIXzWUERDmqUAugQy7CxcAFZMjYUWI4B1MyEQY4sAvfzMgaiWWkDnP4QizlMMuHuIciN8iBXYYYg68Ysw08YUgyl3mDZsrgJFw0yA-bA4cvxE2ayqQBM50pgj9WByF0WOMWauAQvu2NBn6DiBj80sVC_oQNE1ELDhHXmNPoRQTJkpsIuCACJ7yBDjpwlhB-5AYyEHQHdugBQXFAUAcSNIMbTEMd2vDQiBK0iDaoKAgIioSCkGF_c5gDRotTho5KVAQgJahYCCq_kIpgpiKYjEwfIhacGhShCmWoQ0UA0ZfiQHFIRVFPRiqClT5toy79qGiQKpgbHJUGIiWpSVGqUg2yNKownWriqnrVnYrgB4O86UMIyj734cGsYkFrT3nK03iGIZOHfBB41hDBvj7NfZAUQR8UEBA%3D&s=b6bbcfdb78fbc65e516a25e2e8c5811170b9f5e646c6799f8500d22ac292f9071793457192&w=t&r=1&d=331&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr",
+      "status": 204,
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XEmCFjBgwaG1vEGEPjRouSZWi0yHGjho0WY26QyTHGDIwcNUbWEPEwTJ0xGT_OyGEmjJkaLW7kECPjZA0zJnHmaIqjRo4YMKBaBRmGJ0QydhbaqNrxIZw6YhbKsKG0Yhg4cBbOoMERxsM5cCbqqCEjhowbOHI8bINXL1-_SmU8HNMmLkOrNkDS6EnGjNobD8W4cbMQBwwcM1xWbOMGo461MXCUFQGHtGkbNUA-rBMjIxo6dODM0fHixRgyblqYGeNizJs2vuUUpJPGTpk5L-q4aY5wThg2L9yEYe78xY85afSU6eERBh6sMLjUgQFjbR06bb6MCdM4TJozbnrYd5HEThb17LkHn3xvuEFHGQb24BloogHYng1mFEgHgWy8IUcPZmTo4FpiRLTGGXK8IR0ZFFrYA3vprfcgHWHIcUYZdPRAh4hybGiDhWkgyCJzBfYwBx1y2HfGbTbOEQOGRJSBRBlRXCGEEFBckQMbeZQRhxhJ4CBGYGPIYcQVdsyAR0dB5AAHDXeoIQYbWTRBxE1CqJGFHmbgcMMXRtRgBR5BKMfGDU1IkUcQSehBRB5PtKGEGE8YAUcOdiTRRhFRzBEEEU7MUYcVOSRRwxMzpFEFG3LgFIcdQuDgBh56LIGFGEwI8cUZVSRBhBRVpGHjGmXkcYeFZMzRwxXbjYHGCk3YGkQLNshQwwpKwFQHHCsk4YZzP963nYUrSIHgCnekQcexR7yhhojdfhuhHCuYoVwZK2wHbRh2MGdGHWyUIMMQXRbUWI76DjHHGxX-KscaAWv3Yx4Bo9EiGcYpF7Bxd5yRhhz57sscbnncOwbC-5Z7bh3puhFwE088QUQWWgQ8BIIDK0fGycoy6yy00lJrLbbMnbEtu966sUIJNwwxb71p3JvxEG2kQUYYATdbg41wKGdHjnd80cYbB_WAxhvOyeEVGcdlpAa99uJbXNmLbbfQFnbhwIJfc2PmLAszxNCFWXIAxVAZLcBgQ2aW6QCDCwHWsFhrX1Tt9-Eoyi0CXmq5UAPggj8khx2OyWCXCGWM0dpCkMNQUR11pJHRWsPFQAMOKsVQhkst1DAT4B32JdwYHXEkRg1hiFFGGV6l4ZgInrsQgw05WD6D5TB4JccXxq9--PLN1_B8DdHP1pUOIjTxhh5psMFGGC_UgDgIKGDR0A4gMJGGG3XgAQIeONjwRWQpgBAEXGwowxXKIIYliCt9M7iBC2ZgA_YtAQlUaAITWAACNqSBVyA4QujW8Ib-DQENIWpDGV7gF_VBbn1TMEqL0oBABTLQK2PwmwiqMAWvWEg-MqShV9ggQxWoYGxlsMMX_ESRGrQkBjWAHXs0hx-54GRwIjiIEMUgNh1ITopa45pacOC6h5AhRBTxYoi-EDax2CCBUHyDQk7DtzfgIQ8LUZwIplc1N8JxL17MA2d0AKQ6lMGLQfwCHfQQFOmVoXADwY1uePOCsyFNaWtDjlfukJGNwMYraMhIDtjjFTjMICOEcYEaFHKXzWUkRDuyUAukIy6RHI4MFzOdDedgSh0k8CZYQeIZvSjDOszhC7CUgywfAh-KKGUuRozBVIjZBhkYMwfIvIEy1_IXygzxOXD4gtsYckwaJHOZoBPidRBChzVuISd4c8hc9gYRMegliof0CRsmYhYekm4xpvmcsd4mAi6IwAlvoIMOliWEILmBDP7cgR164E8c-JOC_vxgCNNQhzYkdKH-1OVDQeDPJRkkgHOYg0SPU4aLMlQjLvGnV_yJPxuo9CH-jMxLReCVlf4zoANtQUHDcFCTNhRxQE0PTzgqgpE2raI-RakNgOoZwLiABhvtaEHIAFKRgpCkSdUlU2HgVKjS9CE_6N5X-ykC-dEPDzP1Slhr-pCasjMMmQRfhMSzhgvatWn0i6QI-qCAgAA%3D&s=d6a987168ba907de8713eafba3312e4394b06ac4f518b1e52b118d9cb74400c21793457192&w=t&r=1&d=180&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XcGGPGxhgyYmC0IJNjBpkWNGyUmdECh5gYJyPGMJPjBowyYzbaEPEwTJ0xGWHQmJHDTBgzNVrcyCFGBsoaZm60yFEjh1McVWPAiFqVRowwPCGSsbPQBlYZMx7CqSNmoQwbSyuGgQNn4YyhMmA8nANnoo4aMmLIuIEDx8M2fP0CFrxUxsMxbeoyrGrDK42eZMy4vfFQjBs3C3HAwDGjho2Kbdxg1PE2Bg60alOvtlHD68M6MTKioUMHzhwdL158dNPCzBgXY960ES6nIJ00dsrMeVHHDXSEc8KweeEmzPPoL37MSaOnTI8ZMGDg0QqDS530b-vQafNlTJjIYdKccdMjv4skdmThHnw2yEdfcm7QUUaCPYhGmmkxDAjDW2a8kWB9b7Dxhhw9mOGhhG-JEdEaZ8jxRnVkYKghh-m1996ENtARhhxnlEFHD3ScKAeINmyYxoIyPmdhD3PQIUd-Z-zG4xwx9OCGGnE0MUccVdQRhR1KKFEVGmZQoUSPehAxhg0vyTAHE2gs8cQaV6whhB1aFBGGDFVAQQUWQuAARxVY5IHHHU-MkYMRQ2jhRhY3FEFDEEiIsYQMS6yRBhNtIIEEHFHc4UQQTeQxgxo4zFGEDHZMAUURUzABhRRDiHFEHDcMcYMVU4ghKhQ50HdGFUkQIUUVafC4Rhl53LEhGXP0cIV3Y6CxQhO9BtGCDTLUsIISLYxRBxwrJOFGdEXq592GK0ix4Ap3pEGHs0e8ocaJ5Z5boRwrmNFcGSt4d20YdjxnRh1slCDDEGM0dx8cPwo8xBwZvmGsHGso3F2ReSiMxoxkJNecwsndcUYacgQ88HO85fHvGBEP3O67dcTrhsJNPPEEEVloofAQCzLcHBkwRztttddmu22330r33Bnj0muuGyuUEOu-_abxr8hDtJEGGWEoTG0NPMLRnB0_3vFFG28c1AMab0QnR1hkKJeRGvz6CzBybj_m3UJb6GWYYCzEwFm1LMwQQxdqyQEUQ2W0AIMNnWmmAwwuwFfDY3DQ5_XhkLdomAh8ueVCDYkv_pAcdkiW10M4Vb5Q5jBUVEcdaWRE4Rgx0IADDS3EUIZpLdRAUuIiBlbcGGjNIIMYNYQhRhllhJWGZCLk5UIMNuTw-QyfwxCWHF88Lzvk1FtfA_Y1aH8bWDqI0MQbeqTBBhthvFBD5CCggEVDO4DARBpu1IEHCHjAgQ2-UJkUgCAIdGFDGa5QBkepS34zuIELZmCD-i0BCVRoAhNYAAI2pGFYIDgCTtbwBgMOAQ0makMZXiCY-WWOflM4yozSAEEJUjAsYzicCKowhbBsqD465GFY2KBDFaiAbWWwwxeawwaK1OAGNYhBDW6XntHtxy5UYZwIDqJEMaxNB5vj4tjK5hYc1O4hZDARRdBooi-orSw2iKAW36AQ1hTuDXjIw0ImJwLueQ2PevwLGvMAGh0YqQ5lQGMSv0AHPQRle2Vw3EB44xvgvABuUZsa3ZYTljtkJAYUrEFY0JCRHKQnLHCYQUYQ4wI1KGQvpMuIiYK0oRZUR125gxwZQNY6H84hljqIIAxyoBUpxhGNOqzDHL6wSzn08iHzochS7vLEGFgFmm2QgTRLQoNqWoVaWjTIEqUDhy_cjSHT7OYNrOkYESxSOwihQx23EMXAOeQuhIOIGPyyxUj6hA0TUQsRV_eY1ehFBM3Cmwi4IAInvIEOOpCWEI7kBjIwdAd26AFDccBQDjL0hClMQx3acNGMMtSYHQUBQ5FQEDIocA5zAKlyylBSjYoApSIIC0MDaAOG6lQElfHpQ8LyU4dCVKIUtagIMGpTHETuqe3hiUpFIFOrjbSmJzXNU0VDGBfQIKUrbelLY4rCmWL1plqFHFed-tWcPuQH5nPrQkWwv_7hQahyhStRhzrUfIaBlOmrUHkkRdg0WK1_mxRBHxQQEA%3D%3D&s=ee91789e5a9a3438394468e474f62b2946a9e855d8a5460e7c4e345e2204e6b91793457192&w=t&r=1&d=191&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zCyGSqWGmRg0cOVqEyUEGRgsaYkaKrEHDTIsyMmzkCGPDDBkcLMmIeBimzpiMNcaQMUjmRhmRM8rgOBkGxowWYmKYWTom5ZgcMmLYaHpDzE6NdhbawCljxkM4dbzqiHkjR8UwcOAsnEFjhgwYD-fAmaiDRg4bN7TiFdFGL1-_gLWaFTGmjVyGNf7SiEGDJxkzC2XceCjGjZuFOGDgmFHDRsU2bjCuNY2j7FnUqm2wrFgnRkY0dOjAmaPjxQuhblqYGeNizJs2v-UUpJPGTpk5L-q4aY5wThg2L9yEYe78xY85afSU6TEDBgw8McxzqWM-Zh06bb6MCeM4TJozbnrYd5HETpb17dnwXnzGuUFHGQb2ENpopcUAIAwxmfGGgfK9wcYbcvRgxoYPxmTVGmfI8YZ0ZFR4YYbmwdChDXSEIccZZdDRAx0jyrEihmkg2CJzE_YwBx1y2HcGbivOEcOMLTZBIxVH4LGGEDbQAF4ZSrQwBhI23CFGGQ2pQUQQNARhmhs2tHEHG2KsgUcdetgwhRxSYEEDHXU4sUYMMgyhFUtjfHHDEFRowcYYZuQhRBF3qIFFGFLQsZUTQtCBxBw2LAGDFWLAIQYUbMAxBRRz4CAFTGkYoQQeTiAhhhBH5PDFGVUkQYQUVaSx4hpl5HEHhmTM0cMV242BxgpNyBpECzbIUMMKVY5RBxwrJOGGcz_etx2GK4zqxgp3pEHHsEe8ocaI2SK4goRynKtcGStsx2wYdjBnRh1slJDnGMrRB0eO9g4xh4Vv7CrHGv1q92Me_aLhIhnGKdevcXeckYYc9ebJXG55zDsGwXmGO24d5brRbxNPPEFEFlr0OwSC_ypHxsjGIqsss1Y-G-20zzF3xrXpartCCX--G28a81Y8RBtpDNVvsjWsCIdyduR4xxdtvHFQD2i84ZwcX5FxXEZqwCsvvcV9_dB8fG2BFw4s4Nn2ZsqyMEMMXZwlx08MHQWDDZxhpgMMLrR3NhzxPY034CmyLYJemenNtwhy2PHYXQ-VMQbhCyEOA211pJFRhGNQhgMNLcRQRmkt1EBGDkellJVwY5Rllxg1hLFlGV-l8ZgId7mgVQ4u1DBD8DB8JccXun8O-O_BD19D8Q_VEUZGTbyhRxpssBHGCzUEDgIKWDS0AwhMpOFGHXiAgAcONnwRZQogBBEXG2VcUYYYS3jL_Qw3uDCDDd9bAhKo0AQmsAAEbEgDrkBwBMut4Q3wGwIaRNSGMrwAT91DnPemEAYzuCgN--vf_74yBryJoApT-AqG5GNCFH5lUBlRgQq6VgY7fEE5bKBIDW5Qgxh8hAbmeciLPqODGeSgNA85iA3FwDUdKE6JVLNaZnBAmSSKiCJWfMMXtiYWG_DvcW9QyFrs9gY85GEhNRDiF55WxjPqII0iIEMeiAikOpQhiTX8Ah30kBHoQa4MfhtIbnbTmxeEbWhFKxtyvnKHjMTgfzX4ChoykgPzfAUOM8hIYVygBoXkJXIZEdGOMNQC6XirBTAAHhkmtjkVzgGUa8nKDVKJwcrE0YR1mMMXVimHVj4EPhRpC112GAOs_LINMghmDoYZGKzIRAaWueFz4PCF7SiTmcWEpgjyeB2E0EGMW-ih3BxCl7pBRAx8iSMge8KGiZwFhn87m2oGI6yFbEEEXBCBE95ABx0cSwhBcgMZ8rkDO_QgnzjI5wHzKUEKpqEObSCoQfPpQxsoFAT5REJByEC_Ocyhoccpg0QPKoKK5vMr-VyfRUWAUhFE6aQP-UpL99nPfwZ0oCIoKElxELieqmgnGBUBSJEG0ZFStDQ9Dc0NeEqDi2Z0ox396ARDatSSIhVwSmUqTEXwAz-2tHznw8NWv9JVmcY0puYMwyR1IAIJiWcNCowr0s6nSBH0QQEBAQ%3D%3D&s=3f03e5cae82e37f2327ec3019c3b2e11e6234026a4dbc0bc8d15a036c29245ef1793457192&w=t&r=1&d=196&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XAGBOxzA0bNlrcaHijBY0YOca0wDEGh5gWYnKE2WiDjI0wOXCUEfEwTJ0xGWuMIWOQzI0yLcLMKIPD5MwZMGOYaTpGTMQcMmLchHFDDE-IZOwstIGjhowZD-HU8apDho0bOSqGgQNn4QwaM2TAeDgHzkQdNHK81VqxTd-_gQfbQCtiTJu6DGsIPkmjJxkzC2XceCjGjZuFOGDgmFHDRmE3GNuaxnE2bRvUY2ucfFgnRkY0dOjAmaPjxYuhblqYGeNizJs2v-UUpJPGTpk5L-q4aY5wThg2L9yEYe78xY85afSU6TEDBgw8McxzqWPebR06bb5wfBwmzRk3Peq7SGIny_r2NrwXn3Fu0FFGgT2ENlppMfwHg1tmvFGgfG-w8YYcPZihoYNuWTXGGmfI8YZ0ZFBoIYbmwcChDXSEIccZZdDRAx0jyrHihWkc2CJzEvYwBx1y1HcGbivOEUMParRxhhRDlHGWGGrg0AYUYZlhBBVnzFEEFnksUUQaRLSRhRVLkgGDEGrQQcQXVSgxRhJYzHEGEXXk8UUQZxzhBBRXyEEEFGcYUcMRcjBhhRZ6zIFEEUkQxYQMWDDBkhlnDGEHGVLc4cYYX4ShRRBrtIHGF2LMocYXlnqkhhNV5FFGDFF8cUYVSRAhRRVprLhGGXnccSEZc_RwxXZjoLFCE7UG0YINMtSwghItjFEHHCsk4YZzP9q33YUrSHHgCnekQYexR7yhxojdfhuhHCuYoVwZK2z3bBh2MGdGHWyUIMMQYygXxmM56jvEHBW-4ascawis3Y95CIyGi2QYp5zAxt1xRhpy5Lsvc7nlce-HApd7bh3puiFwE088QUQWWgjcpBsEK0fGycku2-yz0U5b7bXPMXfGtux668YKJdwwxLz1pnGvxkO0kQZRAjNbw4pwKGdHjnd80cYbB_WAxhvOyfEVGcdlpAa99uJbXNkPcfTXFnvhwEIMMsy9WbMszBBDF2nJARRDSMFgA2eY6QCDC-21DUd8Vf99eIpyi9BXZoEPLoIcdkCm10NljLH4Qo_DUFEddaSREYRjxEADDjS0EEMZpbVQAxk5IGVVVsKNcVZeYtQQhhhl7PRQGpCJoJcLWuXgQg0zLA_DV3J8Qfzphye_fPM1PE9bGBk18YYeabDBRhgv1IA4CChg0dAOIDCRhht14AECHjjY8IUNNKQAQhB0sVHGFWUQwxLEVb4Z3MAFM7AB-paABCo0gQksAAEb0rArEByhc2t4g_6GgAYRtaEML6Cb-R53vimEwQwuSkMBD5jAr4zhbyKowhS-ciH5wFCGX2EDDFWggrGVwQ5fUA4bKFKDG9QgBjVgnXke8qLP6GAGOSjNQw4CRDGITQeRo6LWuJYZHKhuiiKiCBjf8IWwjWUxH3nIGxTSlr69AQ95WEgNmPiFqr0xjjqYowjIkAcnAqkOZZjiD79ABz1kRHuXK0PhBpKb3fTmBWdL2tLWhpyv3CEjMUhgDb6ChozkwDxfgcMMMmIYF6hBIXzBXEZEtKMLtUA64moBDJRHBoyJjoZzUGVbsnKDWYqwMnuEYR3m8IVayuGWD4EPReBylyKipG4WaYMMlpmDZo4EKzbAimWC-Bw4dOovMWAmDZypTREM8joIoQMbt3DEvDnkLnyDiBj-skdF-oQNE0mLDkHXttTspTGd1MEWRMAFETjhDXTQgbKEECQ3kKGgO7BDDwqKg4JGsKAc9GAa6tAGiEq0oEi0gUVBUFAkFIQM_pvDHDJ6nDJ4dKIiCGlBv1JQ-olUBDQVAf5m-pCv5PSgCV1oQx8qgojCFAeIS6qKeEJSEbDUaRx9KUhLk9TQ3ACpNBhpSU-a0pV2sKVSjSlVD2dVrPJUBD9AZE7dBz88nPUrafVpT3sazzAEVAQREs8aKMhXp8GPkiLogwICAg%3D%3D&s=c3c250ce7e1a27403111867dcaadfcef300df997c024f62fdc1a085956cbb9431793457192&w=t&r=1&d=193&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/MzFmNGQ0ZWY3MTdmNzBjMWRkYjUxZjViOWRjYThkNjQ/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/ob/ob25s7/frame/original/4.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/NGRhMDc1ZWY2YTM4MjI0OWIyMGM0ZDQ3NWU0ZDA1MDg/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/7W/7Wl7cm/frame/original/4.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/fonts/Roboto-Regular.woff2",
+      "method": "GET",
+      "resource_type": "font",
+      "status": 200,
+      "content_type": "font/woff2"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/YTIxOTExYWI4ZTIyODM3MDU0NjU1NDNiNjE4OGE2MDA/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/yu/yuTiY9/frame/original/18.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/270084900",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/8/9/2/8927692448f5ef2e6a03c1661f43cf69-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/195446409",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/f/6/9/f69a5aa749e456ab54d2d8c33f7ef8c7-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/70032198",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/9/3/b/93be31ea60757d39c0dcbd3bed229767-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/261851470",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/1/2/d/12d31afcf060b850b3b5f7ac1778479c-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/224755708",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/d/d/0/dd0e20f8f5cb72b6c6a0ff0a67c24e68-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/285235852",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/e/0/8/e08451b93c6759c501cd78640feb2806-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/221792833",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/b/0/4/b0421f06124359f2685f12f186a0f532-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/282044083",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/1/d/1/1d16b41e72ceb145b2abbbeb31c553b2-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/280936989",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/6/b/8/6b8b7810916e9ead41a9ed859bbf053b-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793457090/282754684",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/a/a/8/aa82f5c6bbd7526136f4bfa6c7b4e8f6-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://javtiful.com/video/107145/playback",
+      "method": "POST",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/107145/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 302,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 206,
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5571",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    }
+  ],
+  "network_events": [
+    {
+      "url": "https://javtiful.com/video/107145/mida-625",
+      "method": "GET",
+      "resource_type": "document"
+    },
+    {
+      "url": "https://javtiful.com/video/107145/mida-625",
+      "status": 200,
+      "resource_type": "document",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=518",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=518",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/03/834aa06fd45a3563226b8a0eee9cc4cb.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/05/25/dd031381751cbdfcf46001b2ff0d187e.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/12/02/6b19fc81c1f6f5edf1d1b79f7e23955b.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/04/2b8e67ab27fd935e483094a41bcc9314.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/03/02/bead97deb056e8391012b3ad5a857e02.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/26/a7300a1d865433259d6fcf79fee595c1.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/ee0392c65861121c3611b7fd1670a860.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/05/4c0bb3fbc4ea3a24b1a45e38ce0ebc5b.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/03/834aa06fd45a3563226b8a0eee9cc4cb.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/12/02/6b19fc81c1f6f5edf1d1b79f7e23955b.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/03/02/bead97deb056e8391012b3ad5a857e02.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/05/4c0bb3fbc4ea3a24b1a45e38ce0ebc5b.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/ee0392c65861121c3611b7fd1670a860.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/04/2b8e67ab27fd935e483094a41bcc9314.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/26/a7300a1d865433259d6fcf79fee595c1.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&sid=41204b97-fd0a-4f41-ac85-8758837a856d&kw=creampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625",
+      "method": "GET",
+      "resource_type": "script"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/05/25/dd031381751cbdfcf46001b2ff0d187e.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=1",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&sid=41204b97-fd0a-4f41-ac85-8758837a856d&kw=creampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625",
+      "status": 200,
+      "resource_type": "script",
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=1",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+mida+625+j+cup+investigator+ren+with+gojou+ren+for+free+at+javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2Cgojou+ren%2Cmoodyz%2Ccensored%2Cmida+625+j+cup+investigator+ren+%7C+javtiful%2Cmida%2C625&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/ODYzOTUxMjJmMWI1OGVmODZmMjNkMzk2MWM2N2U1ZTU/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/vk/vkyyE1/screen/5-o3U.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/video/107145/playback",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/video/107145/playback",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/media/video/107145/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/107145/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "status": 302,
+      "resource_type": "media",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "resource_type": "media",
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5571",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5571",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    }
+  ],
+  "failed_requests": [],
+  "playback_api_responses": [
+    {
+      "url": "https://javtiful.com/video/107145/playback",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "json_keys": [
+        "defaultQuality",
+        "sources",
+        "success"
+      ],
+      "sources": [
+        {
+          "src": "/media/video/107145/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+          "type": "video/mp4",
+          "fallbackSrc": null,
+          "size": 720,
+          "label": "720p"
+        }
+      ]
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/05/VID-986A3517/VID-986A3517_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T143314Z&X-Amz-Expires=3600&X-Amz-Signature=fc679d4bf776ec9d693c1e6b4047c4336c81e6e9f8482d9af935a523354e6747&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
+  "video_elements": {
+    "video_count": 1,
+    "videos": [
+      {
+        "current_src": "https://javtiful.com/media/video/107145/720p?expires=1793460794&signature=28a23b12cf33559d8185a8b77547dde20ba54c8142371b6010668b3f7c7bf0af",
+        "src_attribute": "https://javtiful.com/media/video/107145/720p?expires=1793460794&signature=28a23b12cf33559d8185a8b77547dde20ba54c8142371b6010668b3f7c7bf0af",
+        "ready_state": 4,
+        "network_state": 1,
+        "paused": false,
+        "duration": 7388.673,
+        "error_code": null,
+        "error_message": null,
+        "buffered_ranges": 1
+      }
+    ],
+    "iframes": [
+      {
+        "url": "https://loud-hall.com/a.W-ZzyAPB2CQ_9EMFTGcH5-MJzKQL1MN_zOEP5QMRT-cT0UNVTWU_0YNZjaYb0-OdSeZfpgc_2i1j1kblH-RnpodpGqF_nsPtTuhvm-NxzyFzmAZ_jCID1EMFW-MH2IMJjKh_hMYN2OFPm-NRDSlTiUY_TWJXlYOZD-VblcMdGeU_3gNhDiIj3-Jlmm1n1ob_HqRrpsdtG-FvnwYxmyF_uAbBmCVDy-PFXGRHyId_WKULmMcNn-JPpQZRDS0_4UZVjWcXx-ZZmaYbycN_TeFfjgNhj-Ij4kYlWmN_hoZpjqQr5-YtmuEvywZ_Tygz1AZBT-BDlENFzGQ_yINJyKZL6-bN2O5PlQa_WSQT9UNVT-YXxYNZTaQ_3cMdAe?iframeId=vjvtqj"
+      }
+    ],
+    "player_scripts": [
+      {
+        "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/bWxCba7.js"
+      },
+      {
+        "url": "https://cdn2.tapioni.com/adgpt.js"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/on.js"
+      },
+      {
+        "url": "https://gigglegrowlworrisome.com/bn.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810"
+      },
+      {
+        "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"
+      },
+      {
+        "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&sid=41204b97-fd0a-4f41-ac85-8758837a856d&kw=creampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/profile.min.js"
+      }
+    ],
+    "media_resource_entries": [
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=518",
+      "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/03/834aa06fd45a3563226b8a0eee9cc4cb.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2025/12/02/6b19fc81c1f6f5edf1d1b79f7e23955b.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2023/05/25/dd031381751cbdfcf46001b2ff0d187e.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/04/2b8e67ab27fd935e483094a41bcc9314.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/26/a7300a1d865433259d6fcf79fee595c1.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/03/02/bead97deb056e8391012b3ad5a857e02.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/05/4c0bb3fbc4ea3a24b1a45e38ce0ebc5b.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/ee0392c65861121c3611b7fd1670a860.jpg",
+      "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&sid=41204b97-fd0a-4f41-ac85-8758837a856d&kw=creampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625",
+      "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=1",
+      "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIDA-625+J-cup+Investigator+Ren+with+Gojou+Ren+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cnasty%2Chardcore%2Ccowgirl%2Ctittyfuck%2CGojou+Ren%2CMOODYZ%2CCensored%2CMIDA-625+J-cup+Investigator+Ren+%7C+Javtiful%2Cmida%2C625&count=2",
+      "https://javtiful.com/api/live/home-source",
+      "https://javtiful.com/video/107145/playback",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/3ce0c0aeee9cac1e1006d71e2ea88962.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793457191303&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=909108382.1793457191&frm=0&ngs=1&pscdl=noapi&rcb=4&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938465~115938468~118897920~118897930~120213116~120385422~120469145~120469153~121246026~121246034~123691370~123814946&sid=1793457191&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F107145%2Fmida-625&dt=MIDA-625+J-cup+Investigator+Ren+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5571"
+    ]
+  },
+  "page_errors": [],
+  "notes": [
+    "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
+    "Full media URLs are included in this private test artifact for immediate debugging.",
+    "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
+    "No playback ticket is deliberately copied into the report.",
+    "An empty media list means playback was not triggered or the stream was delivered through an unclassified mechanism."
+  ]
+}
