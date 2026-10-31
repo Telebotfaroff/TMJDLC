@@ -48,7 +48,11 @@ def test_stream_result_exposes_downloader_headers_without_logging_them():
 
 def test_choose_source_resolves_relative_playback_api_url():
     sources = [
-        {"src": "/media/video/115269/720p?expires=123&signature=abc", "size": "720", "type": "video/mp4"}
+        {
+            "src": "/media/video/115269/720p?expires=123&signature=abc",
+            "size": "720",
+            "type": "video/mp4",
+        }
     ]
     selected = JavtifulStreamDetector._choose_source(
         sources, 720, "https://javtiful.com/video/115269/miab-682"
