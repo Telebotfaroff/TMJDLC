@@ -49,6 +49,10 @@ def main() -> int:
     parser.add_argument("--output", default="artifacts/stream-detection")
     parser.add_argument("--timeout", type=int, default=45, help="Navigation/action timeout in seconds")
     parser.add_argument("--capture-seconds", type=int, default=20, help="Wait after attempting playback")
+    parser.add_argument(
+        "--resolved-output",
+        help="Write the selected full media URL to a private machine-readable file for the downloader.",
+    )
     parser.add_argument("--headed", action="store_true", help="Run headed (not recommended in CI)")
     args = parser.parse_args()
 
@@ -290,6 +294,52 @@ def main() -> int:
 
     report_path = output / "stream-detection.json"
     report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    # This optional file is intended only for the local downloader process.
+    # It contains a short-lived signed URL, so never print it or upload it as an artifact.
+    if args.resolved_output and media:
+        def quality_from_item(item: dict) -> int | None:
+            candidates = [
+                str(item.get("url", "")),
+                str(item.get("content_type", "")),
+            ]
+            for candidate in candidates:
+                match = re.search(r"(?:_|/)(\\d{3,4})p(?:\\.|/|$)", candidate, re.IGNORECASE)
+                if match:
+                    return int(match.group(1))
+            return None
+
+        selected = media[0]
+        resolved_payload = {
+            "url": next(
+                (raw_url for raw_url in requests_seen if redact_url(raw_url) == selected["redacted_url"]),
+                None,
+            ),
+            "content_type": selected.get("content_type", ""),
+            "status": selected.get("status"),
+            "quality": quality_from_item(selected),
+            "duration_seconds": next(
+                (
+                    video.get("duration")
+                    for video in page_state.get("videos", [])
+                    if isinstance(video.get("duration"), (int, float))
+                ),
+                None,
+            ),
+            "post_url": final_url,
+            "user_agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+            ),
+        }
+        if not resolved_payload["url"]:
+            raise RuntimeError("Could not map the selected media request to its original URL.")
+        resolved_path = Path(args.resolved_output)
+        resolved_path.parent.mkdir(parents=True, exist_ok=True)
+        resolved_path.write_text(
+            json.dumps(resolved_payload, ensure_ascii=False),
+            encoding="utf-8",
+        )
     print(
         json.dumps(
             {
