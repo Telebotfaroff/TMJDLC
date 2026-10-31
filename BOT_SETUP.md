@@ -33,7 +33,9 @@ The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_set
 
 ## Commands
 
-- `/dl POST_URL [720]` — enqueue one Javtiful post.
+- Send `https://javtiful.com/channel/SLUG` — inspect the channel, then choose all pages, a range, or individual pages.
+- Channel options: fixed 720p, screenshot uploads on/off, skip existing jobs, and runtime worker parallelism (1–`TMJDLC_MAX_PARALLEL`).
+- `/dl POST_URL` — enqueue one Javtiful post at 720p.
 - `/queue` — show queue counts and recent jobs.
 - `/cancel JOB_ID` — cancel a queued or failed job.
 - `/retry JOB_ID` — requeue a failed job.
@@ -47,7 +49,8 @@ The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_set
 
 - PostgreSQL is the source of truth; jobs survive bot process/runtime restarts.
 - Workers claim jobs with PostgreSQL `FOR UPDATE SKIP LOCKED`, so multiple workers/instances do not claim the same queued job.
-- Unique `video_id` prevents duplicate queue entries.
+- Unique `video_id` prevents duplicate queue entries. Channel downloads skip existing jobs by default.
+- Per-job screenshot preference is stored in `upload_screenshots`; the bot adds this column safely during startup.
 - Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue a failed job.
 - Worker leases allow expired in-progress jobs to be recovered on startup.
 - `TMJDLC_MAX_PARALLEL` controls worker count (1–4).
