@@ -368,7 +368,7 @@ async def on_stop(client):
     log.info("TMJDLC workers stopped.")
 
 
-app.add_handler(MessageHandler(log_update, filters.all, group=-1))
+app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
 app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filters.private))
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
