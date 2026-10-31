@@ -78,7 +78,8 @@ def main() -> int:
             ignore_https_errors=False,
         )
         page = context.new_page()
-        page.set_default_timeout(args.timeout * 1000)
+        page.set_default_timeout(min(args.timeout, 10) * 1000)
+        page.set_default_navigation_timeout(args.timeout * 1000)
 
         def on_request(request) -> None:
             url = request.url
@@ -149,12 +150,16 @@ def main() -> int:
         page.on("pageerror", lambda error: page_errors.append(str(error)[:500]))
 
         navigation_error = None
+        print(f"[1/5] Navigating to {args.url}", flush=True)
         try:
             page.goto(args.url, wait_until="domcontentloaded", timeout=args.timeout * 1000)
+            print("[2/5] Page DOM loaded; allowing player scripts to initialize", flush=True)
             page.wait_for_timeout(2500)
         except PlaywrightTimeoutError as exc:
             navigation_error = f"Navigation timeout: {type(exc).__name__}"
+            print(f"[!] {navigation_error}; continuing with the current page", flush=True)
 
+        print("[3/5] Looking for a visible Play control", flush=True)
         # Try common player controls first. Clicking a real control best matches
         # the user's manual Play action and triggers the normal player lifecycle.
         selectors = [
@@ -176,20 +181,27 @@ def main() -> int:
                 continue
 
         # Some players expose a native video element without a visible overlay.
+        # Never await video.play(): some sites leave that promise pending indefinitely.
+        print("[4/5] Requesting muted playback without blocking on the play promise", flush=True)
         try:
             page.evaluate(
-                """async () => {
+                """() => {
                     const video = document.querySelector('#front-player video, video');
                     if (video) {
                         video.muted = true;
-                        try { await video.play(); } catch (_) {}
+                        const pending = video.play();
+                        if (pending && typeof pending.catch === 'function') pending.catch(() => {});
+                        return true;
                     }
+                    return false;
                 }"""
             )
         except Exception:
             pass
 
+        print(f"[5/5] Capturing media network requests for {args.capture_seconds}s", flush=True)
         page.wait_for_timeout(max(1, args.capture_seconds) * 1000)
+        print(f"[done] Capture window complete; {len(requests_seen)} media request(s) detected", flush=True)
 
         page_state = {}
         try:
