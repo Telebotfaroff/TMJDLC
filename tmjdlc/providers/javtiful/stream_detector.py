@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
@@ -95,10 +95,12 @@ class JavtifulStreamDetector:
         capture_ms: int = 20_000,
         headless: bool = True,
         user_agent: str | None = None,
+        progress_callback: Callable[[str], None] | None = None,
     ) -> None:
         self.timeout_ms = timeout_ms
         self.capture_ms = capture_ms
         self.headless = headless
+        self.progress_callback = progress_callback
         self.user_agent = user_agent or (
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
             "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
@@ -126,6 +128,14 @@ class JavtifulStreamDetector:
             key=lambda item: int(item.get("size") or 0),
         )
 
+    def _progress(self, message: str) -> None:
+        if self.progress_callback is not None:
+            try:
+                self.progress_callback(message)
+            except Exception:
+                # Progress reporting must never break stream detection.
+                pass
+
     def detect(
         self,
         post_url: str,
@@ -150,7 +160,9 @@ class JavtifulStreamDetector:
         }
         browser_cookies: list[dict[str, Any]] = []
 
+        self._progress("Starting Playwright...")
         with sync_playwright() as playwright:
+            self._progress("Launching Chromium...")
             browser = playwright.chromium.launch(
                 headless=self.headless,
                 args=["--autoplay-policy=no-user-gesture-required"],
@@ -188,15 +200,18 @@ class JavtifulStreamDetector:
                 page.on("pageerror", lambda error: page_errors.append(str(error)[:300]))
 
                 try:
+                    self._progress("Opening post page...")
                     page.goto(
                         post_url,
                         wait_until="domcontentloaded",
                         timeout=self.timeout_ms,
                     )
-                    page.wait_for_timeout(2_000)
+                    page.wait_for_timeout(1_000)
+                    self._progress("Post page loaded.")
                 except PlaywrightTimeoutError as exc:
                     navigation_error = type(exc).__name__
 
+                self._progress("Starting the video player...")
                 for selector in (
                     ".plyr__control--overlaid",
                     "button[aria-label*='play' i]",
@@ -223,7 +238,11 @@ class JavtifulStreamDetector:
                 except Exception:
                     pass
 
+                self._progress(
+                    f"Capturing playback requests for {max(1_000, self.capture_ms) // 1000}s..."
+                )
                 page.wait_for_timeout(max(1_000, self.capture_ms))
+                self._progress("Playback capture window finished; inspecting sources...")
                 try:
                     state = page.evaluate(
                         """() => {
@@ -242,6 +261,10 @@ class JavtifulStreamDetector:
             finally:
                 browser.close()
 
+        self._progress(
+            f"Captured {len(playback_sources)} playback source entries and "
+            f"{len(network_sources)} media network candidates."
+        )
         source = self._choose_source(playback_sources, preferred_quality)
         detected_from = "playback_api"
         if source is None:
@@ -288,7 +311,7 @@ class JavtifulStreamDetector:
         else:
             media_format = "unknown"
 
-        return StreamResult(
+        result = StreamResult(
             post_url=final_url,
             stream_url=stream_url,
             format=media_format,
@@ -299,3 +322,7 @@ class JavtifulStreamDetector:
             headers=request_headers,
             detected_from=detected_from,
         )
+        self._progress(
+            f"Stream resolved: {media_format}, quality={quality or 'unknown'}."
+        )
+        return result
