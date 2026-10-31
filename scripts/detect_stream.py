@@ -200,8 +200,13 @@ def main() -> int:
         # Try common player controls first. Clicking a real control best matches
         # the user's manual Play action and triggers the normal player lifecycle.
         selectors = [
-            ".plyr__control--overlaid",
+            # Match the working Colab notebook's actual Javtiful play gate first.
+            ".front-playback-start",
+            ".front-playback-start-center",
+            "button[aria-label='Play video']",
+            "button[aria-label*='Play' i]",
             "button[aria-label*='play' i]",
+            ".plyr__control--overlaid",
             "button[title*='play' i]",
             "#front-player",
             "video",
@@ -210,31 +215,50 @@ def main() -> int:
             try:
                 locator = page.locator(selector).first
                 if locator.count() and locator.is_visible():
-                    locator.click(timeout=2500, force=(selector in {"#front-player", "video"}))
+                    # The working notebook force-clicks the gate; the overlay can
+                    # intercept a normal click even when the button is visible.
+                    locator.click(timeout=3000, force=True)
                     click_attempts.append(selector)
                     page.wait_for_timeout(1500)
                     break
             except Exception:
                 continue
 
-        # Some players expose a native video element without a visible overlay.
-        # Never await video.play(): some sites leave that promise pending indefinitely.
-        print("[4/5] Requesting muted playback without blocking on the play promise", flush=True)
+        # Reproduce the notebook's second gate click, then request muted playback.
+        # Do not await video.play(): its promise may remain pending indefinitely.
+        print("[4/5] Re-triggering the Javtiful play gate and requesting muted playback", flush=True)
         try:
-            page.evaluate(
+            gate_state = page.evaluate(
                 """() => {
-                    const video = document.querySelector('#front-player video, video');
+                    const button = document.querySelector(
+                        '.front-playback-start, button[aria-label*="Play" i]'
+                    );
+                    if (button) button.click();
+
+                    // Javtiful uses <video id="front-player">, not a video nested
+                    // inside an element with that ID.
+                    const video = document.querySelector('#front-player, video');
                     if (video) {
                         video.muted = true;
                         const pending = video.play();
-                        if (pending && typeof pending.catch === 'function') pending.catch(() => {});
-                        return true;
+                        if (pending && typeof pending.catch === 'function') {
+                            pending.catch(() => {});
+                        }
                     }
-                    return false;
+                    return {
+                        gate_found: !!button,
+                        video_found: !!video,
+                        video_muted: video ? video.muted : null
+                    };
                 }"""
             )
-        except Exception:
-            pass
+            if isinstance(gate_state, dict):
+                click_attempts.append("javascript:.front-playback-start")
+        except Exception as exc:
+            page_errors.append({
+                "message": f"Player activation evaluation failed: {type(exc).__name__}: {exc}"[:500],
+                "stack": "",
+            })
 
         print(f"[5/5] Capturing media network requests for {args.capture_seconds}s", flush=True)
         page.wait_for_timeout(max(1, args.capture_seconds) * 1000)
@@ -320,9 +344,9 @@ def main() -> int:
         "console_errors": console_errors[:30],
         "notes": [
             "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
-            "Full media URLs are included in this private test artifact for immediate debugging.",
-            "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
-            "No playback ticket is deliberately copied into the report.",
+            "Media URLs in this report are redacted; full signed URLs are written only to the optional local --resolved-output file.",
+            "Never upload or commit the --resolved-output file because signed media URLs are short-lived credentials.",
+            "Playback tickets and common signed query parameters are redacted from report URLs.",
             "An empty media list means playback was not triggered or the stream was delivered through an unclassified mechanism.",
         ],
     }
