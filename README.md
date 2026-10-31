@@ -6,7 +6,9 @@
 
 Open the [TMJDLC Telegram Bot notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_BOT_TOKEN`, `TG_API_ID`, `TG_API_HASH`, `TG_ADMIN_IDS`, and the Neon `DATABASE_URL` to Colab Secrets, then run the cells from top to bottom. The notebook pulls the latest `main` branch, installs TMJDLC/Chromium/FFmpeg, checks the Neon queue connection, and starts the bot using Pyrogram MTProto for all Telegram updates, commands, callbacks, messages, and large video/photo uploads.
 
-Send a Javtiful `/channel/SLUG` URL to the bot to inspect its videos and pages, select all pages or a subset, and queue the selected videos at 720p. Use `/setup` once to save your Telegram video and screenshot destination channel IDs in Neon. Keep the Colab runtime running while jobs are processing; downloaded media is stored on its temporary local disk.
+Send a Javtiful `/channel/SLUG` URL to inspect it. Use `/batch CHANNEL_URL all` or `/batch CHANNEL_URL 1-5,8` to queue all pages or a custom page selection at 720p. Use `/setup` once to save your Telegram video and screenshot destination channel IDs in Neon. `/panel` shows queue and disk status; `/storage` shows Colab disk usage. `/cancel JOB_ID` requests cancellation of queued or active work. Job stages, completion receipts, and worker leases are stored in Neon so retries can resume from completed stages. Keep the Colab runtime running while jobs are processing; downloaded media is stored on its temporary local disk.
+
+The worker renews its Neon lease every 30 seconds and pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK_GB` (default 3 GiB). Set `TMJDLC_MIN_FREE_DISK_GB` in the notebook environment to adjust the threshold. Stage records prevent routine retries from re-uploading already recorded video and screenshot sends.
 
 ## Primary provider: MissAV
 
