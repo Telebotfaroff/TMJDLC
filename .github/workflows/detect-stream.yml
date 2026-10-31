@@ -70,6 +70,8 @@ jobs:
           if [ -f artifacts/stream-detection/stream-detection.json ]; then
             cp artifacts/stream-detection/stream-detection.json \
               "results/javtiful/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+            cp artifacts/stream-detection/stream-detection.json \
+              results/javtiful/latest.json
           else
             python - <<'PY'
           import json, os
