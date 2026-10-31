@@ -46,3 +46,25 @@ def test_stream_result_exposes_downloader_headers_without_logging_them():
     assert result.to_ytdlp_options()["http_headers"]["Referer"].startswith("https://")
     assert "verify=secret" not in result.to_public_dict()["stream_url"]
     assert "Cookie" not in result.to_public_dict()
+
+
+
+def test_choose_source_resolves_relative_playback_api_url():
+    sources = [
+        {"src": "/media/video/115269/720p?expires=123&signature=abc", "size": "720", "type": "video/mp4"}
+    ]
+    selected = JavtifulStreamDetector._choose_source(
+        sources, 720, "https://javtiful.com/video/115269/miab-682"
+    )
+    assert selected is not None
+    assert selected["src"] == (
+        "https://javtiful.com/media/video/115269/720p?expires=123&signature=abc"
+    )
+    assert selected["size"] == "720"
+
+
+def test_choose_source_rejects_non_http_relative_targets():
+    sources = [{"src": "javascript:alert(1)", "size": 720}]
+    assert JavtifulStreamDetector._choose_source(
+        sources, None, "https://javtiful.com/video/115269/example"
+    ) is None
