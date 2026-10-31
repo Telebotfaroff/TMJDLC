@@ -266,6 +266,20 @@ class JavtifulStreamDetector:
             f"{len(network_sources)} media network candidates."
         )
         source = self._choose_source(playback_sources, preferred_quality)
+        if source is not None:
+            src_parts = urlsplit(source["src"])
+            fallback_value = source.get("fallbackSrc")
+            fallback_parts = urlsplit(fallback_value) if isinstance(fallback_value, str) else None
+            self._progress(
+                "Selected playback source metadata: "
+                f"keys={sorted(source.keys())}, "
+                f"host={src_parts.hostname or 'unknown'}, "
+                f"path_suffix={src_parts.path.rsplit('/', 1)[-1].split('.')[-1] if '.' in src_parts.path.rsplit('/', 1)[-1] else 'none'}, "
+                f"type={source.get('type')!r}, size={source.get('size')!r}, "
+                f"label={source.get('label')!r}, "
+                f"fallback_present={bool(fallback_value)}, "
+                f"fallback_host={fallback_parts.hostname if fallback_parts else 'none'}"
+            )
         detected_from = "playback_api"
         if source is None:
             candidates = [
