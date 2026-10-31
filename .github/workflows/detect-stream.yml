@@ -1,0 +1,67 @@
+name: Detect Stream with Playwright
+
+on:
+  workflow_dispatch:
+    inputs:
+      post_url:
+        description: Javtiful post URL to play and inspect
+        required: true
+        default: "https://javtiful.com/video/113371/dvmm-444"
+        type: string
+      timeout:
+        description: Navigation and action timeout in seconds
+        required: false
+        default: "45"
+        type: string
+      capture_seconds:
+        description: Seconds to observe network traffic after clicking Play
+        required: false
+        default: "25"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-stream-detection
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright
+          python -m playwright install --with-deps chromium
+
+      - name: Detect stream requests
+        env:
+          POST_URL: \${{ inputs.post_url }}
+          REQUEST_TIMEOUT: \${{ inputs.timeout }}
+          CAPTURE_SECONDS: \${{ inputs.capture_seconds }}
+        run: |
+          python scripts/detect_stream.py \
+            --url "$POST_URL" \
+            --timeout "$REQUEST_TIMEOUT" \
+            --capture-seconds "$CAPTURE_SECONDS" \
+            --output artifacts/stream-detection
+
+      - name: Upload stream detection report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: stream-detection
+          path: artifacts/stream-detection/
+          if-no-files-found: warn
+          retention-days: 2
