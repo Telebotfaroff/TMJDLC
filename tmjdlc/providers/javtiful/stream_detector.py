@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Callable
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
@@ -9,6 +9,12 @@ from playwright.sync_api import sync_playwright
 from tmjdlc.models.stream import StreamResult, redact_stream_url
 
 MEDIA_SUFFIXES = (".m3u8", ".mpd", ".mp4", ".m4v", ".webm")
+
+
+class StreamDetectionError(RuntimeError):
+    """Raised when a playable media source cannot be resolved."""
+
+
 def _is_media_url(url: str, content_type: str = "") -> bool:
     path = urlsplit(url).path.lower()
     mime = content_type.lower().split(";", 1)[0].strip()
@@ -44,25 +50,36 @@ class JavtifulStreamDetector:
 
     @staticmethod
     def _choose_source(
-        sources: list[dict[str, Any]], preferred_quality: int | None
+        sources: list[dict[str, Any]],
+        preferred_quality: int | None,
+        base_url: str | None = None,
     ) -> dict[str, Any] | None:
-        valid = [
-            source
-            for source in sources
-            if isinstance(source, dict)
-            and isinstance(source.get("src"), str)
-            and source["src"].startswith(("http://", "https://"))
-        ]
+        """Choose a playback source and normalize provider-relative media URLs."""
+        valid: list[dict[str, Any]] = []
+        for source in sources:
+            if not isinstance(source, dict) or not isinstance(source.get("src"), str):
+                continue
+            raw_url = source["src"].strip()
+            resolved_url = urljoin(base_url or "", raw_url)
+            if urlsplit(resolved_url).scheme not in {"http", "https"}:
+                continue
+            normalized = dict(source)
+            normalized["src"] = resolved_url
+            fallback = normalized.get("fallbackSrc")
+            if isinstance(fallback, str) and fallback.strip():
+                normalized["fallbackSrc"] = urljoin(base_url or "", fallback.strip())
+            valid.append(normalized)
         if not valid:
             return None
         if preferred_quality is not None:
-            exact = [item for item in valid if item.get("size") == preferred_quality]
+            exact = [
+                item for item in valid
+                if str(item.get("size", "")).isdigit()
+                and int(item["size"]) == preferred_quality
+            ]
             if exact:
                 return exact[0]
-        return max(
-            valid,
-            key=lambda item: int(item.get("size") or 0),
-        )
+        return max(valid, key=lambda item: int(item.get("size") or 0))
 
     def _progress(self, message: str) -> None:
         if self.progress_callback is not None:
@@ -201,7 +218,7 @@ class JavtifulStreamDetector:
             f"Captured {len(playback_sources)} playback source entries and "
             f"{len(network_sources)} media network candidates."
         )
-        source = self._choose_source(playback_sources, preferred_quality)
+        source = self._choose_source(playback_sources, preferred_quality, final_url)
         if source is not None:
             src_parts = urlsplit(source["src"])
             fallback_value = source.get("fallbackSrc")
