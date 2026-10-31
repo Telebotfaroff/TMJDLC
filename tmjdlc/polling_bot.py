@@ -8,6 +8,7 @@ import re
 import shutil
 import socket
 import subprocess
+import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
@@ -89,6 +90,43 @@ async def _cancelled(job_id: int, identity: str) -> bool:
     return await asyncio.to_thread(queue.is_cancel_requested, job_id, identity)
 
 
+def _fmt_bytes(value: float | int | None) -> str:
+    if value is None:
+        return "—"
+    amount = float(value)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if amount < 1024 or unit == "TiB":
+            return f"{amount:.1f} {unit}"
+        amount /= 1024
+    return f"{amount:.1f} TiB"
+
+
+def _fmt_eta(seconds: float | int | None) -> str:
+    if seconds is None or seconds < 0:
+        return "—"
+    seconds = int(seconds)
+    hours, remainder = divmod(seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours}h {minutes}m" if hours else (f"{minutes}m {secs}s" if minutes else f"{secs}s")
+
+
+def _progress_bar(percent: int, width: int = 12) -> str:
+    filled = max(0, min(width, round(width * percent / 100)))
+    return "█" * filled + "░" * (width - filled)
+
+
+def _progress_text(stage: str, video_id: str, percent: int, done: float,
+                   total: float | None, speed: float | None, eta: float | None,
+                   attempt: int) -> str:
+    icon = "⬇️" if stage == "Download" else "📤"
+    size = _fmt_bytes(total) if total else "size unknown"
+    return (f"{icon} <b>{stage}</b> · <code>{video_id}</code>\n"
+            f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
+            f"📦 {_fmt_bytes(done)} / {size}\n"
+            f"⚡ {_fmt_bytes(speed)}/s   ⏳ {_fmt_eta(eta)}\n"
+            f"🔁 Attempt {attempt}")
+
+
 async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyncio.Event):
     while not stop.is_set():
         try:
@@ -148,7 +186,7 @@ async def process_job(job: dict, identity: str):
             check_stop()
             await status_edit(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
 
-            last_download_notice = {"percent": -PROGRESS_STEP}
+            last_download_notice = {"percent": -PROGRESS_STEP, "time": 0.0}
             loop = asyncio.get_running_loop()
 
             def progress_hook(data):
@@ -160,13 +198,17 @@ async def process_job(job: dict, identity: str):
                     if total:
                         percent = min(100, int(done * 100 / total))
                         queue.update_progress(jid, identity, "downloading", percent)
-                        if percent >= last_download_notice["percent"] + PROGRESS_STEP:
-                            last_download_notice["percent"] = percent
+                        now = time.monotonic()
+                        if (percent >= last_download_notice["percent"] + PROGRESS_STEP
+                                or now - last_download_notice["time"] >= 4 or percent >= 100):
+                            last_download_notice.update(percent=percent, time=now)
                             if chat_id and message_id:
+                                notice = _progress_text(
+                                    "Download", vid, percent, done, total,
+                                    data.get("speed"), data.get("eta"), int(job["attempts"])
+                                )
                                 asyncio.run_coroutine_threadsafe(
-                                    status_edit(chat_id, message_id,
-                                                f"⬇️ Downloading {vid}\nProgress: {percent}%"),
-                                    loop,
+                                    status_edit(chat_id, message_id, notice), loop
                                 )
 
             path = await asyncio.to_thread(
@@ -212,18 +254,28 @@ async def process_job(job: dict, identity: str):
             check_stop()
             size_mb = path.stat().st_size / 1048576
             await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
-            last_upload_notice = {"percent": -PROGRESS_STEP}
+            last_upload_notice = {"percent": -PROGRESS_STEP, "time": time.monotonic(),
+                                  "bytes": 0, "speed": 0.0}
 
             async def upload_progress(current, total, *_):
                 if not total:
                     return
+                now = time.monotonic()
+                elapsed = max(now - last_upload_notice["time"], 0.001)
+                instant_speed = max(0, current - last_upload_notice["bytes"]) / elapsed
+                last_upload_notice["speed"] = (
+                    instant_speed if not last_upload_notice["speed"]
+                    else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
+                )
                 percent = min(100, int(current * 100 / total))
-                if percent >= last_upload_notice["percent"] + PROGRESS_STEP:
-                    last_upload_notice["percent"] = percent
-                    await status_edit(chat_id, message_id,
-                                      f"📤 Uploading {vid} via Pyrogram MTProto\n"
-                                      f"Progress: {percent}% · {current / 1048576:.1f}/"
-                                      f"{total / 1048576:.1f} MiB")
+                if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
+                        or elapsed >= 4 or percent >= 100):
+                    speed = last_upload_notice["speed"]
+                    eta = (total - current) / speed if speed else None
+                    await status_edit(chat_id, message_id, _progress_text(
+                        "Upload", vid, percent, current, total, speed, eta, int(job["attempts"])
+                    ))
+                    last_upload_notice.update(percent=percent, time=now, bytes=current)
 
             sent = await app.send_video(
                 chat_id=int(video_chat), video=str(path), caption=vid,
@@ -260,13 +312,23 @@ async def process_job(job: dict, identity: str):
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
                 sent_shots += 1
+                if chat_id and message_id and (sent_shots % 2 == 0 or sent_shots == SHOT_COUNT):
+                    percent = int(sent_shots * 100 / SHOT_COUNT)
+                    await status_edit(chat_id, message_id,
+                        f"🖼️ <b>Screenshot delivery</b> · <code>{vid}</code>\n"
+                        f"<code>{_progress_bar(percent)}</code> <b>{sent_shots}/{SHOT_COUNT}</b>")
         else:
             await asyncio.to_thread(queue.complete_stage, jid, identity, "screenshots_skipped", {})
         check_stop()
         if not await asyncio.to_thread(queue.set_status, jid, identity, "completed",
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
-        await status_edit(chat_id, message_id, f"✅ Completed {vid}. Screenshots sent: {sent_shots}")
+        await status_edit(chat_id, message_id,
+            f"✅ <b>Job completed</b> · <code>#{jid}</code>\n"
+            f"🎬 Video: <code>{vid}</code>\n"
+            f"🖼️ Screenshots delivered: <b>{sent_shots}</b>\n"
+            f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
+            f"🔁 Attempts used: <b>{job['attempts']}</b>")
         if AUTO_CLEAN:
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
