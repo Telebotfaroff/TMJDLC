@@ -1,0 +1,34 @@
+{
+  "requested_url": "https://javtiful.com/video/113371/dvmm-444",
+  "final_page_url": "https://javtiful.com/video/113371/dvmm-444",
+  "captured_at": "2026-10-31T14:26:43.175527+00:00",
+  "navigation_error": null,
+  "play_click_attempts": [
+    "button[aria-label*='play' i]"
+  ],
+  "capture_seconds_after_play": 20,
+  "media_request_count": 0,
+  "media_requests": [],
+  "playback_api_responses": [],
+  "video_elements": {
+    "video_count": 1,
+    "videos": [
+      {
+        "current_src": null,
+        "src_attribute": null,
+        "ready_state": 0,
+        "network_state": 0,
+        "paused": false,
+        "duration": null
+      }
+    ]
+  },
+  "page_errors": [],
+  "notes": [
+    "A URL is classified as media only by a known media extension or media MIME type.",
+    "Full media URLs are included in this private test artifact for immediate debugging.",
+    "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
+    "No playback ticket is deliberately copied into the report.",
+    "An empty media list means playback was not triggered or the stream was delivered through an unclassified mechanism."
+  ]
+}
