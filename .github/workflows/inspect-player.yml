@@ -6,6 +6,7 @@ on:
       post_url:
         description: Exact video post URL to inspect
         required: true
+        default: "https://javtiful.com/video/115253/cawb-062-reducing-mosaic"
         type: string
       timeout:
         description: Request timeout in seconds
