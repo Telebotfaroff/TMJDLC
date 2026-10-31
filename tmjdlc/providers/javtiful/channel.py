@@ -60,17 +60,21 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
     total = int(total_match.group(1).replace(",", "")) if total_match else None
 
     urls: list[str] = []
-    seen: set[str] = set()
+    seen_video_ids: set[str] = set()
     for anchor in soup.select("a[href]"):
         href = anchor.get("href", "").strip()
         path = urlsplit(href).path
         match = VIDEO_RE.match(path)
         if not match:
             continue
-        normalized = f"{BASE_URL}{path}"
-        if normalized not in seen:
-            seen.add(normalized)
-            urls.append(normalized)
+        # Javtiful can expose multiple slugs/links for the same video ID.
+        # Treat the numeric ID as the identity so duplicate cards collapse.
+        video_id = match.group(1)
+        if video_id in seen_video_ids:
+            continue
+        seen_video_ids.add(video_id)
+        normalized_path = f"/video/{video_id}"
+        urls.append(f"{base_url.rstrip('/')}{normalized_path}")
     return name, total, urls
 
 
