@@ -382,7 +382,7 @@ app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^channel:
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.command))
 
 
-async def main():
+async def run_bot():
     await app.start()
     await on_start(app)
     log.info("Starting TMJDLC with Pyrogram only: updates, commands, callbacks and large media uploads.")
@@ -393,5 +393,9 @@ async def main():
         await app.stop()
 
 
+def main():
+    app.run(run_bot())
+
+
 if __name__ == "__main__":
-    app.run(main())
+    main()
