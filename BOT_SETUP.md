@@ -58,7 +58,7 @@ The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_set
 
 ## Telegram permissions
 
-Add the bot to the source channel with read access and to both destination channels as an administrator with permission to post. Only Telegram IDs listed in `TG_ADMIN_IDS` can use bot commands.
+Add the bot to the video destination and screenshot destination channels as an administrator with permission to post. The Javtiful source is read over HTTP; no Telegram source channel is required. Only Telegram IDs listed in `TG_ADMIN_IDS` can use bot commands.
 
 ## Operational note
 
