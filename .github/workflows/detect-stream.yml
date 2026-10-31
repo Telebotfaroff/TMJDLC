@@ -47,9 +47,9 @@ jobs:
 
       - name: Detect stream requests
         env:
-          POST_URL: \${{ inputs.post_url }}
-          REQUEST_TIMEOUT: \${{ inputs.timeout }}
-          CAPTURE_SECONDS: \${{ inputs.capture_seconds }}
+          POST_URL: ${{ inputs.post_url }}
+          REQUEST_TIMEOUT: ${{ inputs.timeout }}
+          CAPTURE_SECONDS: ${{ inputs.capture_seconds }}
         run: |
           python scripts/detect_stream.py \
             --url "$POST_URL" \
