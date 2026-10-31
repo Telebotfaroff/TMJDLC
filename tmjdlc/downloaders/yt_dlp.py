@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+import os
+import shutil
 from typing import Any
 
 from tmjdlc.models.stream import StreamResult
@@ -27,7 +29,7 @@ class YtDlpStreamDownloader:
         destination = Path(output_dir)
         destination.mkdir(parents=True, exist_ok=True)
         hooks = [progress_hook] if progress_hook else []
-        return {
+        options = {
             "format": "best",
             "outtmpl": str(destination / f"{filename}.%(ext)s"),
             "noplaylist": True,
@@ -44,6 +46,14 @@ class YtDlpStreamDownloader:
             "merge_output_format": "mp4",
             "progress_hooks": hooks,
         }
+        # Parallel byte-range downloads for direct HTTP MP4 sources.
+        use_aria2 = os.getenv("TMJDLC_USE_ARIA2", "true").lower() in {"1", "true", "yes", "on"}
+        if stream.format == "mp4" and use_aria2 and shutil.which("aria2c"):
+            options["external_downloader"] = {"http": "aria2c", "https": "aria2c"}
+            options["external_downloader_args"] = {
+                "aria2c": ["-c", "-x", "8", "-s", "8", "-k", "1M"]
+            }
+        return options
 
     def download(
         self,
