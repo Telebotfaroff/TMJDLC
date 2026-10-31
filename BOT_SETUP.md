@@ -18,7 +18,7 @@ TMJDLC_JOB_LEASE_SECONDS=3600
 TMJDLC_WORK_DIR=/content/tmjdlc-bot
 ```
 
-Use your Neon PostgreSQL connection string for `DATABASE_URL`. Keep it in Colab Secrets or deployment environment variables, not in notebook source or GitHub.
+Use the Neon connection string for the dedicated `Javtiful-uploader` database in the `Javtiful` project (production branch, role `neondb_owner`) for `DATABASE_URL`. The database has already been created and the bot tables have been initialized. Keep the full connection string in Colab Secrets or deployment environment variables; never commit it to the repository or notebook source.
 
 ## Install and run in Colab
 
