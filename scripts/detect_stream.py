@@ -61,6 +61,7 @@ def main() -> int:
 
     requests_seen: dict[str, dict] = {}
     network_events: list[dict] = []
+    all_links: dict[str, dict] = {}
     failed_requests: list[dict] = []
     api_responses: list[dict] = []
     page_errors: list[str] = []
@@ -87,6 +88,9 @@ def main() -> int:
             url = request.url
             kind = request.resource_type
             path_hint = url.lower()
+            # Record every HTTP(S) request regardless of domain, extension, or resource type.
+            if url.startswith(("http://", "https://")):
+                all_links[url] = {"url": redact_url(url), "method": request.method, "resource_type": kind, "status": None}
             if kind in {"xhr", "fetch", "media"} or any(word in path_hint for word in ("playback", "playlist", "stream", "source", "video", "master")):
                 network_events.append({"url": redact_url(url), "method": request.method, "resource_type": kind})
             if is_media_url(url):
@@ -101,6 +105,8 @@ def main() -> int:
         def on_response(response) -> None:
             url = response.url
             content_type = response.headers.get("content-type", "")
+            if url.startswith(("http://", "https://")):
+                all_links[url] = {"url": redact_url(url), "method": response.request.method, "resource_type": response.request.resource_type, "status": response.status, "content_type": content_type}
             if response.request.resource_type in {"xhr", "fetch", "media"} or any(word in url.lower() for word in ("playback", "playlist", "stream", "source", "video", "master")):
                 network_events.append({"url": redact_url(url), "status": response.status, "resource_type": response.request.resource_type, "content_type": content_type})
             if is_media_url(url, content_type):
@@ -266,13 +272,15 @@ def main() -> int:
         "capture_seconds_after_play": args.capture_seconds,
         "media_request_count": len(media),
         "media_requests": media,
-        "network_events": network_events[-300:],
-        "failed_requests": failed_requests[-100:],
+        "all_links_count": len(all_links),
+        "all_links": list(all_links.values())[-2000:],
+        "network_events": network_events[-500:],
+        "failed_requests": failed_requests[-200:],
         "playback_api_responses": api_responses,
         "video_elements": page_state,
         "page_errors": page_errors[:20],
         "notes": [
-            "A URL is classified as media only by a known media extension or media MIME type.",
+            "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
             "Full media URLs are included in this private test artifact for immediate debugging.",
             "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
             "No playback ticket is deliberately copied into the report.",
@@ -289,6 +297,7 @@ def main() -> int:
                 "navigation_error": navigation_error,
                 "play_click_attempts": click_attempts,
                 "media_request_count": len(media),
+                "all_links_count": len(all_links),
                 "network_event_count": len(network_events),
                 "failed_request_count": len(failed_requests),
                 "video_count": page_state.get("video_count", 0),
