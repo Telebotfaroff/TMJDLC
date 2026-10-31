@@ -1,10 +1,12 @@
 # TMJDLC
 
-[![Open latest TMJDLC Javtiful DEV notebook in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
+[![Open TMJDLC Javtiful Telegram Bot in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
-## Test Javtiful downloads in Google Colab
+## Run the Javtiful Telegram bot in Google Colab
 
-Open the [latest TMJDLC Javtiful DEV notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). After the setup cell, run the **build verification** cell: it prints a visible development build marker and the checked-out Git commit, then confirms that the notebook's provider calls the same `scripts/detect_stream.py` used by GitHub Actions. If the marker or checks are missing, restart the runtime and reopen the notebook from this link. The notebook installs the repository and Chromium, accepts an original Javtiful page URL and quality, detects the actual media request with the shared Actions detector, and downloads it with yt-dlp. Failed download attempts trigger a fresh stream resolution. Signed media URLs are passed through a private temporary file and are not printed; FFprobe validates the completed download.
+Open the [TMJDLC Telegram Bot notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_API_ID`, `TG_API_HASH`, `TG_BOT_TOKEN`, `TG_ADMIN_IDS`, and the Neon `DATABASE_URL` to Colab Secrets, then run the cells from top to bottom. The notebook pulls the latest `main` branch, installs TMJDLC/Chromium/FFmpeg, checks the Neon queue connection, and starts the Pyrogram bot with the configured worker count.
+
+Send a Javtiful `/channel/SLUG` URL to the bot to inspect its videos and pages, select all pages or a subset, and queue the selected videos at 720p. Use `/setup` once to save your Telegram video and screenshot destination channel IDs in Neon. Keep the Colab runtime running while jobs are processing; downloaded media is stored on its temporary local disk.
 
 ## Primary provider: MissAV
 
