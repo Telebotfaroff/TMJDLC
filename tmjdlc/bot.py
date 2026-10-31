@@ -1,16 +1,12 @@
-"""Admin-only Telegram controller for the TMJDLC Javtiful pipeline.
-
-Run with: python -m tmjdlc.bot
-"""
+"""Admin-only Telegram bot for the TMJDLC durable download queue."""
 from __future__ import annotations
 
 import asyncio
 import os
 import re
-import shutil
-import sqlite3
+import socket
 import subprocess
-import time
+import uuid
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -18,78 +14,40 @@ from dotenv import load_dotenv
 from pyrogram import Client, filters
 from pyrogram.types import Message
 
+from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
 
 load_dotenv()
-
 API_ID = int(os.getenv("TG_API_ID", "0"))
 API_HASH = os.getenv("TG_API_HASH", "")
 BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "")
 ADMIN_IDS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 WORK_DIR = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
-DB_PATH = Path(os.getenv("TMJDLC_BOT_DB", str(WORK_DIR / "bot.sqlite3")))
 MAX_PARALLEL = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
+POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
+LEASE_SECONDS = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 SCREENSHOT_COUNT = 10
-POST_RE = re.compile(r"https?://(?:www\.)?javtiful\.com/video/\d+/[^\s<>()]+", re.I)
-VIDEO_ID_RE = re.compile(r"/video/(\d+)", re.I)
+POST_RE = re.compile(r"https?://(?:www\\.)?javtiful\\.com/video/\\d+/[^\\s<>()]+", re.I)
+VIDEO_ID_RE = re.compile(r"/video/(\\d+)", re.I)
 
 if not API_ID or not API_HASH or not BOT_TOKEN or not ADMIN_IDS:
-    raise RuntimeError("Set TG_API_ID, TG_API_HASH, TG_BOT_TOKEN and TG_ADMIN_IDS in .env")
-
+    raise RuntimeError("Set TG_API_ID, TG_API_HASH, TG_BOT_TOKEN and TG_ADMIN_IDS.")
+queue = JobQueue(max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-semaphore = asyncio.Semaphore(MAX_PARALLEL)
 app = Client("tmjdlc_admin_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+worker_prefix = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
+worker_tasks: list[asyncio.Task] = []
 
 
-def db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("""CREATE TABLE IF NOT EXISTS settings
-        (key TEXT PRIMARY KEY, value TEXT NOT NULL)""")
-    conn.execute("""CREATE TABLE IF NOT EXISTS jobs
-        (video_id TEXT PRIMARY KEY, post_url TEXT NOT NULL, status TEXT NOT NULL,
-         output_path TEXT, updated_at INTEGER NOT NULL)""")
-    conn.commit()
-    return conn
-
-
-def setting(key: str, default: str = "") -> str:
-    with db() as conn:
-        row = conn.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
-    return row[0] if row else default
-
-
-def set_setting(key: str, value: str) -> None:
-    with db() as conn:
-        conn.execute("INSERT INTO settings(key,value) VALUES(?,?) "
-                     "ON CONFLICT(key) DO UPDATE SET value=excluded.value", (key, value))
-
-
-def video_id(url: str) -> str:
+def get_video_id(url: str) -> str:
     match = VIDEO_ID_RE.search(url)
     if not match or urlparse(url).hostname not in {"javtiful.com", "www.javtiful.com"}:
         raise ValueError("Expected an original Javtiful post URL.")
     return match.group(1)
 
 
-def already_done(vid: str) -> bool:
-    with db() as conn:
-        row = conn.execute("SELECT status FROM jobs WHERE video_id=?", (vid,)).fetchone()
-    return bool(row and row[0] == "uploaded")
-
-
-def mark_job(vid: str, url: str, status: str, path: str = "") -> None:
-    with db() as conn:
-        conn.execute("""INSERT INTO jobs(video_id,post_url,status,output_path,updated_at)
-          VALUES(?,?,?,?,?) ON CONFLICT(video_id) DO UPDATE SET
-          post_url=excluded.post_url,status=excluded.status,
-          output_path=excluded.output_path,updated_at=excluded.updated_at""",
-          (vid, url, status, path, int(time.time())))
-
-
-def make_screenshots(path: Path, out_dir: Path) -> list[Path]:
-    out_dir.mkdir(parents=True, exist_ok=True)
+def make_screenshots(path: Path, output: Path) -> list[Path]:
+    output.mkdir(parents=True, exist_ok=True)
     probe = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration",
          "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
@@ -97,93 +55,121 @@ def make_screenshots(path: Path, out_dir: Path) -> list[Path]:
     )
     duration = float(probe.stdout.strip())
     if duration <= 1:
-        raise RuntimeError("Video duration is too short for screenshot generation.")
-    outputs = []
-    for index in range(SCREENSHOT_COUNT):
-        timestamp = duration * (index + 1) / (SCREENSHOT_COUNT + 1)
-        target = out_dir / f"{path.stem}-{index + 1:02d}.jpg"
+        raise RuntimeError("Video duration is too short.")
+    files = []
+    for i in range(SCREENSHOT_COUNT):
+        timestamp = duration * (i + 1) / (SCREENSHOT_COUNT + 1)
+        target = output / f"{path.stem}-{i + 1:02d}.jpg"
         subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(timestamp),
              "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)],
             capture_output=True, check=True,
         )
-        outputs.append(target)
-    return outputs
+        files.append(target)
+    return files
 
 
-async def progress_edit(message: Message, text: str) -> None:
+async def edit_status(chat_id: int | None, message_id: int | None, text: str) -> None:
+    if chat_id is None or message_id is None:
+        return
     try:
-        await message.edit_text(text[:4000])
+        await app.edit_message_text(chat_id, message_id, text[:4000])
     except Exception:
         pass
 
 
-async def process_post(url: str, status: Message, quality: int | None = None) -> None:
-    vid = video_id(url)
-    if already_done(vid):
-        await progress_edit(status, f"⏭ Duplicate skipped: {vid}")
-        return
-    async with semaphore:
-        mark_job(vid, url, "downloading")
-        await progress_edit(status, f"⏳ Queued {vid}. Downloading…")
-        output_dir = WORK_DIR / "downloads"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        destination = output_dir / f"javtiful-{vid}.mp4"
-
+async def process_job(job: dict, identity: str) -> None:
+    job_id, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
+    chat_id, message_id, quality = job.get("status_chat_id"), job.get("status_message_id"), job.get("quality")
+    output_dir = WORK_DIR / "downloads"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    await edit_status(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
+    try:
         def download():
-            provider = JavtifulProvider(max_attempts=2)
-            return provider.download(url, output_dir, f"javtiful-{vid}", quality=quality)[0]
+            return JavtifulProvider(max_attempts=2).download(
+                url, output_dir, f"javtiful-{vid}", quality=quality
+            )[0]
 
+        path = await asyncio.to_thread(download)
+        if not path.is_file() or path.stat().st_size <= 0:
+            raise RuntimeError("Downloader returned an empty file.")
+        if not queue.set_status(job_id, identity, "uploading", output_path=str(path)):
+            raise RuntimeError("Job lease was lost before upload.")
+        await edit_status(chat_id, message_id, f"📤 Uploading {vid} ({path.stat().st_size / 1024**2:.1f} MiB)…")
+        upload_chat = await asyncio.to_thread(queue.get_setting, "upload_channel")
+        image_chat = await asyncio.to_thread(queue.get_setting, "image_channel")
+        if not upload_chat:
+            raise RuntimeError("Set video destination first: /setupload CHANNEL_ID")
+        await app.send_video(int(upload_chat), str(path), caption=vid, supports_streaming=True)
+        shots = await asyncio.to_thread(
+            make_screenshots, path, WORK_DIR / "screenshots" / vid
+        )
+        if image_chat:
+            for index, shot in enumerate(shots, 1):
+                await app.send_photo(
+                    int(image_chat), str(shot),
+                    caption=f"{vid} | Screenshot {index}/{SCREENSHOT_COUNT}",
+                )
+        queue.set_status(job_id, identity, "completed", output_path=str(path))
+        await edit_status(chat_id, message_id, f"✅ Completed {vid}\nVideo uploaded. Screenshots sent: {len(shots)}")
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {str(exc)[:700]}"
+        current = await asyncio.to_thread(queue.get, job_id)
+        if current and current["worker_id"] == identity:
+            if int(current["attempts"]) < int(current["max_attempts"]):
+                queue.set_status(job_id, identity, "queued", error=error)
+                await edit_status(chat_id, message_id, f"⚠️ {vid} failed; queued for retry. {error}")
+            else:
+                queue.set_status(job_id, identity, "failed", error=error)
+                await edit_status(chat_id, message_id, f"❌ {vid} failed: {error}")
+
+
+async def worker_loop(index: int) -> None:
+    identity = f"{worker_prefix}-{index}"
+    while True:
         try:
-            path = await asyncio.to_thread(download)
-            if not path.exists() or path.stat().st_size == 0:
-                raise RuntimeError("Download produced an empty file.")
-            await progress_edit(status, f"✅ Downloaded {vid} ({path.stat().st_size / 1024**2:.1f} MiB). Generating 10 screenshots…")
-            shots_dir = WORK_DIR / "screenshots" / vid
-            shots = await asyncio.to_thread(make_screenshots, path, shots_dir)
-
-            upload_chat = setting("upload_channel")
-            image_chat = setting("image_channel")
-            if not upload_chat:
-                raise RuntimeError("Upload channel is not configured. Use /setupload CHANNEL_ID.")
-            await app.send_video(
-                int(upload_chat), str(path), caption=f"{vid}",
-                supports_streaming=True,
-            )
-            if image_chat:
-                for number, shot in enumerate(shots, 1):
-                    await app.send_photo(
-                        int(image_chat), str(shot),
-                        caption=f"{vid} | Screenshot {number}/10",
-                    )
-            mark_job(vid, url, "uploaded", str(path))
-            await progress_edit(status, f"🎉 Completed {vid}\nVideo uploaded. Screenshots: {len(shots)}")
+            job = await asyncio.to_thread(queue.claim, identity, LEASE_SECONDS)
+            if job:
+                await process_job(job, identity)
+            else:
+                await asyncio.sleep(POLL_SECONDS)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
-            mark_job(vid, url, "failed")
-            await progress_edit(status, f"❌ {vid} failed: {type(exc).__name__}: {str(exc)[:700]}")
+            print(f"[worker-{index}] {type(exc).__name__}: {str(exc)[:300]}", flush=True)
+            await asyncio.sleep(POLL_SECONDS)
+
+
+async def enqueue_url(url: str, status: Message, quality: int | None = None) -> None:
+    vid = get_video_id(url)
+    job, created = await asyncio.to_thread(
+        queue.enqueue, vid, url, quality,
+        requested_by=status.from_user.id if status.from_user else None,
+        status_chat_id=status.chat.id, status_message_id=status.id,
+    )
+    if created:
+        await status.edit_text(f"🕒 Queued {vid} (job #{job['id']}).")
+    else:
+        await status.edit_text(f"⏭ {vid} already exists (job #{job['id']}, status: {job['status']}).")
 
 
 def admin_filter():
     return filters.user(list(ADMIN_IDS))
 
 
-@app.on_message(filters.command("start") & admin_filter())
-async def start_handler(_, message: Message):
-    await message.reply_text(
-        "TMJDLC Admin Bot\n\n"
-        "/dl URL [quality] — download one post\n"
-        "/channel @channel [limit] — scan channel posts and queue downloads\n"
-        "/setupload CHANNEL_ID — set video destination\n"
-        "/setimages CHANNEL_ID — set screenshot destination\n"
-        "/settings — show configuration\n"
-        "/status — show queue limits and database counts\n"
-        "/help — command guide"
-    )
-
-
-@app.on_message(filters.command("help") & admin_filter())
+@app.on_message(filters.command(["start", "help"]) & admin_filter())
 async def help_handler(_, message: Message):
-    await start_handler(_, message)
+    await message.reply_text(
+        "TMJDLC Durable Queue Bot\n\n"
+        "/dl URL [quality] — enqueue a post\n"
+        "/channel @source [limit] — scan and enqueue channel posts\n"
+        "/queue — show counts and recent jobs\n"
+        "/cancel JOB_ID — cancel a queued job\n"
+        "/retry JOB_ID — retry a failed job\n"
+        "/setupload CHANNEL_ID — video destination\n"
+        "/setimages CHANNEL_ID — screenshot destination\n"
+        "/settings — show configuration"
+    )
 
 
 @app.on_message(filters.command("setupload") & admin_filter())
@@ -191,8 +177,8 @@ async def set_upload(_, message: Message):
     value = " ".join(message.command[1:]).strip()
     if not value:
         return await message.reply_text("Usage: /setupload -1001234567890")
-    set_setting("upload_channel", value)
-    await message.reply_text(f"✅ Video upload channel saved: {value}")
+    await asyncio.to_thread(queue.set_setting, "upload_channel", value)
+    await message.reply_text(f"✅ Video destination saved: {value}")
 
 
 @app.on_message(filters.command("setimages") & admin_filter())
@@ -200,27 +186,56 @@ async def set_images(_, message: Message):
     value = " ".join(message.command[1:]).strip()
     if not value:
         return await message.reply_text("Usage: /setimages -1001234567890")
-    set_setting("image_channel", value)
-    await message.reply_text(f"✅ Screenshot channel saved: {value}")
+    await asyncio.to_thread(queue.set_setting, "image_channel", value)
+    await message.reply_text(f"✅ Screenshot destination saved: {value}")
 
 
 @app.on_message(filters.command("settings") & admin_filter())
 async def settings_handler(_, message: Message):
+    upload, images = await asyncio.gather(
+        asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
+        asyncio.to_thread(queue.get_setting, "image_channel", "Not set"),
+    )
     await message.reply_text(
-        f"Video channel: {setting('upload_channel', 'Not set')}\n"
-        f"Image channel: {setting('image_channel', 'Not set')}\n"
-        f"Parallel downloads: {MAX_PARALLEL}\nScreenshots per video: 10"
+        f"Video destination: {upload}\nScreenshot destination: {images}\n"
+        f"Workers: {MAX_PARALLEL}\nLease: {LEASE_SECONDS}s\nScreenshots/video: {SCREENSHOT_COUNT}"
     )
 
 
-@app.on_message(filters.command("status") & admin_filter())
-async def status_handler(_, message: Message):
-    with db() as conn:
-        counts = dict(conn.execute("SELECT status,COUNT(*) FROM jobs GROUP BY status").fetchall())
-    await message.reply_text(
-        f"Parallel slots: {MAX_PARALLEL}\n"
-        + "\n".join(f"{key}: {value}" for key, value in sorted(counts.items()))
+@app.on_message(filters.command("queue") & admin_filter())
+async def queue_handler(_, message: Message):
+    counts, jobs = await asyncio.gather(
+        asyncio.to_thread(queue.counts), asyncio.to_thread(queue.list_jobs, 12)
     )
+    summary = "\n".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "No jobs yet."
+    recent = "\n".join(
+        f"#{j['id']} · {j['video_id']} · {j['status']} · try {j['attempts']}" for j in jobs
+    )
+    await message.reply_text(f"📊 Queue\n{summary}\n\nRecent jobs\n{recent}"[:4000])
+
+
+@app.on_message(filters.command("cancel") & admin_filter())
+async def cancel_handler(_, message: Message):
+    if len(message.command) < 2 or not message.command[1].isdigit():
+        return await message.reply_text("Usage: /cancel JOB_ID")
+    ok = await asyncio.to_thread(queue.cancel, int(message.command[1]))
+    await message.reply_text("🛑 Cancelled." if ok else "Job not found or already running/completed.")
+
+
+@app.on_message(filters.command("retry") & admin_filter())
+async def retry_handler(_, message: Message):
+    if len(message.command) < 2 or not message.command[1].isdigit():
+        return await message.reply_text("Usage: /retry JOB_ID")
+    job = await asyncio.to_thread(queue.get, int(message.command[1]))
+    if not job or job["status"] != "failed":
+        return await message.reply_text("Only failed jobs can be retried.")
+    status = await message.reply_text("Requeueing…")
+    await asyncio.to_thread(
+        queue.enqueue, job["video_id"], job["post_url"], job["quality"],
+        requested_by=message.from_user.id if message.from_user else None,
+        status_chat_id=status.chat.id, status_message_id=status.id,
+    )
+    await status.edit_text(f"🕒 Requeued {job['video_id']} (job #{job['id']}).")
 
 
 @app.on_message(filters.command("dl") & admin_filter())
@@ -228,14 +243,12 @@ async def download_handler(_, message: Message):
     args = message.command[1:]
     if not args:
         return await message.reply_text("Usage: /dl https://javtiful.com/video/ID/slug [720]")
-    url = args[0]
     try:
-        video_id(url)
+        get_video_id(args[0])
         quality = int(args[1]) if len(args) > 1 and args[1].isdigit() else None
     except ValueError as exc:
         return await message.reply_text(str(exc))
-    status = await message.reply_text("⏳ Accepted.")
-    asyncio.create_task(process_post(url, status, quality))
+    await enqueue_url(args[0], await message.reply_text("Adding to durable queue…"), quality)
 
 
 @app.on_message(filters.command("channel") & admin_filter())
@@ -243,25 +256,33 @@ async def channel_handler(_, message: Message):
     args = message.command[1:]
     if not args:
         return await message.reply_text("Usage: /channel @sourcechannel [limit]")
-    source = args[0]
-    limit = max(1, min(5000, int(args[1]))) if len(args) > 1 and args[1].isdigit() else 500
-    status = await message.reply_text(f"🔎 Scanning {source} (up to {limit} posts)…")
-    urls: list[str] = []
     try:
-        async for post in app.get_chat_history(source, limit=limit):
-            text = " ".join(x for x in [post.text, post.caption] if x)
-            for match in POST_RE.findall(text):
-                urls.append(match.rstrip(".,!?]"))
-        urls = list(dict.fromkeys(urls))
-        if not urls:
-            return await progress_edit(status, "No Javtiful post URLs found in the scanned messages.")
-        await progress_edit(status, f"Found {len(urls)} unique post URL(s). Queueing…")
-        for url in urls:
-            task_status = await message.reply_text(f"Queued {video_id(url)}")
-            asyncio.create_task(process_post(url, task_status))
-        await progress_edit(status, f"✅ Scan complete. Queued {len(urls)} unique post(s). Parallel limit: {MAX_PARALLEL}.")
+        limit = max(1, min(5000, int(args[1]))) if len(args) > 1 else 500
+    except ValueError:
+        return await message.reply_text("Limit must be a number.")
+    status = await message.reply_text(f"🔎 Scanning {args[0]}…")
+    found: dict[str, str] = {}
+    try:
+        async for post in app.get_chat_history(args[0], limit=limit):
+            caption = " ".join(x for x in (post.text, post.caption) if x)
+            for match in POST_RE.findall(caption):
+                clean = match.rstrip(".,!?]")
+                try:
+                    found[get_video_id(clean)] = clean
+                except ValueError:
+                    continue
+        added = duplicates = 0
+        for vid, url in found.items():
+            job, created = await asyncio.to_thread(
+                queue.enqueue, vid, url, None,
+                requested_by=message.from_user.id if message.from_user else None,
+                status_chat_id=status.chat.id, status_message_id=status.id,
+            )
+            added += int(created)
+            duplicates += int(not created)
+        await status.edit_text(f"✅ Scan complete\nFound: {len(found)}\nQueued: {added}\nAlready known: {duplicates}")
     except Exception as exc:
-        await progress_edit(status, f"Channel scan failed: {type(exc).__name__}: {str(exc)[:600]}")
+        await status.edit_text(f"Channel scan failed: {type(exc).__name__}: {str(exc)[:600]}")
 
 
 @app.on_message(filters.private & ~filters.user(list(ADMIN_IDS)))
@@ -269,10 +290,31 @@ async def deny_non_admin(_, message: Message):
     await message.reply_text("This bot is private.")
 
 
+async def startup() -> None:
+    await asyncio.to_thread(queue.initialize)
+    recovered = await asyncio.to_thread(queue.recover_expired)
+    print(f"Queue ready; recovered expired jobs: {recovered}", flush=True)
+    worker_tasks.extend(asyncio.create_task(worker_loop(i + 1)) for i in range(MAX_PARALLEL))
+
+
+async def shutdown() -> None:
+    for task in worker_tasks:
+        task.cancel()
+    if worker_tasks:
+        await asyncio.gather(*worker_tasks, return_exceptions=True)
+
+
 def main() -> None:
-    db().close()
-    print(f"TMJDLC bot starting | parallel={MAX_PARALLEL} | admin_count={len(ADMIN_IDS)}")
-    app.run()
+    async def runner():
+        await app.start()
+        try:
+            await startup()
+            print(f"TMJDLC bot online | workers={MAX_PARALLEL}", flush=True)
+            await asyncio.Event().wait()
+        finally:
+            await shutdown()
+            await app.stop()
+    asyncio.run(runner())
 
 
 if __name__ == "__main__":
