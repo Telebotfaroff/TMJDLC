@@ -45,7 +45,7 @@ PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "10")))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
-VIDEO_CODE = re.compile(r"(?i)([a-z0-9]{2,}(?:-[a-z0-9]{2,})*-\\d{2,})")
+VIDEO_CODE = re.compile(r"(?i)([a-z0-9]{2,}(?:-[a-z0-9]{2,})*-\d{2,})")
 
 
 def video_title_from_url(url: str, fallback_id: str) -> str:
