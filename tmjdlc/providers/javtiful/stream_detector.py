@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import time
+from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urljoin, urlsplit
@@ -106,6 +108,21 @@ class JavtifulStreamDetector:
         *,
         preferred_quality: int | None = None,
     ) -> StreamResult:
+        # Jupyter/Colab keeps an asyncio event loop running in the notebook thread.
+        # Playwright's synchronous API cannot run there, so transparently move the
+        # complete synchronous detection operation to a worker thread when needed.
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                return executor.submit(
+                    self.detect,
+                    post_url,
+                    preferred_quality=preferred_quality,
+                ).result()
+
         parsed = urlsplit(post_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError("post_url must be an absolute HTTP or HTTPS URL")
