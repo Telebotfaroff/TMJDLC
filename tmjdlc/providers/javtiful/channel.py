@@ -73,8 +73,7 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
         if video_id in seen_video_ids:
             continue
         seen_video_ids.add(video_id)
-        normalized_path = f"/video/{video_id}"
-        urls.append(f"{base_url.rstrip('/')}{normalized_path}")
+        urls.append(f"{base_url.rstrip('/')}{path}")
     return name, total, urls
 
 
