@@ -16,11 +16,11 @@ on:
       capture_seconds:
         description: Seconds to observe network traffic after clicking Play
         required: false
-        default: "25"
+        default: "30"
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: playwright-stream-detection
@@ -33,6 +33,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,6 +48,8 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Detect stream requests
+        id: detect
+        continue-on-error: true
         env:
           POST_URL: ${{ inputs.post_url }}
           REQUEST_TIMEOUT: ${{ inputs.timeout }}
@@ -57,6 +61,44 @@ jobs:
             --capture-seconds "$CAPTURE_SECONDS" \
             --output artifacts/stream-detection
 
+      - name: Save report into repository
+        if: always()
+        env:
+          POST_URL: ${{ inputs.post_url }}
+        run: |
+          mkdir -p results/javtiful
+          if [ -f artifacts/stream-detection/stream-detection.json ]; then
+            cp artifacts/stream-detection/stream-detection.json \
+              "results/javtiful/run-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.json"
+          else
+            python - <<'PY'
+          import json, os
+          from datetime import datetime, timezone
+          report = {
+              "requested_url": os.environ.get("POST_URL", ""),
+              "captured_at": datetime.now(timezone.utc).isoformat(),
+              "status": "failed_before_report",
+              "note": "See the GitHub Actions run log for the failure details."
+          }
+          path = f"results/javtiful/run-{os.environ['GITHUB_RUN_ID']}-{os.environ['GITHUB_RUN_ATTEMPT']}.json"
+          with open(path, "w", encoding="utf-8") as f:
+              json.dump(report, f, indent=2)
+          PY
+          fi
+
+      - name: Commit detection results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add results/javtiful/
+          if git diff --cached --quiet; then
+            echo "No result changes to commit."
+          else
+            git commit -m "Add Javtiful stream detection result #${GITHUB_RUN_ID}"
+            git push
+          fi
+
       - name: Upload stream detection report
         if: always()
         uses: actions/upload-artifact@v4
@@ -65,3 +107,7 @@ jobs:
           path: artifacts/stream-detection/
           if-no-files-found: warn
           retention-days: 2
+
+      - name: Preserve detector failure status
+        if: steps.detect.outcome == 'failure'
+        run: exit 1
