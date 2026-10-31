@@ -421,7 +421,7 @@ async def settings_handler(_, message: Message):
     )
     await message.reply_text(
         f"Video destination: {upload}\nScreenshot destination: {images}\n"
-        f"Workers: {MAX_PARALLEL}\nLease: {LEASE_SECONDS}s\nScreenshots/video: {SCREENSHOT_COUNT}"
+        f"Workers: {active_parallelism}/{MAX_PARALLEL}\nLease: {LEASE_SECONDS}s\nScreenshots/video: {SCREENSHOT_COUNT}"
     )
 
 
@@ -457,6 +457,7 @@ async def retry_handler(_, message: Message):
         queue.enqueue, job["video_id"], job["post_url"], job["quality"],
         requested_by=message.from_user.id if message.from_user else None,
         status_chat_id=status.chat.id, status_message_id=status.id,
+        upload_screenshots=job.get("upload_screenshots", True),
     )
     await status.edit_text(f"🕒 Requeued {job['video_id']} (job #{job['id']}).")
 
