@@ -179,9 +179,9 @@ async def setup_handler(_, message: Message):
     user_id = message.from_user.id if message.from_user else 0
     setup_states[user_id] = "upload_channel"
     await message.reply_text(
-        "🛠 Channel setup\\n\\n"
-        "Step 1/2 — Video upload channel\\n"
-        "Forward any post from your VIDEO channel here, or send its public @username / numeric channel ID.\\n\\n"
+        "🛠 Channel setup\n\n"
+        "Step 1/2 — Video upload channel\n"
+        "Forward any post from your VIDEO channel here, or send its public @username / numeric channel ID.\n\n"
         "The bot must be an administrator in the destination channel."
     )
 
@@ -231,9 +231,9 @@ async def setup_input_handler(_, message: Message):
         await asyncio.to_thread(queue.set_setting, "upload_channel", str(channel_id))
         setup_states[user_id] = "image_channel"
         return await message.reply_text(
-            f"✅ Video channel saved: {channel_id}\\n\\n"
-            "Step 2/2 — Screenshot image channel\\n"
-            "Forward any post from your IMAGE channel, or send its @username / numeric ID.\\n"
+            f"✅ Video channel saved: {channel_id}\n\n"
+            "Step 2/2 — Screenshot image channel\n"
+            "Forward any post from your IMAGE channel, or send its @username / numeric ID.\n"
             "Send SKIP if you want screenshots disabled, or CANCEL to stop."
         )
 
@@ -242,7 +242,7 @@ async def setup_input_handler(_, message: Message):
             await asyncio.to_thread(queue.set_setting, "image_channel", "")
             setup_states.pop(user_id, None)
             return await message.reply_text(
-                "✅ Setup complete!\\nVideo channel saved. Screenshot channel disabled."
+                "✅ Setup complete!\nVideo channel saved. Screenshot channel disabled."
             )
         if channel_id is None:
             return await message.reply_text(
@@ -251,8 +251,8 @@ async def setup_input_handler(_, message: Message):
         await asyncio.to_thread(queue.set_setting, "image_channel", str(channel_id))
         setup_states.pop(user_id, None)
         return await message.reply_text(
-            f"✅ Setup complete!\\nVideo channel: {await asyncio.to_thread(queue.get_setting, 'upload_channel')}\\n"
-            f"Screenshot channel: {channel_id}\\n\\nBoth channel IDs are saved in Neon."
+            f"✅ Setup complete!\nVideo channel: {await asyncio.to_thread(queue.get_setting, 'upload_channel')}\n"
+            f"Screenshot channel: {channel_id}\n\nBoth channel IDs are saved in Neon."
         )
 
 
