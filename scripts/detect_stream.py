@@ -365,6 +365,12 @@ def main() -> int:
                     }
                     for item in media
                 ],
+                "playback_api_responses": api_responses[-10:],
+                "video_state": page_state.get("videos", []),
+                "iframe_urls": page_state.get("iframes", []),
+                "media_resource_entries": page_state.get("media_resource_entries", [])[-30:],
+                "failed_requests": failed_requests[-20:],
+                "page_errors": page_errors[-10:],
                 "report": str(report_path),
             },
             indent=2,
