@@ -27,4 +27,6 @@ jobs:
       - name: Compile Python modules
         run: python -m compileall -q tmjdlc
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
