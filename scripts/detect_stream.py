@@ -73,7 +73,8 @@ def main() -> int:
     all_links: dict[str, dict] = {}
     failed_requests: list[dict] = []
     api_responses: list[dict] = []
-    page_errors: list[str] = []
+    page_errors: list[dict] = []
+    console_errors: list[str] = []
     click_attempts: list[str] = []
 
     with sync_playwright() as playwright:
@@ -171,7 +172,19 @@ def main() -> int:
         page.on("request", on_request)
         page.on("response", on_response)
         page.on("requestfailed", lambda request: failed_requests.append({"url": redact_url(request.url), "resource_type": request.resource_type, "failure": (request.failure or "")[:300]}))
-        page.on("pageerror", lambda error: page_errors.append(str(error)[:500]))
+        page.on(
+            "pageerror",
+            lambda error: page_errors.append({
+                "message": str(error)[:500],
+                "stack": (getattr(error, "stack", "") or "")[:1600],
+            }),
+        )
+        page.on(
+            "console",
+            lambda message: console_errors.append(message.text[:500])
+            if message.type == "error" and len(console_errors) < 30
+            else None,
+        )
 
         navigation_error = None
         print(f"[1/5] Navigating to {args.url}", flush=True)
@@ -248,6 +261,19 @@ def main() -> int:
                         })),
                         iframes: [...document.querySelectorAll('iframe')].map(f => f.src || f.getAttribute('src')).filter(Boolean),
                         player_scripts: [...document.scripts].map(s => s.src).filter(Boolean),
+                        player_controls: [...document.querySelectorAll('button[aria-label*="play" i], button[title*="play" i], .plyr__control--overlaid')].slice(0, 8).map(b => ({
+                            aria_label: b.getAttribute('aria-label'),
+                            title: b.getAttribute('title'),
+                            class_name: String(b.className || '').slice(0, 160),
+                            text: (b.innerText || '').slice(0, 100),
+                            visible: !!(b.offsetWidth || b.offsetHeight || b.getClientRects().length),
+                            disabled: !!b.disabled,
+                            parent_class: String(b.parentElement?.className || '').slice(0, 160)
+                        })),
+                        player_container: (() => {
+                            const el = document.querySelector('#front-player, .plyr, .video-player, .watch-player');
+                            return el ? el.outerHTML.slice(0, 3000) : null;
+                        })(),
                         media_resource_entries: resources.filter(u => /playback|playlist|stream|source|video|master|\.m3u8|\.mpd|\.mp4|\.m4v|\.webm|\.m4s|\.ts/i.test(u)).slice(-100)
                     };
                 }"""
@@ -256,7 +282,10 @@ def main() -> int:
             pass
 
         final_url = page.url
-        page_state["iframes"] = [{"url": redact_url(u)} for u in page_state.get("iframes", [])]
+        page_state["iframes"] = [
+            {"host": urlsplit(u).hostname, "path": urlsplit(u).path[:180]}
+            for u in page_state.get("iframes", [])
+        ]
         page_state["player_scripts"] = [{"url": redact_url(u)} for u in page_state.get("player_scripts", [])]
         page_state["media_resource_entries"] = [redact_url(u) for u in page_state.get("media_resource_entries", [])]
         context.close()
@@ -288,6 +317,7 @@ def main() -> int:
         "playback_api_responses": api_responses,
         "video_elements": page_state,
         "page_errors": page_errors[:20],
+        "console_errors": console_errors[:30],
         "notes": [
             "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
             "Full media URLs are included in this private test artifact for immediate debugging.",
@@ -371,10 +401,18 @@ def main() -> int:
                 ],
                 "playback_api_responses": api_responses[-10:],
                 "video_state": page_state.get("videos", []),
-                "iframe_urls": page_state.get("iframes", []),
-                "media_resource_entries": page_state.get("media_resource_entries", [])[-30:],
-                "failed_requests": failed_requests[-20:],
+                "iframe_hosts": page_state.get("iframes", []),
+                "playback_network_events": [
+                    event for event in network_events
+                    if "playback" in str(event.get("url", "")).lower()
+                    or "media/video" in str(event.get("url", "")).lower()
+                ][-12:],
+                "player_controls": page_state.get("player_controls", []),
+                "player_container": page_state.get("player_container"),
+                "media_resource_entries": page_state.get("media_resource_entries", [])[-12:],
+                "failed_requests": failed_requests[-12:],
                 "page_errors": page_errors[-10:],
+                "console_errors": console_errors[-10:],
                 "report": str(report_path),
             },
             indent=2,
