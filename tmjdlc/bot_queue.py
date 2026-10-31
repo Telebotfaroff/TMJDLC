@@ -1,9 +1,7 @@
-"""Durable PostgreSQL job queue for TMJDLC Telegram downloads."""
+"""Durable PostgreSQL queue with leases, resumable stages and cooperative cancellation."""
 from __future__ import annotations
 
 import os
-import uuid
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import psycopg
@@ -17,14 +15,12 @@ class QueueNotConfigured(RuntimeError):
 
 
 class JobQueue:
-    """PostgreSQL-backed queue using SKIP LOCKED claims and expiring worker leases."""
+    """Neon-backed queue. A worker may mutate a job only while it owns its lease."""
 
     def __init__(self, dsn: str | None = None, *, max_attempts: int = 3) -> None:
         self.dsn = (dsn or DATABASE_URL).strip()
         if not self.dsn:
-            raise QueueNotConfigured(
-                "DATABASE_URL is required for the durable queue. Set it to your Neon PostgreSQL connection string."
-            )
+            raise QueueNotConfigured("DATABASE_URL is required for the durable queue.")
         self.max_attempts = max(1, max_attempts)
 
     def connect(self):
@@ -34,31 +30,29 @@ class JobQueue:
         with self.connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_bot_jobs (
-                    id BIGSERIAL PRIMARY KEY,
-                    video_id TEXT NOT NULL,
-                    post_url TEXT NOT NULL,
-                    quality INTEGER,
+                    id BIGSERIAL PRIMARY KEY, video_id TEXT NOT NULL UNIQUE,
+                    post_url TEXT NOT NULL, quality INTEGER,
                     upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE,
                     status TEXT NOT NULL DEFAULT 'queued'
-                        CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
-                    attempts INTEGER NOT NULL DEFAULT 0,
-                    max_attempts INTEGER NOT NULL DEFAULT 3,
-                    priority INTEGER NOT NULL DEFAULT 100,
-                    requested_by BIGINT,
-                    status_chat_id BIGINT,
-                    status_message_id BIGINT,
-                    output_path TEXT,
-                    last_error TEXT,
-                    worker_id TEXT,
-                    lease_until TIMESTAMPTZ,
+                      CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
+                    attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
+                    priority INTEGER NOT NULL DEFAULT 100, requested_by BIGINT,
+                    status_chat_id BIGINT, status_message_id BIGINT, output_path TEXT,
+                    last_error TEXT, worker_id TEXT, lease_until TIMESTAMPTZ,
+                    cancel_requested BOOLEAN NOT NULL DEFAULT FALSE,
+                    current_stage TEXT, progress_percent INTEGER NOT NULL DEFAULT 0,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    started_at TIMESTAMPTZ,
-                    completed_at TIMESTAMPTZ,
-                    UNIQUE(video_id)
+                    started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ
                 )
             """)
-            conn.execute("ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE")
+            for definition in (
+                "upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE",
+                "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
+                "current_stage TEXT",
+                "progress_percent INTEGER NOT NULL DEFAULT 0",
+            ):
+                conn.execute(f"ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS {definition}")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
                 ON tmjdlc_bot_jobs(priority, created_at) WHERE status='queued'
@@ -69,25 +63,55 @@ class JobQueue:
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_bot_settings (
-                    key TEXT PRIMARY KEY,
-                    value TEXT NOT NULL,
+                    key TEXT PRIMARY KEY, value TEXT NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
                 )
             """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tmjdlc_job_stages (
+                    job_id BIGINT NOT NULL REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
+                    stage TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                    result JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    PRIMARY KEY(job_id, stage)
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tmjdlc_job_events (
+                    id BIGSERIAL PRIMARY KEY,
+                    job_id BIGINT REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
+                    event TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tmjdlc_media (
+                    video_id TEXT PRIMARY KEY, job_id BIGINT REFERENCES tmjdlc_bot_jobs(id),
+                    file_path TEXT, file_size BIGINT, duration_seconds DOUBLE PRECISION,
+                    width INTEGER, height INTEGER, video_chat_id BIGINT,
+                    video_message_id BIGINT, metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                )
+            """)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tmjdlc_workers (
+                    worker_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'online',
+                    last_heartbeat TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    details JSONB NOT NULL DEFAULT '{}'::jsonb
+                )
+            """)
 
-    def enqueue(
-        self, video_id: str, post_url: str, quality: int | None = None, *,
-        requested_by: int | None = None, status_chat_id: int | None = None,
-        status_message_id: int | None = None, priority: int = 100,
-        upload_screenshots: bool = True,
-    ) -> tuple[dict[str, Any], bool]:
+    def enqueue(self, video_id: str, post_url: str, quality: int | None = None, *,
+                requested_by: int | None = None, status_chat_id: int | None = None,
+                status_message_id: int | None = None, priority: int = 100,
+                upload_screenshots: bool = True) -> tuple[dict[str, Any], bool]:
         with self.connect() as conn:
             row = conn.execute("""
                 INSERT INTO tmjdlc_bot_jobs
-                    (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,priority,max_attempts,upload_screenshots)
+                  (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,
+                   priority,max_attempts,upload_screenshots)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT(video_id) DO NOTHING
-                RETURNING *
+                ON CONFLICT(video_id) DO NOTHING RETURNING *
             """, (video_id, post_url, quality, requested_by, status_chat_id,
                   status_message_id, priority, self.max_attempts, upload_screenshots)).fetchone()
             if row:
@@ -97,51 +121,45 @@ class JobQueue:
             ).fetchone()
             if existing and existing["status"] in {"failed", "cancelled"}:
                 row = conn.execute("""
-                    UPDATE tmjdlc_bot_jobs SET post_url=%s, quality=%s, status='queued',
-                        attempts=0, last_error=NULL, output_path=NULL, worker_id=NULL,
-                        lease_until=NULL, requested_by=%s, status_chat_id=%s,
-                        status_message_id=%s, priority=%s, upload_screenshots=%s, updated_at=now()
+                    UPDATE tmjdlc_bot_jobs SET post_url=%s,quality=%s,status='queued',
+                      attempts=0,last_error=NULL,worker_id=NULL,lease_until=NULL,
+                      cancel_requested=FALSE,current_stage=NULL,progress_percent=0,
+                      requested_by=%s,status_chat_id=%s,status_message_id=%s,
+                      priority=%s,upload_screenshots=%s,updated_at=now()
                     WHERE video_id=%s RETURNING *
-                """, (post_url, quality, requested_by, status_chat_id,
-                      status_message_id, priority, upload_screenshots, video_id)).fetchone()
+                """, (post_url, quality, requested_by, status_chat_id, status_message_id,
+                      priority, upload_screenshots, video_id)).fetchone()
+                conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (row["id"],))
                 return dict(row), True
             return dict(existing), False
 
-
-    def enqueue_many(
-        self, items: list[tuple[str, str, int | None, int | None, bool]], *,
-        skip_existing: bool = True,
-    ) -> tuple[int, int]:
-        """Insert a channel batch in one DB connection; return (added, skipped)."""
+    def enqueue_many(self, items: list[tuple[str, str, int | None, int | None, bool]], *,
+                     skip_existing: bool = True) -> tuple[int, int]:
         added = skipped = 0
         with self.connect() as conn:
-            for video_id, post_url, quality, requested_by, upload_screenshots in items:
+            for video_id, post_url, quality, requested_by, screenshots in items:
                 row = conn.execute("""
                     INSERT INTO tmjdlc_bot_jobs
-                        (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots)
+                      (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots)
                     VALUES (%s,%s,%s,%s,100,%s,%s)
-                    ON CONFLICT(video_id) DO NOTHING
-                    RETURNING id
+                    ON CONFLICT(video_id) DO NOTHING RETURNING id
                 """, (video_id, post_url, quality, requested_by,
-                      self.max_attempts, upload_screenshots)).fetchone()
+                      self.max_attempts, screenshots)).fetchone()
                 if row:
                     added += 1
                     continue
-                if skip_existing:
-                    skipped += 1
-                    continue
-                existing = conn.execute(
-                    "SELECT status FROM tmjdlc_bot_jobs WHERE video_id=%s",
-                    (video_id,),
+                old = conn.execute(
+                    "SELECT id,status FROM tmjdlc_bot_jobs WHERE video_id=%s", (video_id,)
                 ).fetchone()
-                if existing and existing["status"] in {"failed", "cancelled"}:
+                if not skip_existing and old["status"] in {"failed", "cancelled"}:
                     conn.execute("""
-                        UPDATE tmjdlc_bot_jobs SET post_url=%s, quality=%s, status='queued',
-                            attempts=0, last_error=NULL, output_path=NULL, worker_id=NULL,
-                            lease_until=NULL, requested_by=%s, upload_screenshots=%s,
-                            updated_at=now()
-                        WHERE video_id=%s
-                    """, (post_url, quality, requested_by, upload_screenshots, video_id))
+                        UPDATE tmjdlc_bot_jobs SET status='queued',attempts=0,last_error=NULL,
+                          worker_id=NULL,lease_until=NULL,cancel_requested=FALSE,
+                          current_stage=NULL,progress_percent=0,post_url=%s,quality=%s,
+                          requested_by=%s,upload_screenshots=%s,updated_at=now()
+                        WHERE id=%s
+                    """, (post_url, quality, requested_by, screenshots, old["id"]))
+                    conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (old["id"],))
                     added += 1
                 else:
                     skipped += 1
@@ -151,19 +169,40 @@ class JobQueue:
         with self.connect() as conn:
             row = conn.execute("""
                 WITH candidate AS (
-                    SELECT id FROM tmjdlc_bot_jobs
-                    WHERE status='queued' AND attempts < max_attempts
-                    ORDER BY priority ASC, created_at ASC
-                    FOR UPDATE SKIP LOCKED LIMIT 1
+                  SELECT id FROM tmjdlc_bot_jobs
+                  WHERE status='queued' AND attempts < max_attempts AND cancel_requested=FALSE
+                  ORDER BY priority,created_at FOR UPDATE SKIP LOCKED LIMIT 1
                 )
-                UPDATE tmjdlc_bot_jobs AS job
-                SET status='downloading', attempts=attempts+1, worker_id=%s,
-                    lease_until=now() + (%s * interval '1 second'),
-                    started_at=COALESCE(started_at,now()), updated_at=now()
-                FROM candidate WHERE job.id=candidate.id
-                RETURNING job.*
+                UPDATE tmjdlc_bot_jobs j SET status='downloading',
+                  attempts=j.attempts+1,worker_id=%s,
+                  lease_until=now()+(%s*interval '1 second'),
+                  started_at=COALESCE(j.started_at,now()),updated_at=now()
+                FROM candidate c WHERE j.id=c.id RETURNING j.*
             """, (worker_id, lease_seconds)).fetchone()
+            if row:
+                conn.execute("""
+                    INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
+                    VALUES(%s,'online',now()) ON CONFLICT(worker_id) DO UPDATE
+                    SET status='online',last_heartbeat=now()
+                """, (worker_id,))
             return dict(row) if row else None
+
+    def heartbeat(self, job_id: int, worker_id: str, lease_seconds: int = 900) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET lease_until=now()+(%s*interval '1 second'),
+                  updated_at=now()
+                WHERE id=%s AND worker_id=%s AND status IN ('downloading','uploading')
+                  AND cancel_requested=FALSE AND lease_until>now()
+                RETURNING id
+            """, (lease_seconds, job_id, worker_id)).fetchone()
+            if row:
+                conn.execute("""
+                    INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
+                    VALUES(%s,'online',now()) ON CONFLICT(worker_id) DO UPDATE
+                    SET status='online',last_heartbeat=now()
+                """, (worker_id,))
+            return row is not None
 
     def set_status(self, job_id: int, worker_id: str, status: str, *,
                    output_path: str | None = None, error: str | None = None,
@@ -171,38 +210,95 @@ class JobQueue:
         with self.connect() as conn:
             row = conn.execute("""
                 UPDATE tmjdlc_bot_jobs SET status=%s,
-                    output_path=COALESCE(%s,output_path),
-                    last_error=%s, updated_at=now(),
-                    lease_until=CASE WHEN %s IN ('downloading','uploading')
-                        THEN now() + (%s * interval '1 second') ELSE NULL END,
-                    completed_at=CASE WHEN %s='completed' THEN now() ELSE completed_at END
-                WHERE id=%s AND worker_id=%s RETURNING id
-            """, (status, output_path, error, status, lease_seconds, status,
+                  output_path=COALESCE(%s,output_path),last_error=%s,updated_at=now(),
+                  lease_until=CASE WHEN %s IN ('downloading','uploading')
+                    THEN now()+(%s*interval '1 second') ELSE NULL END,
+                  completed_at=CASE WHEN %s='completed' THEN now() ELSE completed_at END,
+                  worker_id=CASE WHEN %s IN ('completed','failed','cancelled','queued')
+                    THEN NULL ELSE worker_id END
+                WHERE id=%s AND worker_id=%s AND lease_until>now()
+                RETURNING id
+            """, (status, output_path, error, status, lease_seconds, status, status,
                   job_id, worker_id)).fetchone()
             return row is not None
+
+    def request_cancel(self, job_id: int) -> str | None:
+        """Immediately cancel queued jobs; request cooperative cancellation for active jobs."""
+        with self.connect() as conn:
+            row = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET
+                  status=CASE WHEN status IN ('queued','failed') THEN 'cancelled' ELSE status END,
+                  cancel_requested=TRUE,
+                  worker_id=CASE WHEN status IN ('queued','failed') THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status IN ('queued','failed') THEN NULL ELSE lease_until END,
+                  updated_at=now()
+                WHERE id=%s AND status IN ('queued','failed','downloading','uploading')
+                RETURNING status
+            """, (job_id,)).fetchone()
+            return row["status"] if row else None
+
+    def is_cancel_requested(self, job_id: int, worker_id: str) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("""
+                SELECT cancel_requested OR worker_id IS DISTINCT FROM %s AS stop
+                FROM tmjdlc_bot_jobs WHERE id=%s
+            """, (worker_id, job_id)).fetchone()
+            return bool(row and row["stop"])
+
+    def update_progress(self, job_id: int, worker_id: str, stage: str, percent: int) -> bool:
+        with self.connect() as conn:
+            row = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET current_stage=%s,
+                  progress_percent=%s,updated_at=now()
+                WHERE id=%s AND worker_id=%s AND lease_until>now()
+                RETURNING id
+            """, (stage, max(0, min(100, percent)), job_id, worker_id)).fetchone()
+            return row is not None
+
+    def stage_done(self, job_id: int, stage: str) -> dict[str, Any] | None:
+        with self.connect() as conn:
+            row = conn.execute("""
+                SELECT result FROM tmjdlc_job_stages
+                WHERE job_id=%s AND stage=%s AND status='completed'
+            """, (job_id, stage)).fetchone()
+            return dict(row["result"]) if row else None
+
+    def complete_stage(self, job_id: int, worker_id: str, stage: str,
+                       result: dict[str, Any] | None = None) -> bool:
+        import json
+        with self.connect() as conn:
+            owned = conn.execute("""
+                SELECT id FROM tmjdlc_bot_jobs
+                WHERE id=%s AND worker_id=%s AND lease_until>now()
+                  AND cancel_requested=FALSE
+            """, (job_id, worker_id)).fetchone()
+            if not owned:
+                return False
+            conn.execute("""
+                INSERT INTO tmjdlc_job_stages(job_id,stage,status,result,updated_at)
+                VALUES(%s,%s,'completed',%s::jsonb,now())
+                ON CONFLICT(job_id,stage) DO UPDATE
+                SET status='completed',result=EXCLUDED.result,updated_at=now()
+            """, (job_id, stage, json.dumps(result or {})))
+            conn.execute("""
+                INSERT INTO tmjdlc_job_events(job_id,event,details)
+                VALUES(%s,'stage_completed',%s::jsonb)
+            """, (job_id, json.dumps({"stage": stage})))
+            return True
 
     def recover_expired(self) -> int:
         with self.connect() as conn:
             rows = conn.execute("""
-                UPDATE tmjdlc_bot_jobs
-                SET status=CASE WHEN attempts < max_attempts THEN 'queued' ELSE 'failed' END,
-                    worker_id=NULL, lease_until=NULL,
-                    last_error=COALESCE(last_error,'Worker lease expired; job recovered'),
-                    updated_at=now()
-                WHERE status IN ('downloading','uploading')
-                  AND lease_until < now()
+                UPDATE tmjdlc_bot_jobs SET
+                  status=CASE WHEN cancel_requested THEN 'cancelled'
+                    WHEN attempts < max_attempts THEN 'queued' ELSE 'failed' END,
+                  worker_id=NULL,lease_until=NULL,
+                  last_error=COALESCE(last_error,'Worker lease expired; job recovered'),
+                  updated_at=now()
+                WHERE status IN ('downloading','uploading') AND lease_until<now()
                 RETURNING id
             """).fetchall()
             return len(rows)
-
-    def cancel(self, job_id: int) -> bool:
-        with self.connect() as conn:
-            row = conn.execute("""
-                UPDATE tmjdlc_bot_jobs SET status='cancelled', worker_id=NULL,
-                    lease_until=NULL, updated_at=now()
-                WHERE id=%s AND status IN ('queued','failed') RETURNING id
-            """, (job_id,)).fetchone()
-            return row is not None
 
     def get(self, job_id: int) -> dict[str, Any] | None:
         with self.connect() as conn:
@@ -216,15 +312,13 @@ class JobQueue:
 
     def counts(self) -> dict[str, int]:
         with self.connect() as conn:
-            rows = conn.execute(
-                "SELECT status,count(*) AS total FROM tmjdlc_bot_jobs GROUP BY status"
-            ).fetchall()
+            rows = conn.execute("SELECT status,count(*) AS total FROM tmjdlc_bot_jobs GROUP BY status").fetchall()
             return {row["status"]: row["total"] for row in rows}
 
     def list_jobs(self, limit: int = 10) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("""
-                SELECT id,video_id,status,attempts,last_error,created_at
+                SELECT id,video_id,status,attempts,last_error,created_at,current_stage,progress_percent
                 FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s
             """, (max(1, min(50, limit)),)).fetchall()
             return [dict(row) for row in rows]
