@@ -1,31 +1,1384 @@
 {
   "requested_url": "https://javtiful.com/video/113371/dvmm-444",
   "final_page_url": "https://javtiful.com/video/113371/dvmm-444",
-  "captured_at": "2026-10-31T14:26:43.175527+00:00",
+  "captured_at": "2026-10-31T14:30:23.843593+00:00",
   "navigation_error": null,
   "play_click_attempts": [
     "button[aria-label*='play' i]"
   ],
-  "capture_seconds_after_play": 20,
-  "media_request_count": 0,
-  "media_requests": [],
-  "playback_api_responses": [],
+  "capture_seconds_after_play": 30,
+  "media_request_count": 1,
+  "media_requests": [
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "redacted_url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "source": "request",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
+  "all_links_count": 113,
+  "all_links": [
+    {
+      "url": "https://javtiful.com/video/113371/dvmm-444",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts/manrope-latin.woff2",
+      "method": "GET",
+      "resource_type": "font",
+      "status": 200,
+      "content_type": "font/woff2"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/font.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/css/bootstrap.min.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.css",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/base.css?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts.css?v=3e550&rev=1791560352",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/layout.css?v=3e550&rev=1793429318",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/home-live.css?v=3e550&rev=1791986781",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/theme.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/announcement.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/watch.css?v=3e550&rev=1791984860",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/bWxCba7.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/on.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/site/logo/2026/04/27/215c2694af8e5a2a3b487b6711f22866.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/13/fdd41fee30b9d22da1e04c7bf6a29aa9.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/99ae4c330a0caee56bea15fe38369c00.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/6281d81f48e4d8e7ad29d5ef18aa90a5.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za208zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=563",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/bn.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn2.tapioni.com/adgpt.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/collections/actresses/2026/04/27/710d069a2ae3924b8d1595dc5f6927f8.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/19ccf656232c0c5b0c6fe30f706e4cf4.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/586a51506891135d0a8a983a76e40d39.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/07/30/7c2eeec3fff71b951f3776a29e5e6dfb.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/05/fa14febd7d2f1caf62d8d06a3905153f.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/18/b4642cea0c981f879cc49adea6ea16d1.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/06/03/78572c122a5d0b7825b4cbe5c5209537.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/0b194b0621165b69366c19798ff499f9.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/09/80009c3315b1beb12ea2ceaef4a3bf42.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/solid.gif?z=1871231&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=MJBF38CqPhBWlIPs3q4UZNvAh-YX3JxnnVvMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=IU03uzLaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTEzMzcxL2R2bW0tNDQ0&afid=1243435904106756&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=1&pload=957&rlp=%5B0%2C135.40000000000146%2C179.6999999999971%2C108.99999999999272%2C4823%2C2545.8999999999796%2C1185.4000000000015%2C1956.6999999999825%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/get/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=MJBF38CqPhBWlIPs3q4UZNvAh-YX3JxnnVvMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=IU03uzLaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTEzMzcxL2R2bW0tNDQ0&afid=1243435904106756&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=1&pload=957&rlp=%5B0%2C135.40000000000146%2C179.6999999999971%2C108.99999999999272%2C4823%2C2545.8999999999796%2C1185.4000000000015%2C1956.6999999999825%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_clrbdxghffwtajwrwbjply&uf=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&sid=60d68909-3ea9-41ab-bdc9-90a0b1ad3332&kw=creampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/get/2004725?id=2004725&pid=__clb-spot_2004725_zfb_1&dr=52&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=MJBF38CqPhBWlIPs3q4UZNvAh-YX3JxnnVvMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=ysa9G98aHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTEzMzcxL2R2bW0tNDQ0&afid=4621135624634116&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=1&pload=993&rlp=%5B0%2C135.40000000000146%2C179.6999999999971%2C108.99999999999272%2C4848.599999999991%2C2673.6999999999753%2C1299.199999999997%2C2084.499999999978%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_cldkpsvqntzardplcslyvv&bp=1&uf=0&freq=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://loud-hall.com/a.W_ZuyvPw2xQ-9zMATBcC5_MEzFQG1HN-jJkK4LOMT_YOwPNQTRU-1TNUzVYWx_NYCZZapbc-2d1e1fbgH_RipjdkGlF-nnPoWpIq5_ZsGtNujvN-WxFykzNAG_JCmDYETFd-jHMIzJgK4_NMjNFOkPM-jRUSxTMUW_UW0XNY2ZQ-ybOcTdNeh_Jgmh1i1jb-HlRmpndoG_FqnrYsmtF-uvbwmxVyy_PAXBRCyDd-WFUGmHcIn_JKpLZMDN1-iPOQWRRSj_YUzVVWhXZ-DZRaibZcm_Ee3fYgzhM-4jOkDlYmx_ZoDpIq1rM-TtFulvNwD_dykzMAjBk-zDYESFZG6_bI2J5KlLa-WNQO9PNQT_YSxTNUTVQ-3XMYAZ?iframeId=bowqlo",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html;charset=UTF-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/pr/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=MJBF38CqPhBWlIPs3q4UZNvAh-YX3JxnnVvMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=IU03uzLaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTEzMzcxL2R2bW0tNDQ0&afid=1243435904106756&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=1&pload=957&rlp=%5B0%2C135.40000000000146%2C179.6999999999971%2C108.99999999999272%2C4823%2C2545.8999999999796%2C1185.4000000000015%2C1956.6999999999825%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_clrbdxghffwtajwrwbjply&uf=0",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://coosync.com/sn/c?zoneid=1871231&eucx=3&srp=q2hZhCazGtKbgBr5RxYytYq3AgIPxUEEnolbVX2KsIshvBL_IYlRKcxLxM7Vniwh0tKQraEkHA-vKaDAecKYhtIffmEhUaEu8A93j1DkNBTDTvyRPE1hUsCkasJaOWN1RAyI&im=0&wcks=1&ix=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile/1871231/avatar.gif?psp=JRoahya8Th6xJqv8X4fI98MHxB9RJHpP9ugMHe89aXDXMbETSF_rvB6aBncDid8JjeTivP1Qt_vFF9EB2gSmHQHM2r9y784NAQXgZY9sxDB5mEydGNoizBEpQCSY6pjqLJcJB5UttMAd9EmPnxC9GQ5gW2zKQiwR5Eg2_H8HVoaSbh2daXfvI18uPt3uSNbCLfbRHut1PdBEj5U3gQHwgkUoPqf-XvScZUl-60wOTTxmlJiro3AWGmbpcjeO9hnYnpN_iinaVEQbMTtbzs_kKCBoLxpIRnZJqWJOoAd17gueYNYK6NNGejfwwjT4QgDyyKtvNRYOpl1_&eucx=3&nojs=0&bavar=0&febuild=1.1.92&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=MJBF38CqPhBWlIPs3q4UZNvAh-YX3JxnnVvMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=X4lSKy5aHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTEzMzcxL2R2bW0tNDQ0&afid=6591460461614340&dl=10&tuid=7702839114543339471&eclog=1&tp=0&vp=0&pkw=1&pload=1127&rlp=%5B0%2C135.40000000000146%2C179.6999999999971%2C108.99999999999272%2C6979.299999999974%2C3104.7999999999665%2C1500.399999999987%2C2515.5999999999694%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/ps/1871231?eucx=3&im=0&ix=1&puid=16926211151398115281&so=1&wcks=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cm.pxltag.com/sync?platform_id=9ef109b86e194f8bb28ca2c41fc61b21&external_id=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": ""
+    },
+    {
+      "url": "https://s.uuidksinc.net/match/1924/?remote_uid=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=1",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/b.b.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=KspropYe7oiS-eb4-8lIJ21pqcuVSCqIyc6L8wW19KFJ_7s5bfEGJMMAhxiUw2VHHKexxuXMgn-on85Myq8oLYfGMi9SpucIa30qFyvYchxlKNEJ_gUIDRUi&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=xQ0q_gFOeAnm23rhPgB2MtAsH4p6RionrBFvMWnwZEKUZ1OFiDh6io-iKL2h_qDH9ejawbD_4k2JwRSLrt7DqnhIWMGJj3E7FPbRQHT_bRlKVsBm_gUIDRUi&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=iutUN2D0tel13CWFBwSsZ9Yi8ZLmkag9EloJOVfi61OmCJyn_vw5A59vkAvUKmSECw7-R9bNbP3FHKYiNYATxPzoJYvpxsvCVDma26XIkm4qC7Fq_gUIDRUi&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/native/native.min.js?v=5.7",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript;charset=UTF-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=Hdzc7VFwrxElgEjp6SRfFAq7zW9J5eCMtJceMKh2dG8hvgWbeKKsrKfXhptQpSdIc0aS0vtccVk5NxnG3Sc2_w9tsspJhC44bDb-bkkzoLpzmQsu_gUIDRUi&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/?size=300x100&utm_campaign=ai.IvY&utm_content=8083561&font_color=fff&background_color=000&target=tour&orientation=straight&s1=U0zmobHQLWrq81RVv1YfKN9BDuEEItXUq-4v_GN5MAtL2eTxj3hbHEwD6AL5GU544-LrR-ZJAhAyPRd3w1g8XowXnHvLIS3_gSGfr1XtwNK_krwh_gUIDRUi&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&preview_mode=hover",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0WMkWFGBo0wNGK0GHOjYwsaM2aYaYGDBgwyLMPMsFEDRo2SM2CIEfEwTJ0xGc2EtGHGTAwZLWDMuIHj5AwcMMXgCIM0RwwYN3TKCCNGxgygPcnYWWgDRw2vD-HU2alDho0bVnvCgbNwBkoZMB7OgTNRx9mGOGDYeNhmb9-_MQLjeDimDV2GNXLYCEkjrJmFMm48FOPGzULFM2rYqNjGDca2o3GgFQGn9GmaIR_WiZERDR06cOboePFiDBk3LcyMcTHmTZvecgrSSWOnzJwXddwwRzgnDJsXbsIsb_7ix5w0esr0yAkDz1UYXOrAgOG2Dp02X8aEcRwmzRk3Peq7SGInS_r17b0X3xtu0FFGgT2AJloM_7FHFIF0DMjGG3L0UJQZDbolRkRrnCHHG9GRISGFPayHnnoO0hGGHGeUQUcPdIAoR4Y2UJjGgSouR2APc9AhR31n2EbjHDH0sMReH8KRRRk3vJHGFC2UIQYNLLGRhBIyxABHHGPUYcUUQ8SRRB5j2MAEDndcEUMOSxihxBc3zFGDGGYUcYQSTTQRBBp4pFHFHTJYgQQSS5SBBx51YNHEfS0QaFYTecSBwxtMZGHGEU2kkcMUao2RhEwwxGFEHv2NwScbSzhRxJtnVJEEEVJUkQaNa5SRxx0UkjFHD1doZ-oKRFiR50k00LBCECtckYYZZSSLxhsrDGGccys80ZwcKyThxgpXrTBFGcW5oauzB0ZrHRtlkFGCDEMgO0QdbQSXBhvokuGtocC-Qe8Kd6RBBxrVzoFGGmuEcUcYK2RRRx1ypLGCGRQ-nFyz2q2gRBh2LGdGHWysO8QYyc0Hx40ez6HvG7jKsYbHaNTR4gpiuEeHx12OsYa-6rL7hMAEG4ywwgyn4TERZZSRm8dDHGhycjkPEeywxRqLrLLMOguttG1Qay1C2W7b7bfhjnsFQdsOcW66HrsLr7z0pnsvHvnuW8INQ1iMscYceyxWG214HDWNcCRnx413fNHGGwf18Oy1PIlAhnEZqXH3shwTBzlj2i20RV4OxaDZmizIUAMLMzhkVxdpyQEUQ2UkNZgIdC4EgwsAMtbaF4GvPruJi4mwF2atC_aQHHY8htdD4LYmO-0wVLRwGhm5JVwMNLTUQgxliNZCDWTk0PqGWQa3UUoyiFEDV0U3nsZjItxAgwse5eACUy7EYAMMjcvxxfoZuQ8_DfKjn_3wJ5swZKQJb9DDvNgQhhfUgHYgQAEWGrIDEDAhDW6oAx5AgAcc2OALk0kBCIIwF3RdQUpL8JcDl-KCmURwCUigQhOYwAIQsIFgZQDBEcB1MxEOAQ0fytoLjvLA3UFwCmEww4rSsMIbtNAGjRvD6kRQhSk0jkLxmWIVG8eGKapABY07iB2-kBw2UOQmNYhBDVqynuHdpy45iONDxPgFMcjhM3MswxgPRwbM4IB6c_wQRQL5hi8wTgc2sMFSXvcGhbQldW_AQx4WUhkR6C9wkZykDipJhjx4Rgc-qkMZ8jhGOughIwS0ZBkuo4OB3CY3u3mB5DJGOTZY7jiNu0NGYjCTGjQODRnJwXoaB4cZZKQwLlCDQvRCvIx8KEcUakF0_JUUGbiADGmQQ_OuOIdmtkV0SplBDlzCySnWYQ5fwKY2afOQ91AELnYRTRzzYpE2yOCdOYinDeZJPc1ARETJ2csXMscQeNJAnsJE3hitgxA6OHILaSSd6WiAOoiIoS-OW6VP2DCRtHRRdow5DT1NpTkRcEEETngDHXQQhBYI4UfiOukO7NCDk-LgpDU86Q-DmAZ4yZSmJ1WjDXAKgpMioSBkQNcc5rDTaf20piIQ6kkbd9IODlUEVBXBZKb6kMZlNaUrbelLwxBTEcwUqjignVrRw5OiiqCpbehpG54aVNGoNTD0owFRjYpUpTIViE41K1CjatfZ4TWtesXqQ36QyqxeMIN44KpiRcBYr3a1qxUNAzBbCbHwrIFgoI1rBm8pgj4oICA%3D&s=db8ad03bd165b797718ad1e1635197c30a745598ee75fd4c05b70ba5cf5930211793456990&w=t&r=1&d=206&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr",
+      "status": 204,
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XkKIOjhpgZYm60gEFDhowWNGKIqdEihw0xOVqYITOjDAwyZGKEiXEjhoiHYeqMyRhjzAwcZHDgEBnD5kkaN2bMaCEmKZmWN3LcuIEDhhkaNGrU-AmRjJ2FNjrKmPEQTh0xC2XYyFoxDBw4C2fQmCEDxsM5cCbqqCEjhgyuOB62ASyYsOGsMh6OaYOXYQ2XKWkAJWMm7o2HYty4WdgVx4waNiq2cYNRh9wYONa2Xd3aRo2UD-v41DGQDh04c3S8eDGGjBuZY1yMedOGuJyCdNLYKTPnRR030hHOCcPmhZsw0ae_-DEnjZ4yPWbAgIEnxnouddbLrUOnzZcxYSiHSXPGTY_9LiRhRxbwyWcDffYt5wYdZSzYQ2mnpVYgDHKZ8caC973Bxhty9GDGhxPKJUZEa5whxxvXkZHhhh2uB0OINtARhhxnlEFHD3SgKAeMHKbRoIzRXdjDHHTIsd8ZaNAB4xwx9IBHFDDE8cUZRjxRRhButLGWHGhAcYYQMjRBRxBzIEEDHDZIkcaFcghhhB1NXOHGHVoUsUQVWsTwhBFpEIGGDWu2kMYSTMiAxhdxEIHERmqEcYcYRHxBwxoyKHGHFFMwIQcdNxARhxtoJHFFE0coocYMRdxgBBRiSBEFElR80SobS1gxhxD2nVFFEkRIUUUaMK5RRh53cEjGHD1cAd4YaKxAhBVNNIESWCsEscIVaZhRxrVovLHCEMxRt8IT08mxQhJurODeClOUoeCx3Db4LXdslEFGCTIMYe0QdbQhUxps1EsGu2Xg4ayGbKxwRxp0NPvEHGiksYajYayQRR11yJHGChaaa8Zz24K3ghJh2BGdGXWwge8QYzyXHxw-rjyHhm8UK8caK6NRR40riEEfHSuPIdQaGt6b78MRT3xHxRdnnMbKRJRRBnArD9HgzM8ZPcSz0U5LQ7XXZrvtFd1-G-4c45Z7brrrtvsu2mTLOwS99q68b7__BmwvwQYTgfAKJdwwxMgln5zyyma10cbKYNEAIxzP2eHjHV-08cZBPXRbLllkMJdRoyZnm7JynksG3kJb-OUQTyzEkAMLMtTAwgwO6dVFW3IMxVAZI9kAWmc6wOCCfLKLMAYc9kGuu_AuJiYCYHG5UAPvMPgughx2VNbXQ-4ivxDzMFSEcRoZVThGDDTgQEMLTaHWQg1kbERVGIUhtxZfK4UhhtRkpVGZCDeggQtkQIMcuIArLoiBDWBAFjl8wX8ZCeAAC3hAHCRwgWSpQxgy0oQ36AFgbAjDC2owPBCgAAsN2QEImJAGN9QBDyDAAw5s8AUb0CAFIAjCXep1hTKIYQkMG-EMbuCCGdjAhEuAVROYwAIQsEFiZQDBEdxFNBwOAQ0nakMZXmAYEjKvhFMIgxlmlAYhEtGIZBmD7kRQhSmQhUP3WWMbycKGNapABZwrgx2-8Bw2UKQGN6hBDGqgvvU8hEaj0cEMcsDIhxxkj2KQA2kcqcfKXS4uOECfI09EkU2-4Qub04ENbDBE671BIa7B3RvwkIeFaOZ6X4DcKlupg1eSIQ-JLFIdykDJPdJBDxlh4CHLALze_CY4wwGd4dhAuuaQ5Q5EMeJYHoKGjORgPWSBwwwyshgXqEEhf8FeRk4EJA614DoMG4kAyZAGOYTvjXMQpyI7spUcSCUHziPDGuswhy-w050-eUh9KJIVvaCGkX6xiJYIas-w2AChh_lMWfhIHTh84XQMKahDEcq9PXIHIXRA5RYEObva0eB2EBGDYERwkDGmbCJtqeP3JNOahDILdSLgggic8AY66CAILRCCkdxABp3uwA490CkOdNpEnV4xi2nol1GRqtNB2oCpINApEgpChnrNYQ5PDddUkyoCq-qULDqV4VVFgFYR2PCsDyFLW3nqU6AKNQxEHatSh8fXF_0kqyIIaxui2ga9lhU1fO0KAh33V61y1atgxaJYRXBUslo1sTBYLFxF8ANhsvUhOmWhC_GwWbJ0Vq5xjStKw1BN3ljoPGuQmGwH68JmiqAPCggI&s=4ff33a7c1501304af10397de4f03290a43e0951c25077865188997a0c4ccdf2c1793456990&w=t&r=1&d=130&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XgsFFmxgwZZMa0qHGjTI0WNMLgINMiR4wZOFrEIOMxjJkZYWiIeSniYZg6YzLGGAOTDA4cN2SWgSED5Q2PLcQYZZnjRtUbOGCYoUGjRo2eEMnYWWgDRw0ZMx7CqSNmoQwbViuGgQNn4QwaH2E8nANnoo6zMWRgzfGwDV-_gAXnkPFwTJu6DGvksEEjBg2fZMy4vfFQjBs3C7PimFHDRsU2bjDqeBsDB1q1qFXbqFH5YZ0YGdHQoQNnjo4XL8aQcdPCzBgXY960CS6nIJ00dsrMeVHHDXSEc8KweeEmzPPoL37MSaOnTI8ZMGDgiZGeS530b-vQafNlTJjHYdKccdMjv4skdmThHnw2yEdfcm7QUUaCPYhGmmkDMmWDGW8kWN8bbLwhRw9mdBjhW2JEtMYZcrxRHRkXZrhhejB8aAMdYchxRhl09ECHiXK4qGEaC8L4XIU9zEGHHPmdoZuLc8TQQxryVeGEDETAoCAbLw1xhRFC3DHFHFrkkEUaOGjBRBtrhHFGDkVkqMQTVpiRhmlPtDGEEnm48YUdd9QQhGR2rBGEHVUs0cYURQxxR1JS5CCGE2JAMYMRSCzxpRNZBEEFHlDo8YYSWdgBBx5z2DGEFUS0EcZbWCSxRhs0xDHEDUbE8cUZVSRBhBRVpOHiGmXkcYeGZMzRwxXejYHGCkRY0UQTKHG1QhArXJGGGWVEi8YbKwyhnHQrPBGdHCsk4cYK7K0wRRkIBmvtgtlqx0YZZJQgwxDQDlFHG8Wlwca7ZJhbBh7IYsjGCnekQcexT8yBRhpl3hHGClnUUYccaaxAIbhmNFetdysoEYYdz5lRBxvyDjFGc_fBwWPJc2D4xq9yrFEyGnXMuIIY8tFR8hhArYFhvPMmvHDDD0c8cRolE1FGGb2VPMSCLTcH9BDJLtssDc9GO221V1yb7bZzdPttuOOWe266YXfN7hDuwltyvffmuy-8_gJMhMArlHDDEB1_HPLIJYvVRhslc0WDi3A0ZwePd3zRxhsH9XDtt2CRoVxGavg97cjIXd6YdwttoZdDMXAWA2Ey1MDCDA7d1YVacgTFUBktwGBDZ5rpAIML8Kkuwhhw0Je47LuziMNekMngQg202_6QHJ66pZcI6Aa_UPEwVCRxGhm9ZZxlONCgVGkjkZED7SHKEENxY6D1kRg1hCHG0mClAZkIN9Dgggw05OACVi6IgQ1gABY5fMF-Gcnf_vr3PxwEcIBgqUMYMtKEN-hBX2wIwwtqwDsQoAALDdkBCJiQBjfUAQ8gwMNGvkCZFIAgCHR51xXKIIYlGGyDM7iBC2ZgAw8uAQlUaAITWAACNjCsDCA4Arp85sIhoKFEbSjDCwLDweJ1cAo2iVEacKhDHoJlDLITQRWmABYN1SeMYwQLG8KoAhVUrgx2-EJz2EARktQgBjUIX3qetx-75OCPDzlIHMUgh9AEEo6Og5xbcGCZQJaIIo58w50QQhYb5PB2IniDQlYDuzfgIQ8LuYwIDJg4T4JSB6IkQ50WMqQ6lOGQcaSDHjJCwOeVIXcD2U1vfvOCzIFsc2zo3HLAcgeh8PArD0FDRnKQHrDAYQYZMYwL1KCQvUAvIyXykYZaUB2D1U5_ZEiDHLJXxjlcUwcwIYlVPJKD44kgJBmpwxy-EM5x4uYh86HIOrtigz9Obz4y0GcO7lIafwqGM2GRo3Tg8AXQMWSfBWXmQxCpHYTQYZNbuOPqWkeD10FEDH555y1_woaJqGWN12uMaqZnrNCJgAsicMIb6KCDILRACERyAxlgugM79ACmOIApEWHqRCgyqQ089SlM8WgDoYIApkgoCBneNYc5FHVbSf2pCJgKU7DAVIVNFYFXRUCZrj4ELGOVKU1titMw6DSrQOWdXFvUk6eK4KptOCpct1oauWYFgIerK1SlSlWrPhGrIuipVpnqVxgA1qwi-EEtxfoQmJLQhHiALFgki9azntWjYVCmDkRAofKsgWGozasJhSmCPiggIA%3D%3D&s=bfff675e5734fdf0d697bfee5f1347e6fb228fb808eb7660ec7d9c62354abb981793456990&w=t&r=1&d=130&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0WQqUEmxhgbYmi0CCPDjJgWNMTAqDGyhowxLcrIkEFmzIwaNXLYyFFGxMMwdcZkHCOjTBkxNmKEaZEjzIyTNGrQEKlyzFIYJmfkEDNmzI0xMMj4hEjGzkIbOFzOeAinjpiFMmzcyFExDBw4C2fQmCEDxsM5cCbqoKHzRgwbfkW0ASyYsNzDa0WMaYOXYU4bNGLQ-EnGDNwbD8W4cbMQBwwcN5M-bOMGo464MXDIiAyHtWsbUivWiZERDR06cOboePFiDBk3LcyMcTHmTZvicgrSSWOnzJwXddxQRzgnDJsXbsJMr_7ix5w0esr0mAEDBp4Y7bnUaR-3Dp02X6xSDpPmjJse_LmQhB1ZyEefDfbh15wbdJTBYA-moVZDUgbCEJcZbzCY3xtsvCFHD2aEWGFcYkS0xhlyvJEdGRt2-GF7MIxoAx1hyHFGGXT0QIeKcsjoYRoO0jhdhj3MQYcc_J3hm4xzxNADEmTo4ZUVRtwhBx5FsHFGEWrAYcMUUphhRBBx3KDHFTkoUUMZQzRBhxJjlNHEEmjQdAQOaNhxxhVilLHEEnPIsYQZWKARWBRwTEFGEmCFMQUMdtDRlRVr1OAEHm4cMcMURH1xRw50zAGYEmgMMZUYRJwkxhpr6PEGE3Do0UYUc9TxxRlVJEGEFFWkIeMaZeRxh4dkzNHDFeKNgcYKRFjRRBMoTbVCECtckYYZZVSLxhsrDOGcdSs8UZ0cKyThxgrwrTBFGQsWq62D3XrHRhlklCDDENQOUUcbyaXBxrxkqFsGHsxyyMYKd6RBx7JPzIFGGmuEcUcYK2RRRx1ypLEChuSaEV224q2gRBiRXlsHG_YOMUZ0YVAGZMpzcPjGsHKskTIaddy4ghj20ZHyGEGtwWG99zb8cMQTV3xxxikTYVRwKQ_hYMzRET1Es89GS8O01V6b7RXbdvvtHOGOW-656a7bLtlgwzuEvPSmnO--_f5Lr8AEE2HwCiXcMITIJE9nxskpl9VGGylPRYOMcERnB5B3fNHGGwf1sO24Y5HhXEZqBG4yG8xt_pBVgm3hl0MxgBZDDizIUAMLMzikVxdsySEUQ2W0AIMNoXmmAwwu0Dd6bV80fjvwMOLwV2VF6c67CHLYwXxi7Na2EPIw6FZHGhldOIZmOIgUQxkTtsARTy2UKEMMyRE1A19i1BBGnz09lEZlItxAgwsyEObCDThwwWFgMBY5fOF-GdEf__wHQAEiZix1CENGmvAGPfiLDWF4QQ2CBwIUYKEhOwABE9LghjrgAQR4wIENvoCZFIAgCHeZ1xWOsgSFaXAGN3DBDGzQwSUggQpNYAILQMAGiJUBBEdgl9BcOAQ0pKgNZXhBDFwXvCrCAARTCIMZapSGG-Zwh2PpSkaqMIWxeCg_txMBGcfChjSqQAWZK4MdvhAdNlCkBjeoQQxqEL72PMRGpNGBVnLAOo3I8QtikENpHnKQOU5OLK_BgWYYmSKKUPINX8CcDmxgAxw-7w0KeU3t3oCHPCxkM9ArXopKeUpG5iGQR6pDGRh5SDroISME_GMZfDeQ3wRnOC_oXMkGB7rmPGcsd8hIDHZYg7GgISM5aM9Y4DCDjCzGBWpQyF-il5EUCclDLciOwnQ3AxeQIQ1yyJ4ZA2UWHUjFdVq5AVoYmcY6zOEL50wnbx5yH4rMRS8TImRi7iMDf-YAoDuJ5vsiYxA6WgcOXxCPQREq0Icc0jsICdVCtqBH2MmOBrSDiBgEY8gtnmwibGnj9UbnmsQoa6Mi4IIInPAGOuggCC0QApLcQAaZ7sAOPZApDmQ6RJk28Ylp2JdPgSrTPdqAqCCQKRIKQoZ5ieqo31pqUEXgVJmORaYpfKoIvioCzHj1IWMhK01tilOdhoGnWhWqFYMHVaM60TlJbUNcuTqhKpqmgYvzSVRFMFWDWHUOWIXiXp3qVxgA9qwi-EEux_oQmY6whHiA7Fgkm1a0ojWkYXimDkSAofSsAWKobQMJ6xC6NoigDwoICA%3D%3D&s=dd2e70023e6139a7cf19fa3acf4c3b3b8c6e4f379cd113d3d290102ccd5aaa821793456990&w=t&r=1&d=117&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XEGFNmRsMxY1rAqFEjRwsaOciEaZGyRoyTM8bcoBFjRo0bM8LIEPEwTJ0xGcfIKFNGjI0YK3OEmSHmZA0aNFqIgTFmJQwzYmbkEAPyxhgYZHhCJGNnoQ0cNWTMeAinjpiFMmzcyFExDBw4C2fQmCEDxsM5cCbqQCk3xtGHbQALJnzD8FoRY9rgZVjSBk0aPcmYgXvjoRg3bhbigIHD5mERbdxg1BE3Bg61bFOvtvG0Yp0YGdHQoQNnjo4XL8aQcdPCzBgXY960CS6nIJ00dsrMeVHHDXSEc8KweeEmzPPoL37MSaOnTI8ZMGDgiZGeS530cevQafOlquQwac646YHfRRI7WbgHnw3y0ZecG3SUgWAPo5VWw1ECwhCXGW8gWN8bbLwhRw9mdBhhXGJEtMYZcrxRHRkXZrhhejB8aAMdYchxRhl09ECHiXK4qGEaCsL4XIU9zEGHHPidoZuLc8TQQxUw6NHGG2IgEQUTV8gRBw4xSGGFHTFkYcYSTuQgBBF1FFFEEnRgUUUcJ9nxxRFO1NBEEHQwMRQVeKgxAxpRFnEHETYEwUQNR1TxVFRMyCFFC1ooEQQaQeQBhRRkzHBHDGfggMUbd2DhBhJ2MJHEFDN8ccYUR5ghRwxY0HGHE0t8sYYcd6BhahVJECFFFWm4uEYZedyhIRlz9HCFd2OgsQIRVjTRxElQrRDEClekYUYZ1KLxxgpDKCfdCk9EJ8cKSbixAnsrTFHGgcRmqyC32rFRBhklyDDEtEPU0UZxabAhLxnploHHshiyscIdadCh7BNzoJHGGmHcEcYKWdRRhxxprEDhuKoStYJ3KygRhh3PmVEHG_UOMUZzYUjGY8pzYMiphmukjEYdM64ghnx0pDzGT2tgSK-9DDsMscQUW4xxykQQ1VvKQygYc3NDD8Gss9DSIC211mJ7hbbcejsHuOKSay666rI79tfvDhHvvCnjqy-__s4b8MBEFLxCCTcMEfLIJZ-cMllttJEyVDS4CEdzdvB4xxdPHtSDtuKKRYZyGakBuLUnI4f5Q1UJtoVfDsXQWQw5sCBDDSx41DoNXbAlB1AMlSGSDZ5tpgMMLsAHOhz0LU477yzi8NdkQ93-kBx2IO-XCOsCvxDxMNhWRxoZTThGDDTgEFUMZTzYQg1k5GB7iDK8ZJxafIlRQxhiECVWGpOJMJMLMqDkwg04uGAYDGKRwxfol5H75S8H--vf_8RShzBkpAlv0EO_2BCGF9SgdyBAARYasgMQMCENbqgDHkCABxzY4AuWSQEIgnAXeV2hKEtImAVncAMXzMAGGVwCEqjQBCawAARseFgZQHCEdQVNhUNAQ4naUIYXxGB1vYsiDEAwhTCYIUZpmGENbygWkGSkClMQi4bqQzsRgFEsbCijClRguTK4qTlsoMhNXFID76VnefrJSw72-JCDuEkMchBNH90IuTeEhTVYwowIyFAiivSxRF-onA5sYAMa4k4Eb1AIa2T3BjzkYSGKFODiOvnJwfQxD6HRwZDqUIZBuokOesgIAJdXBt0NZDe9-c0LNEcyzrHBc8sRyx0yUhPaiAUNGclBesQChxlkJDEuUINC_sK8jJTIRxpqQXUSJpIZuIAMaZBD9cQ4h2rq4Cmr08oNztLHMtZhDl8Apzhx85D5UGQuennQHp83n50wBJ800KcyZ6CXzHyhOYD5gnfumYN82mCfDyGkdhBCB01uwSWtc4heYgcRMQhmkbX0CRsmwpY0Tg90q3leshayBRFwQQROeAMddBCEFgiBSG4gw0t3YIcevBQHL_3hS5O4xDToa6c9fWkMHhRUELwUCQUhg7zmMAeiegupPtUIU0UglpeW0AYv7aoILBPWh4hFrDGdaU1vGoacYvWnUuxdU4eqROUYtQ1v1aoNojga_rkgcTxxqgigapCpVrWuTMzrUvfKu772D7Bi-cEsufqQl34whHgoK2VFINmzmtWsHA0DMnUgAgqVZw0PS20bQFgHYIqgDwoICA%3D%3D&s=2f9121bbeb0ab26b203530d46af715924c827b738cf0ae1d4663777c2ed96f761793456990&w=t&r=1&d=127&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/NGRhMDc1ZWY2YTM4MjI0OWIyMGM0ZDQ3NWU0ZDA1MDg/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/7W/7Wl7cm/frame/original/4.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://cdn-fc.com/creatives/universal/native/fonts/Roboto-Regular.woff2",
+      "method": "GET",
+      "resource_type": "font",
+      "status": 200,
+      "content_type": "font/woff2"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/270084900",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/8/9/2/8927692448f5ef2e6a03c1661f43cf69-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/261851470",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/1/2/d/12d31afcf060b850b3b5f7ac1778479c-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/285235852",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/e/0/8/e08451b93c6759c501cd78640feb2806-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/224755708",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/d/d/0/dd0e20f8f5cb72b6c6a0ff0a67c24e68-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/70032198",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/9/3/b/93be31ea60757d39c0dcbd3bed229767-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/221792833",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/b/0/4/b0421f06124359f2685f12f186a0f532-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/282044083",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/1/d/1/1d16b41e72ceb145b2abbbeb31c553b2-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/280936989",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/6/b/8/6b8b7810916e9ead41a9ed859bbf053b-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/203085706",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/5/3/e/53e88dbe3e143a5e3488dc3db38a0065-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793456790/59689843",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/0/c/1/0c1e97fcf7f0e8fe2a604ed2d8d15be9-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/MjE1MmYyNzgxZmZjMzc5OWU4MzA3ZTIwMGQ2MTY3MjA/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/Hm/HmtvZG/frame/original/7.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OTBmMGU5ODlhMjUwNmVlM2M3N2JiNjFiNTA2YzllZWY/jpeg%2Cs%28w%3A480%2Ch%3A300%29/xc/90/901LHA/frame/original/13.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/video/113371/playback",
+      "method": "POST",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/113371/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 302,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 206,
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za200zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5679",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    }
+  ],
+  "network_events": [
+    {
+      "url": "https://javtiful.com/video/113371/dvmm-444",
+      "method": "GET",
+      "resource_type": "document"
+    },
+    {
+      "url": "https://javtiful.com/video/113371/dvmm-444",
+      "status": 200,
+      "resource_type": "document",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za208zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=563",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za208zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=563",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/19ccf656232c0c5b0c6fe30f706e4cf4.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/586a51506891135d0a8a983a76e40d39.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/07/30/7c2eeec3fff71b951f3776a29e5e6dfb.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/05/fa14febd7d2f1caf62d8d06a3905153f.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/18/b4642cea0c981f879cc49adea6ea16d1.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/06/03/78572c122a5d0b7825b4cbe5c5209537.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/0b194b0621165b69366c19798ff499f9.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/09/80009c3315b1beb12ea2ceaef4a3bf42.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/05/fa14febd7d2f1caf62d8d06a3905153f.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/586a51506891135d0a8a983a76e40d39.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/07/30/7c2eeec3fff71b951f3776a29e5e6dfb.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/09/80009c3315b1beb12ea2ceaef4a3bf42.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/18/b4642cea0c981f879cc49adea6ea16d1.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&sid=60d68909-3ea9-41ab-bdc9-90a0b1ad3332&kw=creampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444",
+      "method": "GET",
+      "resource_type": "script"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/19ccf656232c0c5b0c6fe30f706e4cf4.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/0b194b0621165b69366c19798ff499f9.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&sid=60d68909-3ea9-41ab-bdc9-90a0b1ad3332&kw=creampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444",
+      "status": 200,
+      "resource_type": "script",
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=1",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2025/06/03/78572c122a5d0b7825b4cbe5c5209537.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=1",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn-fc.com/cdn-cgi/rum?",
+      "status": 204,
+      "resource_type": "xhr",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://ic-nss.flixcdn.com/a/OWNlYmNjNjc5ZDk5MDFmYzI1MTY3YThiNzJkYjE1ZWM/jpeg%2Cs%28w%3A480%2Ch%3A300%29/video/c2/c2J8jp/screen/2-hCi.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://fh-wgt.com/api/request/v1/affiliate_1?language=en&orientation=straight&q=watch+dvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+with+oshikawa+yuuri+for+free+at+javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2Coshikawa+yuuri%2Cdeeps%2Ccensored%2Cdvmm+444+a+wife+who+comes+over+in+10+seconds+when+called%2Ca+cum+filled+sex+doll+%7C+javtiful%2Cdvmm%2C444&quantity=2&target=tour&utmCampaign=ai.IvY",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/video/113371/playback",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/video/113371/playback",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/media/video/113371/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/113371/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "status": 302,
+      "resource_type": "media",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "resource_type": "media",
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za200zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5679",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za200zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5679",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    }
+  ],
+  "failed_requests": [],
+  "playback_api_responses": [
+    {
+      "url": "https://javtiful.com/video/113371/playback",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "json_keys": [
+        "defaultQuality",
+        "sources",
+        "success"
+      ],
+      "sources": [
+        {
+          "src": "/media/video/113371/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+          "type": "video/mp4",
+          "fallbackSrc": null,
+          "size": 720,
+          "label": "720p"
+        }
+      ]
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/09/VID-4833B7DA/VID-4833B7DA_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T142952Z&X-Amz-Expires=3600&X-Amz-Signature=08203d061739f96dd1331139dd8e2eb5c544885bf711097361761c4130b53e2a&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
   "video_elements": {
     "video_count": 1,
     "videos": [
       {
-        "current_src": null,
-        "src_attribute": null,
-        "ready_state": 0,
-        "network_state": 0,
+        "current_src": "https://javtiful.com/media/video/113371/720p?expires=1793460592&signature=8bc96e248dafd09678413ab53af17ddf5de075c868f40cdc776c524d08681ca3",
+        "src_attribute": "https://javtiful.com/media/video/113371/720p?expires=1793460592&signature=8bc96e248dafd09678413ab53af17ddf5de075c868f40cdc776c524d08681ca3",
+        "ready_state": 4,
+        "network_state": 1,
         "paused": false,
-        "duration": null
+        "duration": 8292.863833,
+        "error_code": null,
+        "error_message": null,
+        "buffered_ranges": 1
       }
+    ],
+    "iframes": [
+      {
+        "url": "https://loud-hall.com/a.W_ZuyvPw2xQ-9zMATBcC5_MEzFQG1HN-jJkK4LOMT_YOwPNQTRU-1TNUzVYWx_NYCZZapbc-2d1e1fbgH_RipjdkGlF-nnPoWpIq5_ZsGtNujvN-WxFykzNAG_JCmDYETFd-jHMIzJgK4_NMjNFOkPM-jRUSxTMUW_UW0XNY2ZQ-ybOcTdNeh_Jgmh1i1jb-HlRmpndoG_FqnrYsmtF-uvbwmxVyy_PAXBRCyDd-WFUGmHcIn_JKpLZMDN1-iPOQWRRSj_YUzVVWhXZ-DZRaibZcm_Ee3fYgzhM-4jOkDlYmx_ZoDpIq1rM-TtFulvNwD_dykzMAjBk-zDYESFZG6_bI2J5KlLa-WNQO9PNQT_YSxTNUTVQ-3XMYAZ?iframeId=bowqlo"
+      }
+    ],
+    "player_scripts": [
+      {
+        "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/bWxCba7.js"
+      },
+      {
+        "url": "https://cdn2.tapioni.com/adgpt.js"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/on.js"
+      },
+      {
+        "url": "https://gigglegrowlworrisome.com/bn.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810"
+      },
+      {
+        "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"
+      },
+      {
+        "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&sid=60d68909-3ea9-41ab-bdc9-90a0b1ad3332&kw=creampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/profile.min.js"
+      }
+    ],
+    "media_resource_entries": [
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za208zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=563",
+      "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/586a51506891135d0a8a983a76e40d39.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/19ccf656232c0c5b0c6fe30f706e4cf4.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/05/fa14febd7d2f1caf62d8d06a3905153f.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/07/30/7c2eeec3fff71b951f3776a29e5e6dfb.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/18/b4642cea0c981f879cc49adea6ea16d1.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2025/06/03/78572c122a5d0b7825b4cbe5c5209537.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2024/03/25/0b194b0621165b69366c19798ff499f9.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/09/80009c3315b1beb12ea2ceaef4a3bf42.jpg",
+      "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&sid=60d68909-3ea9-41ab-bdc9-90a0b1ad3332&kw=creampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444",
+      "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=2",
+      "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+with+Oshikawa+Yuuri+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Chuge+butt%2Ccuckold%2COshikawa+Yuuri%2CDeeps%2CCensored%2CDVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2CA+Cum-filled+Sex+Doll+%7C+Javtiful%2Cdvmm%2C444&count=1",
+      "https://javtiful.com/api/live/home-source",
+      "https://javtiful.com/video/113371/playback",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/09/11/829bb7926e5ccc39d8abcf7acd6e7bd2.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6at0h2v877750602za200zd877750602xf1&_p=1793456989016&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=483795811.1793456989&frm=0&ngs=1&pscdl=noapi&rcb=3&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115938466~115938468~118897920~118897930~120213116~120385422~120412526~120420414~120469145~120469153~121246026~121246034~123636746~123691370&sid=1793456989&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F113371%2Fdvmm-444&dt=DVMM-444+A+Wife+Who+Comes+Over+In+10+Seconds+When+Called%2C+A+Cum-filled+Sex+Doll+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5679"
     ]
   },
   "page_errors": [],
   "notes": [
-    "A URL is classified as media only by a known media extension or media MIME type.",
+    "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
     "Full media URLs are included in this private test artifact for immediate debugging.",
     "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
     "No playback ticket is deliberately copied into the report.",
