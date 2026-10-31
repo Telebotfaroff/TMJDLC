@@ -87,7 +87,7 @@ class JavtifulProvider:
                     f"Attempt {attempt} failed ({type(exc).__name__})."
                 )
                 if attempt < self.max_attempts:
-                    self._progress("Resolving a new stream before retrying.");
+                    self._progress("Resolving a new stream before retrying.")
 
         raise RuntimeError(
             f"Javtiful download failed after {self.max_attempts} fresh resolution attempt(s). "
