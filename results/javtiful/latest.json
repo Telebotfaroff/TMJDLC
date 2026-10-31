@@ -1,0 +1,1146 @@
+{
+  "requested_url": "https://javtiful.com/video/115269/miab-682-reducing-mosaic",
+  "final_page_url": "https://javtiful.com/video/115269/miab-682-reducing-mosaic",
+  "captured_at": "2026-10-31T15:03:33.831847+00:00",
+  "navigation_error": null,
+  "play_click_attempts": [
+    "button[aria-label*='play' i]"
+  ],
+  "capture_seconds_after_play": 30,
+  "media_request_count": 1,
+  "media_requests": [
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "redacted_url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "source": "request",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
+  "all_links_count": 99,
+  "all_links": [
+    {
+      "url": "https://javtiful.com/video/115269/miab-682-reducing-mosaic",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts/manrope-latin.woff2",
+      "method": "GET",
+      "resource_type": "font",
+      "status": 200,
+      "content_type": "font/woff2"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/font.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/css/bootstrap.min.css?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.css",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/base.css?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/fonts.css?v=3e550&rev=1791560352",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/layout.css?v=3e550&rev=1793429318",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/home-live.css?v=3e550&rev=1791986781",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/theme.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/announcement.css?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/css/watch.css?v=3e550&rev=1791984860",
+      "method": "GET",
+      "resource_type": "stylesheet",
+      "status": 200,
+      "content_type": "text/css"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/bWxCba7.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/on.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/site/logo/2026/04/27/215c2694af8e5a2a3b487b6711f22866.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/13/fdd41fee30b9d22da1e04c7bf6a29aa9.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/99ae4c330a0caee56bea15fe38369c00.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/ads/icons/2026/10/09/6281d81f48e4d8e7ad29d5ef18aa90a5.png",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=540",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/bn.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://cdn2.tapioni.com/adgpt.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/collections/actresses/2026/04/27/e102d699bdd50fabb6b5e3ff24c04adf.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/18/ad8294f8cd92123bd4d66c6f3f32fc42.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/02/000153c5a03c478b5b1e3096698d54e3.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/479494bb0d3d6b3f4af7d99d9621c7c5.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/ffffc151ce779a514d12a5c63db9cb0b.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/27/ce2715578e391936f92ed3f39859c4fa.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/53e6f087a5b1abdaf6900aabde80b18f.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/c34fd42508fc812350ebc4b312ef607e.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/29/248b4c750dafff36872045b17f789049.jpg",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/check.html",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/solid.gif?z=1871231&nojs=0&bavar=1111&febuild=e6fed014406839aebff5ccb56c0af32de4a6af78-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=3lsrIc6KGhQRCqPx2sQL1I2MukAhYMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=H02A6ORaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTE1MjY5L21pYWItNjgyLXJlZHVjaW5nLW1vc2FpYw&afid=961961057790724&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=3&pload=791&rlp=%5B0%2C149.4999999999418%2C197.5%2C109%2C4356.800000000105%2C2595.9000000000233%2C1180.0000000002328%2C2073.600000000035%2C0%5D&srw=1365&srh=900&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&cs=5",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/get/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=1111&febuild=e6fed014406839aebff5ccb56c0af32de4a6af78-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=3lsrIc6KGhQRCqPx2sQL1I2MukAhYMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=H02A6ORaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTE1MjY5L21pYWItNjgyLXJlZHVjaW5nLW1vc2FpYw&afid=961961057790724&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=3&pload=791&rlp=%5B0%2C149.4999999999418%2C197.5%2C109%2C4356.800000000105%2C2595.9000000000233%2C1180.0000000002328%2C2073.600000000035%2C0%5D&srw=1365&srh=900&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&cs=5&jp=_clarzswgdbsqkthdpzasus&uf=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://loud-hall.com/aEW.ZFyGPH2-QJ9KMLTMc_5OMPzQQR1-OTDUkV3WO_TYcZxaMbD-Md4eMfTgY_yiOjCkZlp-cn2o1p1qb_HsRtpudvG-FxnyPzTAB_jCNDjEUF4-YHWIMJ1KM_jMZNmOMPT-JRmSYTjUg_3WZXDYRZi-ZbGcFdmeY_mgZhmiNjT-ElwmNnToA_3qJrms1t1-bvHwRxpyd_GAFBnCYDm-FFuGbHmIV_yKPLXMRNy-dPWQURmSc_nUJVpWZXD-0ZwaYbzcY_1eOfGgFhj-NjTkIl2mZ_joEpyqZrm-It4uNv2wQ_0yYzmARBh-ZDmEJFmGZ_jIUJxKMLD-UNwONPyQZ_6SbT2U5Vl-aXWYQZ9aN_TcYdxeNfT-Qh3iMjAk?iframeId=bvqgjf",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html;charset=UTF-8"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&sid=6bd2c065-d7ce-400f-8b3c-82b9be89d3f2&kw=creampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://gigglegrowlworrisome.com/get/2004725?id=2004725&pid=__clb-spot_2004725_ghn_1&dr=52&cuaa=2&nojs=0&bavar=0&febuild=1.1.92-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=3lsrIc6KGhQRCqPx2sQL1I2MukAhYMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=JlzWhoZaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTE1MjY5L21pYWItNjgyLXJlZHVjaW5nLW1vc2FpYw&afid=1243436034511620&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=3&pload=855&rlp=%5B0%2C149.4999999999418%2C197.5%2C109%2C4464.100000000151%2C2920.8000000000466%2C1447.100000000326%2C2398.500000000058%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1&jp=_clmmtlvfnemgxqbyvzsqyu&bp=1&uf=0&freq=0",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/pr/1871231?id=1871231&dr=49&cuaa=2&nojs=0&bavar=1111&febuild=e6fed014406839aebff5ccb56c0af32de4a6af78-st&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=3lsrIc6KGhQRCqPx2sQL1I2MukAhYMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=H02A6ORaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTE1MjY5L21pYWItNjgyLXJlZHVjaW5nLW1vc2FpYw&afid=961961057790724&dl=10&eclog=0&snc=0&ssc=0&vp=0&pkw=3&pload=791&rlp=%5B0%2C149.4999999999418%2C197.5%2C109%2C4356.800000000105%2C2595.9000000000233%2C1180.0000000002328%2C2073.600000000035%2C0%5D&srw=1365&srh=900&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&cs=5&jp=_clarzswgdbsqkthdpzasus&uf=0",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile.min.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=1",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://coosync.com/sn/c?zoneid=1871231&eucx=3&srp=Pcqyk2smdCAuAM5aBzlklLzjIkQNhEguIDPkYi20F_kMwYWsdinTBP6JaPH7WHaAzlfr0htgUoocr2BOqn9bAcVbUQuGavvHvsOzmR16Y-oz1zZ4UPKmmPCmkHrkVp8zKplG&im=0&wcks=1&ix=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 302,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cm.pxltag.com/sync?platform_id=9ef109b86e194f8bb28ca2c41fc61b21&external_id=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": ""
+    },
+    {
+      "url": "https://s.uuidksinc.net/match/1924/?remote_uid=26fc1484-1e56-5d9e-ba21-fc2332b5abee",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/png"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/sn/ps/1871231?eucx=3&im=0&ix=1&puid=16926219698380971853&so=1&wcks=1",
+      "method": "GET",
+      "resource_type": "document",
+      "status": 200,
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://janitorprecisiontrio.com/profile/1871231/avatar.gif?psp=LIYZeahto3roGjLLPT7ouvIFBIYdzlFh_KZdBEqJ-JBJQHpRC0bsmnu1gJcFQL68x3Z0YE3NHyLORrbRlYYBKLd1PuZ2hXYRwFr1M9Azxq6QemLFrkIr4a1ueUSGU5HU1eEIPAHcjiGmL47y9gtCgQh--nLh_CpgJtCclzKaO6IHP3CCJYpwkUeUS0zmylP24ZLlH0jeRbC4eYXfElF4dWdXdLUSIGr3m5Hga_R1n4H5QbkxWcxwYwzmhx1oj3OUiCGjmauNg2zuxOZ06i_uZX73lNLxEC7TN-Gcf3VvM6lXaeboxdd6uitMVj1CTD2cEn7mYyBC8a-86Ratu4RpGF_aOfLMovQ0vwM%3D&eucx=3&nojs=0&bavar=0&febuild=1.1.92&t=0&wcks=1&wgl=1&cnvs=1&os=0&tz=UTC+0&ss=1&ls=1&bb=0&cti=2&fn=3&es=15&ge=2&th=3lsrIc6KGhQRCqPx2sQL1I2MukAhYMIdg&pcs=2&lang=en-US&pf=Linux+x86_64&cd=24&vcv=Google+Inc.+%28Google%29&vcn=ANGLE+%28Google%2C+Vulkan+1.3.0+%28SwiftShader+Device+%28Subzero%29+%280x0000C0DE%29%29%2C+SwiftShader+driver%29&ix=0&x=1365&y=900&md=0&psu=xbGpkhEaHR0cHM6Ly9qYXZ0aWZ1bC5jb20vdmlkZW8vMTE1MjY5L21pYWItNjgyLXJlZHVjaW5nLW1vc2FpYw&afid=3776710824886532&dl=10&tuid=7702847661526196021&eclog=1&tp=0&vp=0&pkw=3&pload=1036&rlp=%5B0%2C149.4999999999418%2C197.5%2C109%2C10997.800000000163%2C3860.2999999999884%2C1637.0000000003492%2C3338%2C0%5D&srw=1365&srh=900&cs=5&im=0&cha=x86&chb=64&chbr=%22Not%3AA-Brand%22%3Bv%3D%228%22%2C+%22Chromium%22%3Bv%3D%22156%22%2C+%22HeadlessChrome%22%3Bv%3D%22156%22&chf=%22Not%3AA-Brand%22%3Bv%3D%228.0.0.0%22%2C+%22Chromium%22%3Bv%3D%22156.0.8078.4%22%2C+%22HeadlessChrome%22%3Bv%3D%22156.0.8078.4%22&chm=false&chmd=&chp=Linux&chv=&btl=1",
+      "method": "POST",
+      "resource_type": "ping",
+      "status": 200,
+      "content_type": "image/gif"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/sdk/v1/b.b.js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/images/a/e/1186b9de449a840289349343fb1caa5296ecf9/main.webp",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/images/8/3/9e75b65a7c4d7ad7a93306b2b3043a69f2a56f/main.webp",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XAkCEjBw4xBVuEqWFDTAsaMmyQaYGDRo0wLcyUuQHjBhkZY3LYgBFGxMMwdcZkLCMzBg4YZlbaoDEDxkkbNsq0yDEjxoyYYmbgqHFDxowwMsz0_EnGzkKmTG88hFNHzMKUN3JUDAMHzsIZTGXAeDgHzkQdNWQ0PGrjYZu-fwMPhoHj4Zg2dnUwtXEjLlkzb9WKEOPGzdscJGdUNuwGI8MZHPeKgNOm9EIbNWhUrCOHzV3BVGU0FlFHRkY0dOjAmaPjxYs7El2wSeNmzYsxy8es-TGmR5k8StAkUfNmBpMhSuxsf4OniZ4sc5K4CZLmiRonObjUgbHRBvQ00tOQ6dGGTRIoTSSxRBhaZPHEES0EgQQTc1BxBBnLyZEDE3DkQcccBMpwxBRY5DBHFmfQMUMOaqwhRhtpnDEFDFAcUUMbYbyRhRNNmKHHDU0ogaEQSjQRUxRvvLfGG3bE8AYdelDBhBoz1AEFFiS5oQQVS2hRGhwtHOHEGTIwcQUaYjQBBxo2fHFGFUkQIUUVafgkAhlvtJGRGmHYQUcaZtTBhgtjxOnmGGH8tcVeMcjAQgxqecWCDDWwUFUXD4mBmQ4wuECfoSLIYUdkej1URx1t6iBCSmaMEQMNLbUQQxkktVADGTlIJQZYMcQ0hleoifESSGW4mUZko1Yagw04uNBQDi7IQMMNbsrxxa8Z6WUsscbGgKyyzHrak6hNvKFHGmywEcYLNVgKAgpYNLQDCEwwVwceIOCBQ5lLpQBCEHWxUcYVZYixRBp0kCuaCzPYcO4SSFDRBBMsgLDcGmWAcEQZ0r1h7xBoyBFnGS8UWm6lIIMwRRhiyZGGwDcQbMOfQolaxRRuvuHsGC2L8LKbbNSsggpuHmTHF3KUYRtDXNUQQw0t0feQHGd4psOIJD3k8xdiyLHQblO38QYZb-FwqtQaUwT2G1_YgdBrNohWmAhvKKQDpnBojEceCzWa6Rdxk0c3YFKX8TOSGcHQLFG_BTdccS_QaSeeevIZ5wtu3pGRVbC5iUZGOdDnJhwzZHSYC2ooxJemGWlMR6Ayt1CHGwC3AMMMLpCRhhwwxBDzHKQDhlINI95ArNQ11zHHF7LTbvtDdMjJUFx4Ie2Rasn7tjxVLuHwPNJ2GwR0GX19EShFzFf__EN-e6-vHBcutIXRjjqEF6QQifHXm0QBxcZEa-W8kGpjmMb_5TrYggi4IAInHEkHQWiBEOQQBjeQgYA7sEMPCIgDAjaMgBjTGIrq0AYISpCAR7OBBUFAQCQUBELcm0MGN-bBCYoghAR0EwHlJUIRyFAES4nhQ9x0QwPSAYEKZKADW0hBSxkRBiPEYMbilAYOEvGFJDHiUW5QLBokUQQmNIi-5qDCJbahDE8MoRRrUkUdiuAHgtvhQwjYLje8y4xuQiMP1WhD-IUBgCIwg7fKsIY09LGPKHKj4-TUBwUEBA%3D%3D&s=1afdef8df3bc4b4375724b923b01c213fdeb32170caf9b33476199771aa035461793458980&w=t&r=1&d=14&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XkEDOGhowZNca0sFEDR44WHnOUaYFDTJkYLMPQsBFjDEgyOXCYEfEwTJ0xGXOWMTPjBpkwLWDcoIGUhhkYZlrkCDMDB8owOGrIqGFmDAwxRHlCJGNnIY0ZZ288hFNHzEIZNm7kqBgGDpyFaGfIgPFwDpyJOrTGkCG3Yhu_gAUTziHj4Zg2d3XQiJEjBw21Y3cyfCjGjZu3OWrYKGrjYRs3GBnq3bv2dGqSkx_WkcMGrwzKejHXkZERDR06cOboePHijkQXbNK4WfNiTPIxa36M6VEmjxI0SdS8mcFkiBI72d_gaaIny5wkboKkeaLGSQ4udWDAgOs8DfQ0ZHqw0TLDTJA7btRRRAtupAEHEYw5cccVSIgRwxJrjAGFEnVcMQcaT5CRRxIzfDGDEFbkYAMeUKwBhRlVpFEFEWPcMRsOQxyhhQx6EBFHDUosQQYSXaWRxhd1nIFSEnSQgcMVYYhRgxBrSOHGHFVw90YdSZRHAxE3FFEFG1e8IcUaV4iBhBZfnFFFEkRIkaJYZLzRRkZqhGEHHWmYUQcbLozhplhjhAHYFnwNxkIMan3EwlYszBBDF5xpBoML8sVQw0Ny2BEZayLUUUcaGcHVVQw04EBDCzGUIVoLNeC0khhh3NZCVx_ppWSSZZQhloGdPhqDDTi40FAOLshwmVhyfIGrDiLs5SuvvlIW7LCyhZFRE2_okQYbbITxQg2QgoACFg3tAAITytWBBwh44GDDFzbQkAIIQdjFRhlXlCHGEmnQsW1RLsxgg7dLIEFFE0ywAEJya5QBwhFlQPfGu0OgIYebZbwwGLePZgzCFGGYEYYcaex7Q7828AkUslVMIdYbxY5xsggpi8XGyyqowGYZdnwhRxm1MVTDDTVIKqp8lJ7xmQ4zhFaaCAflLIYcC-HwUNNftPEGGW_hAOrUE1PE9Rtf2IHQQjaMdsPSbyikQ2MiwDExHnksNKkIxbotXtyBTY3zF3TokREMxA7V22_BDfdCnHPWeWeebr4g1h0ZxeBvDWKhEZR8YsExQ0aHuaCGQn1VmtHEdPjJcgt1FEhHUtySkYYcMMSw8hyiMyS5DDgsdRYNU79cxxxfuA677A_R8SZDcqFVUk58WdQGb8jnoLxJOMAgWg49kaFzGX594SdFydOwfPUP7R3GvHLQofYWQSfqEFqMQiQGYEwP5RMbE60180LNj5Fa_5bTwRZEwAUROOENdNBBEFogBDmEwQ1kKOAO7NCDAuKggAYrYMQm1oY01KENEqRgASVlAwyCoIBIKAgZ5jWHOWyQYiGsoAhIWECxFDBdJRSBDUXQrho-RCw7PGACF9jAB0ZQBBOUYa8yBikTalBibvIgCJEowhmKBlIuqN4NekUDJ4oghQZhoQuh2IYyxHCEV3yUFrnoQxH8AHA_fEgByRUgPLRRLG8EYhx1GL8wBFAEZqhWGdaQBkISsoMBYtyb-qCAgAA%3D&s=844e4df6643b5e6d236e39b03452ab37083a6d9085b687c08c7e9ba298e7c27c1793458980&w=t&r=1&d=4&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://pxl-us.fozekikikiminu.com/api/v1/p/p.js?p=APeIQFMmDJkycuaI0BEjBgsRYcbQWehQBJ0zC0XckBGDxpgcYm60CBNDBpkWNMqUqdEiRxgaLG_YGFMQpo0wM8qYEfEwTJ0xGcnAwJFjxpiZLWyUERMDJY0ZLHPcwNkCh40aNWTAvDHGjBgbPCGSsbPw6dMbD-HUEbNQho0bOSqGgQNn4YynMmA8nANnog4aOd7GqJHjYRu-fgELtjHj4Zg2df_GyJGDBlqxOxk-FOPGTdscNRjLNOwGI8MZMvKmbVN64VUaFevIYWOXY1EZl-vIyIiGDh04c3S8eHFHogs2adyseTEG-Zg1P8b0KJNHCZokat7MYDJEiR3sb_A00ZNlThI3QdI8UeMkB5c6MGC4bZ7meRoyPc7gGKIHCY47dtSBhxxPZJEDE2TcUEMSVyBRxBBLxPHGFS1IYYUSM9AxxAxQoOHEHWuwcZcVZyTBhhAt2JEFEV8IEUMQQsAxBhNsZLHEEzdggUQcUwwRxwxZ5NEGEjNIgYYYVIShBhx5wFGGDEjIMUMTQeBRxRR5zRDFFFPQwUYRVBhxhYBCnPHFGVUkQYQUVaQRFhlvtJGRGmHYQUcaZtTBhgtjxBnWGGH4tYVeJbEQA1oyNCZDDSzMEEMXm2UGgwvxNSaCHHZEppoIddThpg4iuGXGGB3hQEMLMaxkQws1kJFDGS2IEQZHLYyaKGpi1BCGGCqFlUZkoU4agw04uNBQDi5odUNYcnzxa0Z5GUussZMla1lYdYSRURNv6JEGG2yE8UINlIKAAhYN7QACE8kJCAIeVn1hAw0pgBAEXWyUccVSS6RBx7gz3ODCDDaYuwQSVDTBBAsgILdGGSAcUcZzb9Q7BBpyxFnGCyWRO-nHIEwRhhlhyJEGwAIT_CdQoF4Z1hvNjsGyCC4_xMbMKqjwZhl2fCFHGbQxVIOCg5ka30NynOGZDjOAZsNDB_UshhwL4QA1z1-08QYZbeHQEdQZUwT2G1_YgZBroj0twhsK6SBDWhnjkcdCjF76BRxxz61D3VF_QYceGcHArE68-QaccC_QaSeeevIZ5wth3ZFRDATXEBYaGeUQX1hwzJDRYS6oodBemGaUMR2BwtxCHW742wIMNLhARhpywBDDy3OUzjQOQ8M1Q9NWi0DGzHXM8cXstd_-EB1yMuQ7TEThoJdFbezmfFHQ5yB97z2R4XMZfH0RKEXP1xD99FiHka8cdLS9RQ0OOdooDZBCJIZfwuvkExsTpXXzQtMbg2kCiDkdbEEEXBCBE95ABx0EoQVCkEMY3ECGBO7ADj1IIA4SyLAEXixjbUhDHdpgQQwmcDA24CAIEoiEgpAhX3OYwwc1VsIMigCFCQxLAuGVQhHoUATzyuFDwvLDBTbwgRGcYAVFcEEbFutjlFKhBzEWJxGSkIkmvGFoKOUC6d2gWDSQoghaaBAYypCKbShDDU-4xUl5EYxCFMEPBDfEhySQXW4QUBzDMkci1tGH9QtDAUVghm6VYQ1pQCQiQ5hHx8mpDwoICA%3D%3D&s=5dc83752fb0c7e91038ea54ce439f61926e3ccdcdb217b0e30b2de92125da4901793458980&w=t&r=1&d=3&priv=false&param1=js",
+      "method": "GET",
+      "resource_type": "script",
+      "status": 200,
+      "content_type": "text/javascript"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/70032198",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/9/3/b/93be31ea60757d39c0dcbd3bed229767-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/195446409",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/f/6/9/f69a5aa749e456ab54d2d8c33f7ef8c7-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/224755708",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/d/d/0/dd0e20f8f5cb72b6c6a0ff0a67c24e68-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/282044083",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/1/d/1/1d16b41e72ceb145b2abbbeb31c553b2-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/248528310",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/f/f/a/ffafd7ed8090c13143c3cff0f32af661-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/203085706",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/5/3/e/53e88dbe3e143a5e3488dc3db38a0065-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/284563003",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/5/2/d/52d8e1f51c7db3b5e58bde0fe471d656-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/132938058",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/2/d/4/2d4772f80d0ead2dc3061eb1c618969e-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/173602200",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/9/d/3/9d34c9e2b9e36e912a1a44679c9314fc-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://img.doppiocdn.com/thumbs/1793458890/268726246",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://static-proxy.strpst.com/avatars/4/e/5/4e59f73b99900534001183bf5516a4d8-full",
+      "method": "GET",
+      "resource_type": "image",
+      "status": 200,
+      "content_type": "image/webp"
+    },
+    {
+      "url": "https://javtiful.com/video/115269/playback",
+      "method": "POST",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr",
+      "status": 200,
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/115269/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 302,
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media",
+      "status": 206,
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5546",
+      "method": "POST",
+      "resource_type": "fetch",
+      "status": 204,
+      "content_type": "text/plain"
+    }
+  ],
+  "network_events": [
+    {
+      "url": "https://javtiful.com/video/115269/miab-682-reducing-mosaic",
+      "method": "GET",
+      "resource_type": "document"
+    },
+    {
+      "url": "https://javtiful.com/video/115269/miab-682-reducing-mosaic",
+      "status": 200,
+      "resource_type": "document",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=540",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=540",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    },
+    {
+      "url": "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/18/ad8294f8cd92123bd4d66c6f3f32fc42.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/02/000153c5a03c478b5b1e3096698d54e3.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/479494bb0d3d6b3f4af7d99d9621c7c5.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/ffffc151ce779a514d12a5c63db9cb0b.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/27/ce2715578e391936f92ed3f39859c4fa.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/53e6f087a5b1abdaf6900aabde80b18f.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/c34fd42508fc812350ebc4b312ef607e.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/29/248b4c750dafff36872045b17f789049.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/02/000153c5a03c478b5b1e3096698d54e3.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/c34fd42508fc812350ebc4b312ef607e.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/53e6f087a5b1abdaf6900aabde80b18f.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/ffffc151ce779a514d12a5c63db9cb0b.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/29/248b4c750dafff36872045b17f789049.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/18/ad8294f8cd92123bd4d66c6f3f32fc42.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/27/ce2715578e391936f92ed3f39859c4fa.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&sid=6bd2c065-d7ce-400f-8b3c-82b9be89d3f2&kw=creampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic",
+      "method": "GET",
+      "resource_type": "script"
+    },
+    {
+      "url": "https://jssdk.juneworewyjyna.com/c27f5a3457134e03a160481051e0479a.js",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=1",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://cdn.fozekikikiminu.com/dsp-pixels",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/479494bb0d3d6b3f4af7d99d9621c7c5.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&sid=6bd2c065-d7ce-400f-8b3c-82b9be89d3f2&kw=creampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic",
+      "status": 200,
+      "resource_type": "script",
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "method": "GET",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=1",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/api/live/home-source",
+      "status": 200,
+      "resource_type": "fetch",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://javtiful.com/video/115269/playback",
+      "method": "POST",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/video/115269/playback",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "application/json; charset=utf-8"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "method": "GET",
+      "resource_type": "xhr"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "method": "GET",
+      "resource_type": "image"
+    },
+    {
+      "url": "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "status": 200,
+      "resource_type": "image",
+      "content_type": "image/jpeg"
+    },
+    {
+      "url": "https://javtiful.com/media/video/115269/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://cdn.plyr.io/3.7.8/plyr.svg",
+      "status": 200,
+      "resource_type": "xhr",
+      "content_type": "image/svg+xml"
+    },
+    {
+      "url": "https://javtiful.com/media/video/115269/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+      "status": 302,
+      "resource_type": "media",
+      "content_type": "text/html; charset=UTF-8"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "method": "GET",
+      "resource_type": "media"
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "resource_type": "media",
+      "content_type": "video/mp4"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5546",
+      "method": "POST",
+      "resource_type": "fetch"
+    },
+    {
+      "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5546",
+      "status": 204,
+      "resource_type": "fetch",
+      "content_type": "text/plain"
+    }
+  ],
+  "failed_requests": [],
+  "playback_api_responses": [
+    {
+      "url": "https://javtiful.com/video/115269/playback",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "json_keys": [
+        "defaultQuality",
+        "sources",
+        "success"
+      ],
+      "sources": [
+        {
+          "src": "/media/video/115269/720p?expires=%5BREDACTED%5D&signature=%5BREDACTED%5D",
+          "type": "video/mp4",
+          "fallbackSrc": null,
+          "size": 720,
+          "label": "720p"
+        }
+      ]
+    },
+    {
+      "url": "https://8d5fff6dafa213ef6b9210db39c5f56e.r2.cloudflarestorage.com/apac2/2026/10/VID-0F619C1B/VID-0F619C1B_720p.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=33bf6a0344f1da7a92b58edb71696011%2F20261031%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20261031T150302Z&X-Amz-Expires=3600&X-Amz-Signature=ea45200e6b61fba0cf24ad01f1e7a16b118d4eb9142a50f3a43f4adb64d27168&X-Amz-SignedHeaders=host&response-content-disposition=inline%3B+filename%3D%22playback.svg%22%3B+filename%2A%3DUTF-8%27%27playback.svg&response-content-type=video%2Fmp4",
+      "status": 206,
+      "content_type": "video/mp4"
+    }
+  ],
+  "video_elements": {
+    "video_count": 1,
+    "videos": [
+      {
+        "current_src": "https://javtiful.com/media/video/115269/720p?expires=1793462582&signature=0fdc7d4b32314884a3764509f68d6e39bfc47390fb3176f96515e7aac2bb318b",
+        "src_attribute": "https://javtiful.com/media/video/115269/720p?expires=1793462582&signature=0fdc7d4b32314884a3764509f68d6e39bfc47390fb3176f96515e7aac2bb318b",
+        "ready_state": 4,
+        "network_state": 1,
+        "paused": false,
+        "duration": 7654.113133,
+        "error_code": null,
+        "error_message": null,
+        "buffered_ranges": 1
+      }
+    ],
+    "iframes": [
+      {
+        "url": "https://loud-hall.com/aEW.ZFyGPH2-QJ9KMLTMc_5OMPzQQR1-OTDUkV3WO_TYcZxaMbD-Md4eMfTgY_yiOjCkZlp-cn2o1p1qb_HsRtpudvG-FxnyPzTAB_jCNDjEUF4-YHWIMJ1KM_jMZNmOMPT-JRmSYTjUg_3WZXDYRZi-ZbGcFdmeY_mgZhmiNjT-ElwmNnToA_3qJrms1t1-bvHwRxpyd_GAFBnCYDm-FFuGbHmIV_yKPLXMRNy-dPWQURmSc_nUJVpWZXD-0ZwaYbzcY_1eOfGgFhj-NjTkIl2mZ_joEpyqZrm-It4uNv2wQ_0yYzmARBh-ZDmEJFmGZ_jIUJxKMLD-UNwONPyQZ_6SbT2U5Vl-aXWYQZ9aN_TcYdxeNfT-Qh3iMjAk?iframeId=bvqgjf"
+      }
+    ],
+    "player_scripts": [
+      {
+        "url": "https://www.googletagmanager.com/gtag/js?id=G-3NDZG9WXYS"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c27f5a3457134e03a160481051e0479a.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy.js"
+      },
+      {
+        "url": "https://jssdk.fozekikikiminu.com/c497990c56bd440bae5b64d9ec986d9f.js"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/bWxCba7.js"
+      },
+      {
+        "url": "https://cdn2.tapioni.com/adgpt.js"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/on.js"
+      },
+      {
+        "url": "https://gigglegrowlworrisome.com/bn.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://loud-hall.com/bxX/Vgskd.GDl/0kYpWVcA/ReKmr9cuxZBUjlKkbPzTPU/2AM/T/U/0xN_jDIxt_NCTdY/xBNcTwQ/2dMKwx"
+      },
+      {
+        "url": "https://cdn.fozekikikiminu.com/sdk/v1/dd.ms.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/bootstrap/js/bootstrap.bundle.min.js?v=3e550&rev=1777289810"
+      },
+      {
+        "url": "https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"
+      },
+      {
+        "url": "https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/common.js?v=3e550&rev=1791866330"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/layout.js?v=3e550&rev=1792917204"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/toast.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/home-live.js?v=3e550&rev=1791986551"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-player.js?v=3e550&rev=1793249524"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch.js?v=3e550&rev=1792580156"
+      },
+      {
+        "url": "https://javtiful.com/assets/front/js/watch-ui.js?v=3e550&rev=1791519628"
+      },
+      {
+        "url": "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&sid=6bd2c065-d7ce-400f-8b3c-82b9be89d3f2&kw=creampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic"
+      },
+      {
+        "url": "https://janitorprecisiontrio.com/profile.min.js"
+      }
+    ],
+    "media_resource_entries": [
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za208zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=1&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=page_view&_fv=2&_nsi=1&_ss=2&_c=1&_ee=1&tfd=540",
+      "https://javtiful.com/assets/front/media/video-thumb-placeholder.svg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/18/ad8294f8cd92123bd4d66c6f3f32fc42.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/02/000153c5a03c478b5b1e3096698d54e3.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/02/01/479494bb0d3d6b3f4af7d99d9621c7c5.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/01/27/ce2715578e391936f92ed3f39859c4fa.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/ffffc151ce779a514d12a5c63db9cb0b.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2023/11/03/53e6f087a5b1abdaf6900aabde80b18f.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/05/01/c34fd42508fc812350ebc4b312ef607e.jpg",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/29/248b4c750dafff36872045b17f789049.jpg",
+      "https://ccsq.cogninotow.site/api/users/482544?host=javtiful.com&ev=238&wh=900&ww=1365&uuid=&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&sid=6bd2c065-d7ce-400f-8b3c-82b9be89d3f2&kw=creampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic&url=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic",
+      "https://fozekikikiminu.com/do2/c27f5a3457134e03a160481051e0479a/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=1",
+      "https://fozekikikiminu.com/do2/yDUfP6FP8MXwnrge9EWwaCE1VXj8v5hy/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "https://fozekikikiminu.com/do2/c497990c56bd440bae5b64d9ec986d9f/master?param3=ms.js&xu=515a24a96acb0c01&w=1365&h=900&tz=0&adb=0&keywords=Watch+MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+with+Shiiba+Mikuru+for+free+at+Javtiful%2Ccreampie%2Csolowork%2Cblowjob%2Cnasty%2Chardcore%2CShiiba+Mikuru%2CMOODYZ%2CReducing+Mosaic%2CMIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful%2Cmiab%2C682%2Creducing%2Cmosaic&count=2",
+      "https://javtiful.com/api/live/home-source",
+      "https://javtiful.com/video/115269/playback",
+      "https://javtiful.com/uploads/uploads/videos/thumbs/2026/10/31/19349dd5ce2d41601753d8d21d7aee98.jpg",
+      "https://www.google-analytics.com/g/collect?v=2&tid=G-3NDZG9WXYS&gtm=45je6as1v877750602za200zd877750602xf1&_p=1793458979301&gcd=13l3l3l3l1l1&npa=0&dma=0&_eu=AEAAAAQ&ae=a&cid=558239598.1793458979&frm=0&ngs=1&pscdl=noapi&rcb=13&sr=1365x900&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uam=&uamb=0&uap=Linux&uapv=&uaw=0&ul=en-us&_s=2&tag_exp=115616986~115938465~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034~123691370&sid=1793458979&sct=1&seg=0&dl=https%3A%2F%2Fjavtiful.com%2Fvideo%2F115269%2Fmiab-682-reducing-mosaic&dt=MIAB-682+The+Ultimate+Beauty+Who+Gets+Raped+By+Her+Husband%27s+Boss+%7C+Javtiful&en=scroll&epn.percent_scrolled=90&_et=5&tfd=5546"
+    ]
+  },
+  "page_errors": [],
+  "notes": [
+    "All HTTP(S) network links are recorded regardless of domain, extension, or resource type; media classification remains separate.",
+    "Full media URLs are included in this private test artifact for immediate debugging.",
+    "Redacted URLs are also included for safe sharing; do not commit this artifact to the repository.",
+    "No playback ticket is deliberately copied into the report.",
+    "An empty media list means playback was not triggered or the stream was delivered through an unclassified mechanism."
+  ]
+}
