@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from pathlib import Path
 import os
 import shutil
+from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from tmjdlc.models.stream import StreamResult
@@ -62,7 +62,7 @@ class YtDlpStreamDownloader:
         filename: str,
         *,
         progress_hook: Callable[[dict[str, Any]], None] | None = None,
-        concurrent_fragments: int = 4,
+        concurrent_fragments: int = 8,
     ) -> Path:
         try:
             import yt_dlp
