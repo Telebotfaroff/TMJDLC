@@ -4,7 +4,7 @@
 
 ## Run the Javtiful Telegram bot in Google Colab
 
-Open the [TMJDLC Telegram Bot notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_BOT_TOKEN`, `TG_ADMIN_IDS`, and the Neon `DATABASE_URL` to Colab Secrets, then run the cells from top to bottom. The notebook pulls the latest `main` branch, installs TMJDLC/Chromium/FFmpeg, checks the Neon queue connection, and starts the bot using Telegram Bot API long polling for updates and Bot API video/photo uploads with the configured worker count.
+Open the [TMJDLC Telegram Bot notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_BOT_TOKEN`, `TG_API_ID`, `TG_API_HASH`, `TG_ADMIN_IDS`, and the Neon `DATABASE_URL` to Colab Secrets, then run the cells from top to bottom. The notebook pulls the latest `main` branch, installs TMJDLC/Chromium/FFmpeg, checks the Neon queue connection, and starts the bot using Pyrogram MTProto for all Telegram updates, commands, callbacks, messages, and large video/photo uploads.
 
 Send a Javtiful `/channel/SLUG` URL to the bot to inspect its videos and pages, select all pages or a subset, and queue the selected videos at 720p. Use `/setup` once to save your Telegram video and screenshot destination channel IDs in Neon. Keep the Colab runtime running while jobs are processing; downloaded media is stored on its temporary local disk.
 
@@ -41,7 +41,7 @@ For Google Colab, use top-level `await` instead of `asyncio.run()`.
 - Primary provider: MissAV async API
 - Media download: provider's native HLS downloader
 - Post-download validation and screenshots: FFprobe + FFmpeg
-- Telegram integration: Telegram Bot API long polling and Bot API media uploads
+- Telegram integration: Pyrogram MTProto for updates and media uploads
 - Temporary media storage: Colab local disk
 - Persistent database: Neon PostgreSQL
 - Scraping order: provider API first; generic HTML inspection only for diagnostics
