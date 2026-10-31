@@ -100,10 +100,10 @@ async def process_job(job: dict, identity: str) -> None:
         image_chat = await asyncio.to_thread(queue.get_setting, "image_channel")
         if not upload_chat:
             raise RuntimeError("Set video destination first: /setupload CHANNEL_ID")
-        await app.send_video(int(upload_chat), str(path), caption=vid, supports_streaming=True)
         shots = await asyncio.to_thread(
             make_screenshots, path, WORK_DIR / "screenshots" / vid
         )
+        await app.send_video(int(upload_chat), str(path), caption=vid, supports_streaming=True)
         if image_chat:
             for index, shot in enumerate(shots, 1):
                 await app.send_photo(
