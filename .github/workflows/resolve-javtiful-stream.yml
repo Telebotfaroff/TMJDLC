@@ -44,10 +44,10 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Playwright
+      - name: Install TMJDLC and browser
         run: |
           python -m pip install --upgrade pip
-          pip install playwright
+          python -m pip install -e .
           python -m playwright install --with-deps chromium
 
       - name: Resolve stream using provider module
