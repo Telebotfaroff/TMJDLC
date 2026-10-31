@@ -1023,8 +1023,8 @@
     "video_count": 1,
     "videos": [
       {
-        "current_src": "https://javtiful.com/media/video/115269/720p?expires=1793462582&signature=0fdc7d4b32314884a3764509f68d6e39bfc47390fb3176f96515e7aac2bb318b",
-        "src_attribute": "https://javtiful.com/media/video/115269/720p?expires=1793462582&signature=0fdc7d4b32314884a3764509f68d6e39bfc47390fb3176f96515e7aac2bb318b",
+        "current_src": "[REDACTED]",
+        "src_attribute": "[REDACTED]",
         "ready_state": 4,
         "network_state": 1,
         "paused": false,
