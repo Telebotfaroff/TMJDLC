@@ -60,6 +60,8 @@ def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
 
     requests_seen: dict[str, dict] = {}
+    network_events: list[dict] = []
+    failed_requests: list[dict] = []
     api_responses: list[dict] = []
     page_errors: list[str] = []
     click_attempts: list[str] = []
@@ -83,6 +85,10 @@ def main() -> int:
 
         def on_request(request) -> None:
             url = request.url
+            kind = request.resource_type
+            path_hint = url.lower()
+            if kind in {"xhr", "fetch", "media"} or any(word in path_hint for word in ("playback", "playlist", "stream", "source", "video", "master")):
+                network_events.append({"url": redact_url(url), "method": request.method, "resource_type": kind})
             if is_media_url(url):
                 requests_seen[url] = {
                     "url": redact_url(url),
@@ -95,6 +101,8 @@ def main() -> int:
         def on_response(response) -> None:
             url = response.url
             content_type = response.headers.get("content-type", "")
+            if response.request.resource_type in {"xhr", "fetch", "media"} or any(word in url.lower() for word in ("playback", "playlist", "stream", "source", "video", "master")):
+                network_events.append({"url": redact_url(url), "status": response.status, "resource_type": response.request.resource_type, "content_type": content_type})
             if is_media_url(url, content_type):
                 item = requests_seen.setdefault(
                     url,
@@ -147,6 +155,7 @@ def main() -> int:
 
         page.on("request", on_request)
         page.on("response", on_response)
+        page.on("requestfailed", lambda request: failed_requests.append({"url": redact_url(request.url), "resource_type": request.resource_type, "failure": (request.failure or "")[:300]}))
         page.on("pageerror", lambda error: page_errors.append(str(error)[:500]))
 
         navigation_error = None
@@ -208,6 +217,7 @@ def main() -> int:
             page_state = page.evaluate(
                 """() => {
                     const videos = [...document.querySelectorAll('video')];
+                    const resources = performance.getEntriesByType('resource').map(e => e.name);
                     return {
                         video_count: videos.length,
                         videos: videos.map(v => ({
@@ -216,8 +226,14 @@ def main() -> int:
                             ready_state: v.readyState,
                             network_state: v.networkState,
                             paused: v.paused,
-                            duration: Number.isFinite(v.duration) ? v.duration : null
-                        }))
+                            duration: Number.isFinite(v.duration) ? v.duration : null,
+                            error_code: v.error ? v.error.code : null,
+                            error_message: v.error ? v.error.message : null,
+                            buffered_ranges: v.buffered ? v.buffered.length : 0
+                        })),
+                        iframes: [...document.querySelectorAll('iframe')].map(f => f.src || f.getAttribute('src')).filter(Boolean),
+                        player_scripts: [...document.scripts].map(s => s.src).filter(Boolean),
+                        media_resource_entries: resources.filter(u => /playback|playlist|stream|source|video|master|\.m3u8|\.mpd|\.mp4|\.m4v|\.webm|\.m4s|\.ts/i.test(u)).slice(-100)
                     };
                 }"""
             )
@@ -225,6 +241,9 @@ def main() -> int:
             pass
 
         final_url = page.url
+        page_state["iframes"] = [{"url": redact_url(u)} for u in page_state.get("iframes", [])]
+        page_state["player_scripts"] = [{"url": redact_url(u)} for u in page_state.get("player_scripts", [])]
+        page_state["media_resource_entries"] = [redact_url(u) for u in page_state.get("media_resource_entries", [])]
         context.close()
         browser.close()
 
@@ -247,6 +266,8 @@ def main() -> int:
         "capture_seconds_after_play": args.capture_seconds,
         "media_request_count": len(media),
         "media_requests": media,
+        "network_events": network_events[-300:],
+        "failed_requests": failed_requests[-100:],
         "playback_api_responses": api_responses,
         "video_elements": page_state,
         "page_errors": page_errors[:20],
@@ -268,6 +289,10 @@ def main() -> int:
                 "navigation_error": navigation_error,
                 "play_click_attempts": click_attempts,
                 "media_request_count": len(media),
+                "network_event_count": len(network_events),
+                "failed_request_count": len(failed_requests),
+                "video_count": page_state.get("video_count", 0),
+                "iframe_count": len(page_state.get("iframes", [])),
                 "media_requests": [
                     {
                         "redacted_url": item["redacted_url"],
