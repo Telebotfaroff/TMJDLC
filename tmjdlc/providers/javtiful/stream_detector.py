@@ -25,7 +25,7 @@ class JavtifulStreamDetector:
         self,
         *,
         timeout_ms: int = 45_000,
-        capture_ms: int = 30_000,
+        capture_ms: int = 15_000,
         headless: bool = True,
         user_agent: str | None = None,
         progress_callback: Callable[[str], None] | None = None,
