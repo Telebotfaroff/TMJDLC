@@ -35,6 +35,8 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
+UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "4"))))
+DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
@@ -78,14 +80,21 @@ def probe_video(path: Path) -> dict:
     }
 
 
-def create_video_thumbnail(path: Path, video_id: str) -> Path | None:
+def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -> Path | None:
     """Create a compact JPEG thumbnail suitable for Telegram video uploads."""
     target = path.parent / f"javtiful-{video_id}-thumb.jpg"
+    # Preserve aspect ratio and cap the longest edge at 320 px.
+    if width > 0 and height > 0:
+        ratio = min(320 / width, 320 / height, 1.0)
+        thumb_width = max(2, int(width * ratio) // 2 * 2)
+        thumb_height = max(2, int(height * ratio) // 2 * 2)
+    else:
+        thumb_width = thumb_height = 320
     try:
         subprocess.run(
             ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", "1",
              "-i", str(path), "-frames:v", "1",
-             "-vf", "scale=320:320:force_original_aspect_ratio=decrease",
+             "-vf", f"scale={thumb_width}:{thumb_height}",
              "-q:v", "5", "-y", str(target)],
             capture_output=True, check=True,
         )
@@ -116,6 +125,7 @@ app = Client(
     api_hash=API_HASH,
     bot_token=TOKEN,
     workers=16,
+    max_concurrent_transmissions=UPLOAD_WORKERS,
     sleep_threshold=60,
 )
 
@@ -269,6 +279,7 @@ async def process_job(job: dict, identity: str):
                 lambda: JavtifulProvider(max_attempts=2).download(
                     url, out, f"javtiful-{vid}", quality=job.get("quality"),
                     progress_hook=progress_hook,
+                    concurrent_fragments=DOWNLOAD_FRAGMENTS,
                 )[0]
             )
             if not path.is_file() or path.stat().st_size == 0:
@@ -332,7 +343,9 @@ async def process_job(job: dict, identity: str):
                     ))
                     last_upload_notice.update(percent=percent, time=now, bytes=current)
 
-            thumbnail = await asyncio.to_thread(create_video_thumbnail, path, vid)
+            thumbnail = await asyncio.to_thread(
+                create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
+            )
             sent = await app.send_video(
                 chat_id=int(video_chat), video=str(path), caption=title,
                 duration=media_info["duration"], width=media_info["width"],
