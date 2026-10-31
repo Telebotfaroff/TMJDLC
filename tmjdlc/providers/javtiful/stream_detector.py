@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-import asyncio
-import time
+import json
+import re
+import subprocess
+import sys
+import tempfile
 from collections.abc import Callable
-from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 from typing import Any
-from urllib.parse import urljoin, urlsplit
-
-from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import sync_playwright
+from urllib.parse import urlsplit
 
 from tmjdlc.models.stream import StreamResult
 
@@ -17,18 +17,6 @@ MEDIA_SUFFIXES = (".m3u8", ".mpd", ".mp4", ".m4v", ".webm")
 
 class StreamDetectionError(RuntimeError):
     """Raised when a playable media source cannot be resolved."""
-
-
-def _is_media_url(url: str, content_type: str = "") -> bool:
-    path = urlsplit(url).path.lower()
-    mime = content_type.lower().split(";", 1)[0].strip()
-    return path.endswith(MEDIA_SUFFIXES) or mime in {
-        "application/vnd.apple.mpegurl",
-        "application/x-mpegurl",
-        "application/dash+xml",
-        "video/mp4",
-        "video/webm",
-    }
 
 
 class JavtifulStreamDetector:
@@ -114,330 +102,133 @@ class JavtifulStreamDetector:
         *,
         preferred_quality: int | None = None,
     ) -> StreamResult:
-        # Jupyter/Colab keeps an asyncio event loop running in the notebook thread.
-        # Playwright's synchronous API cannot run there, so transparently move the
-        # complete synchronous detection operation to a worker thread when needed.
-        try:
-            asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-        else:
-            with ThreadPoolExecutor(max_workers=1) as executor:
-                return executor.submit(
-                    self.detect,
-                    post_url,
-                    preferred_quality=preferred_quality,
-                ).result()
+        """Use the exact CLI detector used by the GitHub Actions workflow.
 
+        The browser interaction, network capture and media classification live in
+        scripts/detect_stream.py. Colab and Actions therefore share one detector.
+        """
         parsed = urlsplit(post_url)
         if parsed.scheme not in {"http", "https"} or not parsed.hostname:
             raise ValueError("post_url must be an absolute HTTP or HTTPS URL")
         if parsed.hostname.lower() not in {"javtiful.com", "www.javtiful.com"}:
             raise ValueError("JavtifulStreamDetector only accepts javtiful.com post URLs")
 
-        playback_sources: list[dict[str, Any]] = []
-        network_sources: dict[str, str] = {}
-        api_events: list[dict[str, Any]] = []
-        failed_requests: list[dict[str, str]] = []
-        duration: float | None = None
-        navigation_error: str | None = None
-        page_errors: list[str] = []
-        page_diagnostics: dict[str, Any] = {}
-        final_url = post_url
-        request_headers: dict[str, str] = {
-            "Referer": post_url,
-            "User-Agent": self.user_agent,
-        }
-        browser_cookies: list[dict[str, Any]] = []
-
-        self._progress("Starting Playwright...")
-        with sync_playwright() as playwright:
-            self._progress("Launching Chromium...")
-            browser = playwright.chromium.launch(
-                headless=self.headless,
-                args=["--autoplay-policy=no-user-gesture-required"],
+        repo_root = Path(__file__).resolve().parents[3]
+        detector_script = repo_root / "scripts" / "detect_stream.py"
+        if not detector_script.is_file():
+            raise StreamDetectionError(
+                f"Shared Actions detector was not found at {detector_script}."
             )
-            try:
-                context = browser.new_context(
-                    viewport={"width": 1365, "height": 900},
-                    user_agent=self.user_agent,
-                )
-                page = context.new_page()
-                page.set_default_timeout(self.timeout_ms)
 
-                def collect_source_lists(value: Any) -> None:
-                    """Find source arrays even when the API wraps them in data/result objects."""
-                    if isinstance(value, dict):
-                        sources = value.get("sources")
-                        if isinstance(sources, list):
-                            playback_sources.extend(
-                                item for item in sources
-                                if isinstance(item, dict)
-                                and isinstance(item.get("src"), str)
-                            )
-                        for child in value.values():
-                            if isinstance(child, (dict, list)):
-                                collect_source_lists(child)
-                    elif isinstance(value, list):
-                        for child in value:
-                            if isinstance(child, (dict, list)):
-                                collect_source_lists(child)
-
-                def on_request(request: Any) -> None:
-                    if request.resource_type in {"xhr", "fetch"}:
-                        api_events.append({
-                            "phase": "request",
-                            "method": request.method,
-                            "resource_type": request.resource_type,
-                            "url": self._safe_url(request.url),
-                        })
-
-                def on_request_failed(request: Any) -> None:
-                    failed_requests.append({
-                        "resource_type": request.resource_type,
-                        "url": self._safe_url(request.url),
-                        "failure": str(request.failure or "unknown")[:200],
-                    })
-
-                def on_response(response: Any) -> None:
-                    url = response.url
-                    content_type = response.headers.get("content-type", "")
-                    if _is_media_url(url, content_type):
-                        network_sources[url] = content_type
-                    if response.request.resource_type in {"xhr", "fetch"}:
-                        api_events.append({
-                            "phase": "response",
-                            "method": response.request.method,
-                            "resource_type": response.request.resource_type,
-                            "url": self._safe_url(url),
-                            "status": response.status,
-                            "content_type": content_type[:100],
-                        })
-                    if "json" in content_type.lower():
-                        try:
-                            collect_source_lists(response.json())
-                        except Exception:
-                            pass
-
-                page.on("request", on_request)
-                page.on("requestfailed", on_request_failed)
-                page.on("response", on_response)
-                page.on("pageerror", lambda error: page_errors.append(str(error)[:300]))
-                page.on("console", lambda message: page_errors.append(
-                    f"console.{message.type}: {message.text[:250]}"
-                ) if message.type == "error" else None)
-
-                try:
-                    self._progress("Opening post page...")
-                    page.goto(
-                        post_url,
-                        wait_until="domcontentloaded",
-                        timeout=self.timeout_ms,
-                    )
-                    page.wait_for_timeout(2_500)
-                    self._progress("Post page loaded; player scripts initialized.")
-                except PlaywrightTimeoutError as exc:
-                    navigation_error = type(exc).__name__
-
-                self._progress("Starting the video player...")
-                for selector in (
-                    ".plyr__control--overlaid",
-                    "button[aria-label*='play' i]",
-                    "button[title*='play' i]",
-                    "#front-player",
-                    "video",
-                ):
-                    try:
-                        control = page.locator(selector).first
-                        if control.count() and control.is_visible():
-                            control.click(
-                                timeout=2_500,
-                                force=selector in {"#front-player", "video"},
-                            )
-                            self._progress(f"Clicked player control: {selector}")
-                            page.wait_for_timeout(1_500)
-                            break
-                    except Exception:
-                        continue
-
-                try:
-                    page.evaluate(
-                        """async () => {
-                            const video = document.querySelector('#front-player video, video');
-                            if (video) {
-                                video.muted = true;
-                                try {
-                                    const pending = video.play();
-                                    if (pending && pending.catch) pending.catch(() => {});
-                                } catch (_) {}
-                            }
-                        }"""
-                    )
-                except Exception:
-                    pass
-
-                self._progress(
-                    f"Capturing playback requests for {max(1_000, self.capture_ms) // 1000}s..."
-                )
-                capture_deadline = time.monotonic() + max(1_000, self.capture_ms) / 1000
-                while time.monotonic() < capture_deadline and not playback_sources:
-                    remaining_ms = int((capture_deadline - time.monotonic()) * 1000)
-                    page.wait_for_timeout(max(100, min(250, remaining_ms)))
-                self._progress("Playback capture window finished; inspecting sources...")
-                try:
-                    state = page.evaluate(
-                        """() => {
-                            const video = document.querySelector('#front-player video, video');
-                            return video && Number.isFinite(video.duration)
-                                ? video.duration : null;
-                        }"""
-                    )
-                    duration = float(state) if state is not None else None
-                except Exception:
-                    duration = None
-
-                final_url = page.url
-                try:
-                    page_diagnostics = page.evaluate(
-                        """() => ({
-                            title: document.title || null,
-                            body_text: (document.body?.innerText || '').slice(0, 700),
-                            video_elements: [...document.querySelectorAll('video')].map(v => ({
-                                src: v.getAttribute('src'),
-                                current_src: v.currentSrc || null,
-                                ready_state: v.readyState,
-                                network_state: v.networkState,
-                                paused: v.paused,
-                                duration: Number.isFinite(v.duration) ? v.duration : null,
-                                error_code: v.error?.code ?? null
-                            })),
-                            iframes: [...document.querySelectorAll('iframe')].map(f => f.src || f.getAttribute('src')).filter(Boolean).slice(0, 20),
-                            player_scripts: [...document.scripts].map(s => s.src).filter(Boolean).slice(0, 40),
-                            resource_hints: performance.getEntriesByType('resource')
-                                .map(e => e.name)
-                                .filter(u => /api|playback|player|video|stream|source|playlist|\.m3u8|\.mpd|\.mp4/i.test(u))
-                                .slice(-80)
-                        })"""
-                    )
-                except Exception as exc:
-                    page_diagnostics = {"diagnostic_error": type(exc).__name__}
-                browser_cookies = context.cookies()
-                context.close()
-            finally:
-                browser.close()
-
-        self._progress(
-            f"Captured {len(playback_sources)} playback source entries and "
-            f"{len(network_sources)} media network candidates."
-        )
-        source = self._choose_source(playback_sources, preferred_quality, final_url)
-        if source is not None:
-            src_parts = urlsplit(source["src"])
-            fallback_value = source.get("fallbackSrc")
-            fallback_parts = urlsplit(fallback_value) if isinstance(fallback_value, str) else None
-            source_path_name = src_parts.path.rsplit("/", 1)[-1]
-            source_path_suffix = (
-                source_path_name.rsplit(".", 1)[-1] if "." in source_path_name else "none"
-            )
-            self._progress(
-                "Selected playback source metadata: "
-                f"keys={sorted(source.keys())}, "
-                f"host={src_parts.hostname or 'unknown'}, "
-                f"path_suffix={source_path_suffix}, "
-                f"type={source.get('type')!r}, size={source.get('size')!r}, "
-                f"label={source.get('label')!r}, "
-                f"fallback_present={bool(fallback_value)}, "
-                f"fallback_host={fallback_parts.hostname if fallback_parts else 'none'}"
-            )
-        detected_from = "playback_api"
-        if source is None:
-            candidates = [
-                url for url in network_sources
-                if urlsplit(url).path.lower().endswith(MEDIA_SUFFIXES)
+        self._progress("Using the same scripts/detect_stream.py detector as GitHub Actions.")
+        with tempfile.TemporaryDirectory(prefix="tmjdlc-javtiful-") as temp_dir:
+            temp_root = Path(temp_dir)
+            report_dir = temp_root / "report"
+            resolved_path = temp_root / "resolved-stream.json"
+            command = [
+                sys.executable,
+                str(detector_script),
+                "--url",
+                post_url,
+                "--output",
+                str(report_dir),
+                "--timeout",
+                str(max(1, self.timeout_ms // 1000)),
+                "--capture-seconds",
+                str(max(1, self.capture_ms // 1000)),
+                "--resolved-output",
+                str(resolved_path),
             ]
-            if not candidates:
-                diagnostic_summary = {
-                    "page": {
-                        "title": page_diagnostics.get("title"),
-                        "body_text": page_diagnostics.get("body_text"),
-                        "video_elements": page_diagnostics.get("video_elements", []),
-                        "iframes": [
-                            self._safe_url(item) for item in page_diagnostics.get("iframes", [])
-                        ],
-                        "player_scripts": [
-                            self._safe_url(item) for item in page_diagnostics.get("player_scripts", [])
-                        ],
-                        "resource_hints": [
-                            self._safe_url(item) for item in page_diagnostics.get("resource_hints", [])
-                        ],
-                    },
-                    "api_events": api_events[-35:],
-                    "failed_requests": failed_requests[-15:],
-                    "page_errors": page_errors[-10:],
-                    "navigation_error": navigation_error,
-                }
-                self._progress(
-                    "No stream found. Diagnostic summary: "
-                    + str(diagnostic_summary)[:5000]
+            if preferred_quality is not None:
+                command.extend(["--quality", str(preferred_quality)])
+
+            try:
+                completed = subprocess.run(
+                    command,
+                    cwd=repo_root,
+                    capture_output=True,
+                    text=True,
+                    timeout=max(
+                        60,
+                        self.timeout_ms / 1000 + self.capture_ms / 1000 + 45,
+                    ),
+                    check=False,
                 )
+            except subprocess.TimeoutExpired as exc:
                 raise StreamDetectionError(
-                    f"No HLS, DASH or direct media source detected for {self._safe_url(final_url)}. "
-                    f"Diagnostics: {str(diagnostic_summary)[:5000]}"
+                    "The shared Actions detector exceeded its browser timeout."
+                ) from exc
+
+            if completed.stdout:
+                for line in completed.stdout.splitlines():
+                    self._progress(f"[Actions detector] {line[:1200]}")
+            if completed.returncode != 0 or not resolved_path.is_file():
+                details = (completed.stderr or completed.stdout or "").strip()
+                details = details[-5000:] if details else "No detector diagnostics were emitted."
+                raise StreamDetectionError(
+                    f"The shared Actions detector did not resolve a media URL "
+                    f"(exit={completed.returncode}). {details}"
                 )
-            stream_url = candidates[0]
-            fallback_url = None
-            quality = preferred_quality
-            label = None
-            mime = network_sources[stream_url]
-            detected_from = "network"
-        else:
-            stream_url = source["src"]
-            fallback_url = source.get("fallbackSrc")
-            quality = source.get("size")
-            label = source.get("label")
-            mime = source.get("type", "")
 
-        stream_host = (urlsplit(stream_url).hostname or "").lower()
-        matching_cookies = []
-        for cookie in browser_cookies:
-            cookie_domain = str(cookie.get("domain", "")).lstrip(".").lower()
-            if stream_host and (
-                stream_host == cookie_domain or stream_host.endswith("." + cookie_domain)
-            ):
-                matching_cookies.append(f"{cookie['name']}={cookie['value']}")
-        if matching_cookies:
-            request_headers["Cookie"] = "; ".join(matching_cookies)
+            try:
+                payload = json.loads(resolved_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                raise StreamDetectionError(
+                    "The shared Actions detector produced an invalid private stream result."
+                ) from exc
 
+        stream_url = payload.get("url")
+        if not isinstance(stream_url, str) or urlsplit(stream_url).scheme not in {"http", "https"}:
+            raise StreamDetectionError(
+                "The shared Actions detector result did not contain a valid HTTP(S) media URL."
+            )
+
+        content_type = str(payload.get("content_type") or "").lower()
         path = urlsplit(stream_url).path.lower()
-        if path.endswith(".m3u8") or "mpegurl" in str(mime).lower():
+        if path.endswith(".m3u8") or "mpegurl" in content_type:
             media_format = "hls"
-        elif path.endswith(".mpd") or "dash" in str(mime).lower():
+        elif path.endswith(".mpd") or "dash" in content_type:
             media_format = "dash"
-        elif path.endswith((".mp4", ".m4v")) or "video/mp4" in str(mime).lower():
+        elif path.endswith((".mp4", ".m4v")) or "video/mp4" in content_type:
+            media_format = "mp4"
+        elif path.endswith(".webm") or "video/webm" in content_type:
             media_format = "mp4"
         else:
-            media_format = "unknown"
-
-        try:
-            numeric_quality = int(quality) if quality is not None else None
-        except (TypeError, ValueError):
-            digits = "".join(
-                character for character in str(quality or "") if character.isdigit()
+            raise StreamDetectionError(
+                f"Unsupported media type returned by the shared detector: {content_type or path}."
             )
-            numeric_quality = int(digits) if digits else None
+
+        quality_value = payload.get("quality")
+        try:
+            numeric_quality = int(quality_value) if quality_value is not None else None
+        except (TypeError, ValueError):
+            numeric_quality = None
+        label = f"{numeric_quality}p" if numeric_quality else None
+
+        user_agent = str(payload.get("user_agent") or self.user_agent)
+        headers = {
+            "Referer": post_url,
+            "User-Agent": user_agent,
+        }
+        duration = payload.get("duration_seconds")
+        try:
+            duration_value = float(duration) if duration is not None else None
+        except (TypeError, ValueError):
+            duration_value = None
 
         result = StreamResult(
-            post_url=final_url,
+            post_url=post_url,
             stream_url=stream_url,
             format=media_format,
             quality=numeric_quality,
-            label=str(label) if label is not None else None,
-            fallback_url=fallback_url if isinstance(fallback_url, str) else None,
-            duration_seconds=duration,
-            headers=request_headers,
-            detected_from=detected_from,
+            label=label,
+            fallback_url=None,
+            duration_seconds=duration_value,
+            headers=headers,
+            detected_from="actions_workflow",
         )
         self._progress(
-            f"Stream resolved: {media_format}, quality={quality or 'unknown'}."
+            f"Shared Actions detector resolved {media_format} "
+            f"({label or 'quality unknown'}), HTTP {payload.get('status') or 'unknown'}."
         )
         return result
