@@ -1,4 +1,4 @@
-"""Compatibility entrypoint: run the full Telegram Bot API polling implementation."""
+"""Compatibility entrypoint: run the Pyrogram MTProto implementation."""
 
 from tmjdlc.polling_bot import main
 
