@@ -26,7 +26,7 @@ class FakeDownloader:
         self.calls = []
         self.fail_first = fail_first
 
-    def download(self, stream, output_dir, filename, *, progress_hook=None):
+    def download(self, stream, output_dir, filename, *, progress_hook=None, concurrent_fragments=4):
         self.calls.append((stream.stream_url, filename))
         if self.fail_first and len(self.calls) == 1:
             raise RuntimeError("expired")
