@@ -37,6 +37,7 @@ WORK_DIR.mkdir(parents=True, exist_ok=True)
 app = Client("tmjdlc_admin_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 worker_prefix = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 worker_tasks: list[asyncio.Task] = []
+setup_states: dict[int, str] = {}
 
 
 def get_video_id(url: str) -> str:
@@ -166,10 +167,93 @@ async def help_handler(_, message: Message):
         "/queue — show counts and recent jobs\n"
         "/cancel JOB_ID — cancel a queued job\n"
         "/retry JOB_ID — retry a failed job\n"
+        "/setup — guided upload-channel setup\n"
         "/setupload CHANNEL_ID — video destination\n"
         "/setimages CHANNEL_ID — screenshot destination\n"
         "/settings — show configuration"
     )
+
+
+@app.on_message(filters.command("setup") & admin_filter())
+async def setup_handler(_, message: Message):
+    user_id = message.from_user.id if message.from_user else 0
+    setup_states[user_id] = "upload_channel"
+    await message.reply_text(
+        "🛠 Channel setup\\n\\n"
+        "Step 1/2 — Video upload channel\\n"
+        "Forward any post from your VIDEO channel here, or send its public @username / numeric channel ID.\\n\\n"
+        "The bot must be an administrator in the destination channel."
+    )
+
+
+@app.on_message(filters.command("cancelsetup") & admin_filter())
+async def cancel_setup_handler(_, message: Message):
+    user_id = message.from_user.id if message.from_user else 0
+    setup_states.pop(user_id, None)
+    await message.reply_text("Channel setup cancelled.")
+
+
+@app.on_message(filters.private & filters.user(list(ADMIN_IDS)) & ~filters.command(
+    ["start", "help", "setup", "cancelsetup", "setupload", "setimages", "settings",
+     "queue", "cancel", "retry", "dl", "channel"]
+))
+async def setup_input_handler(_, message: Message):
+    user_id = message.from_user.id if message.from_user else 0
+    stage = setup_states.get(user_id)
+    if not stage:
+        return
+
+    raw_value = (message.text or message.caption or "").strip()
+    if raw_value.upper() == "CANCEL":
+        setup_states.pop(user_id, None)
+        return await message.reply_text("Channel setup cancelled.")
+
+    channel_id = None
+    forwarded_chat = getattr(message, "forward_from_chat", None)
+    if forwarded_chat:
+        channel_id = forwarded_chat.id
+    elif raw_value.startswith("@"):
+        try:
+            chat = await app.get_chat(raw_value)
+            channel_id = chat.id
+        except Exception as exc:
+            return await message.reply_text(
+                f"Couldn't resolve {raw_value}: {type(exc).__name__}. Try forwarding a channel post or send its numeric ID."
+            )
+    elif raw_value.lstrip("-").isdigit():
+        channel_id = int(raw_value)
+
+    if stage == "upload_channel":
+        if channel_id is None:
+            return await message.reply_text(
+                "I couldn't detect a channel. Forward a post from the video channel, send @username, or send its numeric ID."
+            )
+        await asyncio.to_thread(queue.set_setting, "upload_channel", str(channel_id))
+        setup_states[user_id] = "image_channel"
+        return await message.reply_text(
+            f"✅ Video channel saved: {channel_id}\\n\\n"
+            "Step 2/2 — Screenshot image channel\\n"
+            "Forward any post from your IMAGE channel, or send its @username / numeric ID.\\n"
+            "Send SKIP if you want screenshots disabled, or CANCEL to stop."
+        )
+
+    if stage == "image_channel":
+        if raw_value.upper() == "SKIP":
+            await asyncio.to_thread(queue.set_setting, "image_channel", "")
+            setup_states.pop(user_id, None)
+            return await message.reply_text(
+                "✅ Setup complete!\\nVideo channel saved. Screenshot channel disabled."
+            )
+        if channel_id is None:
+            return await message.reply_text(
+                "I couldn't detect a channel. Forward a post, send @username / numeric ID, or SKIP."
+            )
+        await asyncio.to_thread(queue.set_setting, "image_channel", str(channel_id))
+        setup_states.pop(user_id, None)
+        return await message.reply_text(
+            f"✅ Setup complete!\\nVideo channel: {await asyncio.to_thread(queue.get_setting, 'upload_channel')}\\n"
+            f"Screenshot channel: {channel_id}\\n\\nBoth channel IDs are saved in Neon."
+        )
 
 
 @app.on_message(filters.command("setupload") & admin_filter())
