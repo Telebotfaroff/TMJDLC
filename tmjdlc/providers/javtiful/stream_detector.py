@@ -81,6 +81,7 @@ class JavtifulStreamDetector:
             ]
             if exact:
                 return exact[0]
+
         def source_quality(item: dict[str, Any]) -> int:
             value = item.get("size")
             try:
@@ -291,11 +292,19 @@ class JavtifulStreamDetector:
         else:
             media_format = "unknown"
 
+        try:
+            numeric_quality = int(quality) if quality is not None else None
+        except (TypeError, ValueError):
+            digits = "".join(
+                character for character in str(quality or "") if character.isdigit()
+            )
+            numeric_quality = int(digits) if digits else None
+
         result = StreamResult(
             post_url=final_url,
             stream_url=stream_url,
             format=media_format,
-            quality=int(quality) if quality is not None else None,
+            quality=numeric_quality,
             label=str(label) if label is not None else None,
             fallback_url=fallback_url if isinstance(fallback_url, str) else None,
             duration_seconds=duration,
