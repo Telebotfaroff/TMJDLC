@@ -352,6 +352,8 @@ def main() -> int:
             for u in page_state.get("iframes", [])
         ]
         page_state["player_scripts"] = [{"url": redact_url(u)} for u in page_state.get("player_scripts", [])]
+        # Raw player HTML may contain a short-lived signed media URL.
+        page_state["player_container"] = None
         page_state["media_resource_entries"] = [redact_url(u) for u in page_state.get("media_resource_entries", [])]
         for video in page_state.get("videos", []):
             if isinstance(video, dict):
