@@ -139,7 +139,7 @@ def main() -> int:
         "page_title": soup.title.get_text(" ", strip=True) if soup.title else None,
         "canonical_url": (
             soup.select_one('link[rel="canonical"]').get("href")
-            if soup.select_one('link[rel="canonical']")
+            if soup.select_one('link[rel="canonical"]')
             else None
         ),
         "player_element": (
