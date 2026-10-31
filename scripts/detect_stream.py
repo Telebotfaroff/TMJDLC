@@ -221,7 +221,7 @@ def main() -> int:
         page_state = {}
         try:
             page_state = page.evaluate(
-                """() => {
+                r"""() => {
                     const videos = [...document.querySelectorAll('video')];
                     const resources = performance.getEntriesByType('resource').map(e => e.name);
                     return {
