@@ -195,7 +195,10 @@ class JavtifulStreamDetector:
                             const video = document.querySelector('#front-player video, video');
                             if (video) {
                                 video.muted = true;
-                                try { const pending = video.play(); if (pending && pending.catch) pending.catch(() => {}); } catch (_) {}
+                                try {
+                                    const pending = video.play();
+                                    if (pending && pending.catch) pending.catch(() => {});
+                                } catch (_) {}
                             }
                         }"""
                     )
@@ -237,11 +240,15 @@ class JavtifulStreamDetector:
             src_parts = urlsplit(source["src"])
             fallback_value = source.get("fallbackSrc")
             fallback_parts = urlsplit(fallback_value) if isinstance(fallback_value, str) else None
+            source_path_name = src_parts.path.rsplit("/", 1)[-1]
+            source_path_suffix = (
+                source_path_name.rsplit(".", 1)[-1] if "." in source_path_name else "none"
+            )
             self._progress(
                 "Selected playback source metadata: "
                 f"keys={sorted(source.keys())}, "
                 f"host={src_parts.hostname or 'unknown'}, "
-                f"path_suffix={src_parts.path.rsplit('/', 1)[-1].split('.')[-1] if '.' in src_parts.path.rsplit('/', 1)[-1] else 'none'}, "
+                f"path_suffix={source_path_suffix}, "
                 f"type={source.get('type')!r}, size={source.get('size')!r}, "
                 f"label={source.get('label')!r}, "
                 f"fallback_present={bool(fallback_value)}, "
