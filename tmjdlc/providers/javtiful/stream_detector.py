@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 from urllib.parse import urljoin, urlsplit
+import time
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 
-from tmjdlc.models.stream import StreamResult, redact_stream_url
+from tmjdlc.models.stream import StreamResult
 
 MEDIA_SUFFIXES = (".m3u8", ".mpd", ".mp4", ".m4v", ".webm")
 
@@ -202,7 +204,10 @@ class JavtifulStreamDetector:
                 self._progress(
                     f"Capturing playback requests for {max(1_000, self.capture_ms) // 1000}s..."
                 )
-                page.wait_for_timeout(max(1_000, self.capture_ms))
+                capture_deadline = time.monotonic() + max(1_000, self.capture_ms) / 1000
+                while time.monotonic() < capture_deadline and not playback_sources:
+                    remaining_ms = int((capture_deadline - time.monotonic()) * 1000)
+                    page.wait_for_timeout(max(100, min(250, remaining_ms)))
                 self._progress("Playback capture window finished; inspecting sources...")
                 try:
                     state = page.evaluate(
