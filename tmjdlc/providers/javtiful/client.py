@@ -4,11 +4,19 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+import re
 from typing import Any
 
 from tmjdlc.downloaders.yt_dlp import YtDlpStreamDownloader
 from tmjdlc.models.stream import StreamResult
 from tmjdlc.providers.javtiful.stream_detector import JavtifulStreamDetector
+
+
+def _safe_error_detail(error: Exception) -> str:
+    """Keep useful diagnostics while stripping query strings from embedded URLs."""
+    message = str(error).strip()
+    message = re.sub(r"(https?://[^\s?'\"<>]+)\?[^\s'\"<>]*", r"\1?[QUERY REDACTED]", message)
+    return message[:600] or "No additional error details were provided."
 
 
 class JavtifulProvider:
@@ -84,13 +92,15 @@ class JavtifulProvider:
                 return path, stream
             except Exception as exc:
                 last_error = exc
+                detail = _safe_error_detail(exc)
                 self._progress(
-                    f"Attempt {attempt} failed ({type(exc).__name__})."
+                    f"Attempt {attempt} failed ({type(exc).__name__}): {detail}"
                 )
                 if attempt < self.max_attempts:
                     self._progress("Resolving a new stream before retrying.")
 
         raise RuntimeError(
             f"Javtiful download failed after {self.max_attempts} fresh resolution attempt(s). "
-            f"Last error: {type(last_error).__name__ if last_error else 'unknown'}"
+            f"Last error: {type(last_error).__name__ if last_error else 'unknown'}: "
+            f"{_safe_error_detail(last_error) if last_error else 'No details'}"
         ) from None
