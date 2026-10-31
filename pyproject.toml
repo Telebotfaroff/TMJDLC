@@ -10,8 +10,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dynamic = ["dependencies"]
 
-[tool.setuptools]
-packages = []
+[tool.setuptools.packages.find]
+include = ["tmjdlc*"]
 
 [tool.setuptools.dynamic]
 dependencies = { file = ["requirements.txt"] }
