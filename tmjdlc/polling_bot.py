@@ -14,7 +14,7 @@ from urllib.parse import urlparse
 from dotenv import load_dotenv
 from pyrogram import Client
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, TypeHandler, filters
 
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
@@ -291,6 +291,19 @@ async def retry_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await status.edit_text(f"🕒 Requeued {old['video_id']} (job #{job['id']}).")
 
 
+async def log_incoming_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    message = update.effective_message
+    log.info(
+        "Telegram update received | update_id=%s | user_id=%s | chat_id=%s | text=%s | admin=%s",
+        update.update_id,
+        user.id if user else None,
+        update.effective_chat.id if update.effective_chat else None,
+        (message.text or "")[:120] if message else f"callback:{update.callback_query.data[:80]}" if update.callback_query else "non-text",
+        user.id in ADMINS if user else False,
+    )
+
+
 async def post_init(application: Application):
     await uploader.start()
     log.info("Pyrogram upload client ready (updates disabled)")
@@ -313,7 +326,7 @@ async def post_shutdown(application: Application):
 
 def main():
     application = Application.builder().token(TOKEN).post_init(post_init).post_shutdown(post_shutdown).build()
-    application.add_handler(CommandHandler(["start", "help"], start_cmd))
+    application.add_handler(TypeHandler(Update, log_incoming_update), group=-1)\n    application.add_handler(CommandHandler(["start", "help"], start_cmd))
     application.add_handler(CommandHandler("settings", settings_cmd))
     application.add_handler(CommandHandler("queue", queue_cmd))
     application.add_handler(CommandHandler("setup", setup_cmd))
