@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
 from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
