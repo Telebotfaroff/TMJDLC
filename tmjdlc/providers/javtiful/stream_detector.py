@@ -38,7 +38,7 @@ class JavtifulStreamDetector:
         self,
         *,
         timeout_ms: int = 45_000,
-        capture_ms: int = 20_000,
+        capture_ms: int = 30_000,
         headless: bool = True,
         user_agent: str | None = None,
         progress_callback: Callable[[str], None] | None = None,
@@ -234,8 +234,8 @@ class JavtifulStreamDetector:
                         wait_until="domcontentloaded",
                         timeout=self.timeout_ms,
                     )
-                    page.wait_for_timeout(1_000)
-                    self._progress("Post page loaded.")
+                    page.wait_for_timeout(2_500)
+                    self._progress("Post page loaded; player scripts initialized.")
                 except PlaywrightTimeoutError as exc:
                     navigation_error = type(exc).__name__
 
@@ -244,11 +244,18 @@ class JavtifulStreamDetector:
                     ".plyr__control--overlaid",
                     "button[aria-label*='play' i]",
                     "button[title*='play' i]",
+                    "#front-player",
+                    "video",
                 ):
                     try:
                         control = page.locator(selector).first
                         if control.count() and control.is_visible():
-                            control.click(timeout=2_500)
+                            control.click(
+                                timeout=2_500,
+                                force=selector in {"#front-player", "video"},
+                            )
+                            self._progress(f"Clicked player control: {selector}")
+                            page.wait_for_timeout(1_500)
                             break
                     except Exception:
                         continue
