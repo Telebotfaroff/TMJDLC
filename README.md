@@ -1,10 +1,10 @@
 # TMJDLC
 
-[![Open MissAV Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_MissAV_Colab.ipynb)
+[![Open Download Test in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
-## Run in Google Colab
+## Test downloads in Google Colab
 
-Open the [TMJDLC MissAV Colab notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_MissAV_Colab.ipynb). It installs the MissAV API, fetches metadata, downloads using the API's native asynchronous HLS downloader, validates the result with FFprobe, and generates screenshots.
+Open the [TMJDLC Download Test notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). It installs the repository, asks for an original video page URL and quality, fetches metadata, downloads through the current MissAV provider, checks the output with FFprobe, and offers the completed file for download. Stream resolution and downloading run in the same Colab runtime because media URLs may be temporary and session/IP-bound. The notebook does not print or save temporary stream URLs.
 
 ## Primary provider: MissAV
 
