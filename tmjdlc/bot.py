@@ -27,8 +27,8 @@ MAX_PARALLEL = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE_SECONDS = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 SCREENSHOT_COUNT = 10
-POST_RE = re.compile(r"https?://(?:www\\.)?javtiful\\.com/video/\\d+/[^\\s<>()]+", re.I)
-VIDEO_ID_RE = re.compile(r"/video/(\\d+)", re.I)
+POST_RE = re.compile(r"https?://(?:www\.)?javtiful\.com/video/\d+/[^\s<>()]+", re.I)
+VIDEO_ID_RE = re.compile(r"/video/(\d+)", re.I)
 
 if not API_ID or not API_HASH or not BOT_TOKEN or not ADMIN_IDS:
     raise RuntimeError("Set TG_API_ID, TG_API_HASH, TG_BOT_TOKEN and TG_ADMIN_IDS.")
