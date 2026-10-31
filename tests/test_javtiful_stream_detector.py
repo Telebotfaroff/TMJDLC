@@ -68,3 +68,15 @@ def test_choose_source_rejects_non_http_relative_targets():
     assert JavtifulStreamDetector._choose_source(
         sources, None, "https://javtiful.com/video/115269/example"
     ) is None
+
+
+
+def test_redact_stream_url_masks_r2_signature_parameters():
+    url = (
+        "https://bucket.r2.cloudflarestorage.com/video.mp4?"
+        "X-Amz-Credential=private&X-Amz-Signature=secret&X-Amz-Expires=3600"
+    )
+    result = redact_stream_url(url)
+    assert "private" not in result
+    assert "secret" not in result
+    assert "X-Amz-Expires=3600" in result
