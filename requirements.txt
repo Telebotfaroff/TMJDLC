@@ -8,4 +8,5 @@ pytest>=8,<9
 yt-dlp>=2025.1
 unofficial-api-for-missav>=2.6.2,<3
 playwright>=1.50,<2
-python-telegram-bot>=21,<23
+Pyrogram>=2.0.106,<3
+TgCrypto>=1.2.5,<2
