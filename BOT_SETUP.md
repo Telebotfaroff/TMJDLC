@@ -1,14 +1,12 @@
 # TMJDLC Telegram Bot
 
-The bot is an admin-only Pyrogram controller with a durable PostgreSQL queue.
+The bot is an admin-only Telegram Bot API controller using long polling (`getUpdates`) for updates and Bot API methods for all messaging and media uploads. It has a durable PostgreSQL queue.
 
 ## Environment
 
 Create a private `.env` file; never commit it:
 
 ```env
-TG_API_ID=123456
-TG_API_HASH=your_api_hash
 TG_BOT_TOKEN=123456:your_bot_token
 TG_ADMIN_IDS=123456789
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
@@ -29,7 +27,7 @@ Use the Neon connection string for the dedicated `Javtiful-uploader` database in
 !python -m tmjdlc.bot
 ```
 
-The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additive schema is checked into `sql/001_tmjdlc_bot_queue.sql`. It does not modify the existing Javtiful/Telegram tables.
+No Telegram API ID, API hash, Pyrogram dependency, MTProto session, or user account login is required. The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additive schema is checked into `sql/001_tmjdlc_bot_queue.sql`. It does not modify the existing Javtiful/Telegram tables.
 
 ## Commands
 
