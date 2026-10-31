@@ -1,8 +1,5 @@
-from tmjdlc.providers.javtiful.stream_detector import (
-    JavtifulStreamDetector,
-    StreamResult,
-    redact_stream_url,
-)
+from tmjdlc.models.stream import StreamResult, redact_stream_url
+from tmjdlc.providers.javtiful.stream_detector import JavtifulStreamDetector
 
 
 def test_redact_stream_url_masks_signed_parameters():
