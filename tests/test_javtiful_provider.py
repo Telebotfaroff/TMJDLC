@@ -1,7 +1,5 @@
 from pathlib import Path
 
-import pytest
-
 from tmjdlc.models.stream import StreamResult
 from tmjdlc.providers.javtiful.client import JavtifulProvider
 
