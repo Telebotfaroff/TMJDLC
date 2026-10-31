@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from typing import Any
 from urllib.parse import urljoin, urlsplit
-import time
 
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
