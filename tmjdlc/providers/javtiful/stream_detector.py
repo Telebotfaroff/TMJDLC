@@ -94,6 +94,12 @@ class JavtifulStreamDetector:
 
         return max(valid, key=source_quality)
 
+    @staticmethod
+    def _safe_url(url: str) -> str:
+        """Return URL host/path only; never expose temporary signed query values."""
+        parts = urlsplit(url)
+        return f"{parts.scheme}://{parts.netloc}{parts.path}"
+
     def _progress(self, message: str) -> None:
         if self.progress_callback is not None:
             try:
@@ -131,9 +137,12 @@ class JavtifulStreamDetector:
 
         playback_sources: list[dict[str, Any]] = []
         network_sources: dict[str, str] = {}
+        api_events: list[dict[str, Any]] = []
+        failed_requests: list[dict[str, str]] = []
         duration: float | None = None
         navigation_error: str | None = None
         page_errors: list[str] = []
+        page_diagnostics: dict[str, Any] = {}
         final_url = post_url
         request_headers: dict[str, str] = {
             "Referer": post_url,
@@ -156,29 +165,67 @@ class JavtifulStreamDetector:
                 page = context.new_page()
                 page.set_default_timeout(self.timeout_ms)
 
+                def collect_source_lists(value: Any) -> None:
+                    """Find source arrays even when the API wraps them in data/result objects."""
+                    if isinstance(value, dict):
+                        sources = value.get("sources")
+                        if isinstance(sources, list):
+                            playback_sources.extend(
+                                item for item in sources
+                                if isinstance(item, dict)
+                                and isinstance(item.get("src"), str)
+                            )
+                        for child in value.values():
+                            if isinstance(child, (dict, list)):
+                                collect_source_lists(child)
+                    elif isinstance(value, list):
+                        for child in value:
+                            if isinstance(child, (dict, list)):
+                                collect_source_lists(child)
+
+                def on_request(request: Any) -> None:
+                    if request.resource_type in {"xhr", "fetch"}:
+                        api_events.append({
+                            "phase": "request",
+                            "method": request.method,
+                            "resource_type": request.resource_type,
+                            "url": self._safe_url(request.url),
+                        })
+
+                def on_request_failed(request: Any) -> None:
+                    failed_requests.append({
+                        "resource_type": request.resource_type,
+                        "url": self._safe_url(request.url),
+                        "failure": str(request.failure or "unknown")[:200],
+                    })
+
                 def on_response(response: Any) -> None:
-                    nonlocal duration
                     url = response.url
                     content_type = response.headers.get("content-type", "")
                     if _is_media_url(url, content_type):
                         network_sources[url] = content_type
+                    if response.request.resource_type in {"xhr", "fetch"}:
+                        api_events.append({
+                            "phase": "response",
+                            "method": response.request.method,
+                            "resource_type": response.request.resource_type,
+                            "url": self._safe_url(url),
+                            "status": response.status,
+                            "content_type": content_type[:100],
+                        })
+                    if "json" in content_type.lower():
+                        try:
+                            collect_source_lists(response.json())
+                        except Exception:
+                            pass
 
-                    if "playback" not in url.lower() or "json" not in content_type.lower():
-                        return
-                    try:
-                        payload = response.json()
-                    except Exception:
-                        return
-                    if not isinstance(payload, dict) or not payload.get("success"):
-                        return
-                    sources = payload.get("sources")
-                    if isinstance(sources, list):
-                        playback_sources.extend(
-                            source for source in sources if isinstance(source, dict)
-                        )
-
+                page.on("request", on_request)
+                page.on("requestfailed", on_request_failed)
                 page.on("response", on_response)
                 page.on("pageerror", lambda error: page_errors.append(str(error)[:300]))
+                page.on("console", lambda message: page_errors.append(
+                    f"console.{message.type}: {message.text[:250]}"
+                ) if message.type == "error" else None)
 
                 try:
                     self._progress("Opening post page...")
@@ -243,6 +290,30 @@ class JavtifulStreamDetector:
                     duration = None
 
                 final_url = page.url
+                try:
+                    page_diagnostics = page.evaluate(
+                        """() => ({
+                            title: document.title || null,
+                            body_text: (document.body?.innerText || '').slice(0, 700),
+                            video_elements: [...document.querySelectorAll('video')].map(v => ({
+                                src: v.getAttribute('src'),
+                                current_src: v.currentSrc || null,
+                                ready_state: v.readyState,
+                                network_state: v.networkState,
+                                paused: v.paused,
+                                duration: Number.isFinite(v.duration) ? v.duration : null,
+                                error_code: v.error?.code ?? null
+                            })),
+                            iframes: [...document.querySelectorAll('iframe')].map(f => f.src || f.getAttribute('src')).filter(Boolean).slice(0, 20),
+                            player_scripts: [...document.scripts].map(s => s.src).filter(Boolean).slice(0, 40),
+                            resource_hints: performance.getEntriesByType('resource')
+                                .map(e => e.name)
+                                .filter(u => /api|playback|player|video|stream|source|playlist|\.m3u8|\.mpd|\.mp4/i.test(u))
+                                .slice(-80)
+                        })"""
+                    )
+                except Exception as exc:
+                    page_diagnostics = {"diagnostic_error": type(exc).__name__}
                 browser_cookies = context.cookies()
                 context.close()
             finally:
@@ -278,9 +349,33 @@ class JavtifulStreamDetector:
                 if urlsplit(url).path.lower().endswith(MEDIA_SUFFIXES)
             ]
             if not candidates:
-                detail = f" Navigation: {navigation_error}." if navigation_error else ""
+                diagnostic_summary = {
+                    "page": {
+                        "title": page_diagnostics.get("title"),
+                        "body_text": page_diagnostics.get("body_text"),
+                        "video_elements": page_diagnostics.get("video_elements", []),
+                        "iframes": [
+                            self._safe_url(item) for item in page_diagnostics.get("iframes", [])
+                        ],
+                        "player_scripts": [
+                            self._safe_url(item) for item in page_diagnostics.get("player_scripts", [])
+                        ],
+                        "resource_hints": [
+                            self._safe_url(item) for item in page_diagnostics.get("resource_hints", [])
+                        ],
+                    },
+                    "api_events": api_events[-35:],
+                    "failed_requests": failed_requests[-15:],
+                    "page_errors": page_errors[-10:],
+                    "navigation_error": navigation_error,
+                }
+                self._progress(
+                    "No stream found. Diagnostic summary: "
+                    + str(diagnostic_summary)[:5000]
+                )
                 raise StreamDetectionError(
-                    f"No HLS, DASH or direct media source detected for {final_url}.{detail}"
+                    f"No HLS, DASH or direct media source detected for {self._safe_url(final_url)}. "
+                    f"Diagnostics: {str(diagnostic_summary)[:5000]}"
                 )
             stream_url = candidates[0]
             fallback_url = None
