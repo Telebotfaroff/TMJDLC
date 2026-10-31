@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 import socket
@@ -19,6 +20,9 @@ from tmjdlc.providers.javtiful import JavtifulProvider
 from tmjdlc.providers.javtiful.channel import ChannelInfo, JavtifulChannelScraper
 
 load_dotenv()
+logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+logging.getLogger("pyrogram").setLevel(logging.INFO)
+logger = logging.getLogger("tmjdlc.bot")
 API_ID = int(os.getenv("TG_API_ID", "0"))
 API_HASH = os.getenv("TG_API_HASH", "")
 BOT_TOKEN = os.getenv("TG_BOT_TOKEN", "")
@@ -474,6 +478,25 @@ async def deny_non_admin(_, message: Message):
     await message.reply_text("This bot is private.")
 
 
+@app.on_message(group=99)
+async def diagnostic_message_log(_, message: Message):
+    sender_id = message.from_user.id if message.from_user else None
+    command = message.command[0] if message.command else None
+    logger.info(
+        "Telegram update received | type=%s | chat_id=%s | sender_id=%s | command=%s | admin=%s",
+        type(message).__name__, message.chat.id if message.chat else None,
+        sender_id, command, sender_id in ADMIN_IDS if sender_id is not None else False,
+    )
+
+
+@app.on_callback_query(group=99)
+async def diagnostic_callback_log(_, query: CallbackQuery):
+    logger.info(
+        "Telegram callback received | sender_id=%s | data=%s | admin=%s",
+        query.from_user.id, (query.data or "")[:80], query.from_user.id in ADMIN_IDS,
+    )
+
+
 async def startup() -> None:
     await asyncio.to_thread(queue.initialize)
     recovered = await asyncio.to_thread(queue.recover_expired)
@@ -492,8 +515,10 @@ def main() -> None:
     async def runner():
         await app.start()
         try:
+            me = await app.get_me()
+            logger.info("Telegram client connected | bot_id=%s | username=@%s", me.id, me.username)
             await startup()
-            print(f"TMJDLC bot online | workers={MAX_PARALLEL}", flush=True)
+            print(f"TMJDLC bot online | username=@{me.username} | workers={MAX_PARALLEL}", flush=True)
             await asyncio.Event().wait()
         finally:
             await shutdown()
