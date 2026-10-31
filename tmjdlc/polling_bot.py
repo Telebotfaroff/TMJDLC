@@ -37,6 +37,8 @@ LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
 SHOT_COUNT = 10
 MIN_FREE_DISK_GB = float(os.getenv("TMJDLC_MIN_FREE_DISK_GB", "3"))
+AUTO_CLEAN = os.getenv("TMJDLC_AUTO_CLEAN", "true").strip().lower() in {"1", "true", "yes", "on"}
+PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "10")))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
@@ -99,6 +101,22 @@ async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyn
                 break
 
 
+async def cleanup_completed_job(path: Path, video_id: str) -> None:
+    """Delete only this completed job's local media and screenshot artifacts."""
+    try:
+        if path.exists() and path.is_file():
+            path.unlink()
+        for candidate in path.parent.glob(f"javtiful-{video_id}*"):
+            if candidate.is_file():
+                candidate.unlink(missing_ok=True)
+        shots_dir = WORK / "screenshots" / video_id
+        if shots_dir.exists():
+            shutil.rmtree(shots_dir, ignore_errors=True)
+        log.info("Auto-cleaned completed job media video_id=%s", video_id)
+    except OSError:
+        log.exception("Auto-clean failed for video_id=%s", video_id)
+
+
 async def process_job(job: dict, identity: str):
     jid, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
     chat_id, message_id = job.get("status_chat_id"), job.get("status_message_id")
@@ -113,12 +131,23 @@ async def process_job(job: dict, identity: str):
         if queue.is_cancel_requested(jid, identity):
             raise asyncio.CancelledError("Cancellation requested.")
 
+    notify_chat = chat_id or job.get("requested_by")
+    if notify_chat and not message_id:
+        try:
+            notice = await app.send_message(int(notify_chat), f"🆕 Job #{jid} · {vid} queued for processing.")
+            chat_id, message_id = notice.chat.id, notice.id
+        except Exception:
+            log.exception("Could not create Telegram status message for job=%s", jid)
+
     try:
         download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
         path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
         if not path or not path.is_file() or path.stat().st_size == 0:
             check_stop()
             await status_edit(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
+
+            last_download_notice = {"percent": -PROGRESS_STEP}
+            loop = asyncio.get_running_loop()
 
             def progress_hook(data):
                 if queue.is_cancel_requested(jid, identity):
@@ -127,7 +156,16 @@ async def process_job(job: dict, identity: str):
                     total = data.get("total_bytes") or data.get("total_bytes_estimate")
                     done = data.get("downloaded_bytes", 0)
                     if total:
-                        queue.update_progress(jid, identity, "downloading", int(done * 100 / total))
+                        percent = min(100, int(done * 100 / total))
+                        queue.update_progress(jid, identity, "downloading", percent)
+                        if percent >= last_download_notice["percent"] + PROGRESS_STEP:
+                            last_download_notice["percent"] = percent
+                            if chat_id and message_id:
+                                asyncio.run_coroutine_threadsafe(
+                                    status_edit(chat_id, message_id,
+                                                f"⬇️ Downloading {vid}\nProgress: {percent}%"),
+                                    loop,
+                                )
 
             path = await asyncio.to_thread(
                 lambda: JavtifulProvider(max_attempts=2).download(
@@ -172,8 +210,24 @@ async def process_job(job: dict, identity: str):
             check_stop()
             size_mb = path.stat().st_size / 1048576
             await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
-            sent = await app.send_video(chat_id=int(video_chat), video=str(path), caption=vid,
-                                        supports_streaming=True, parse_mode=ParseMode.DISABLED)
+            last_upload_notice = {"percent": -PROGRESS_STEP}
+
+            async def upload_progress(current, total, *_):
+                if not total:
+                    return
+                percent = min(100, int(current * 100 / total))
+                if percent >= last_upload_notice["percent"] + PROGRESS_STEP:
+                    last_upload_notice["percent"] = percent
+                    await status_edit(chat_id, message_id,
+                                      f"📤 Uploading {vid} via Pyrogram MTProto\n"
+                                      f"Progress: {percent}% · {current / 1048576:.1f}/"
+                                      f"{total / 1048576:.1f} MiB")
+
+            sent = await app.send_video(
+                chat_id=int(video_chat), video=str(path), caption=vid,
+                supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                progress=upload_progress,
+            )
             if not await asyncio.to_thread(queue.complete_stage, jid, identity, "video_upload",
                                            {"chat_id": sent.chat.id, "message_id": sent.id}):
                 raise RuntimeError("Video sent, but its receipt could not be saved in Neon.")
@@ -211,6 +265,12 @@ async def process_job(job: dict, identity: str):
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
         await status_edit(chat_id, message_id, f"✅ Completed {vid}. Screenshots sent: {sent_shots}")
+        if AUTO_CLEAN:
+            await cleanup_completed_job(path, vid)
+            await asyncio.to_thread(queue.clear_media_path, vid)
+            await status_edit(chat_id, message_id,
+                              f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
+                              "🧹 Local video and screenshot files cleaned.")
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
                                 error="Cancelled by administrator.", lease_seconds=LEASE)
