@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import logging
 import os
 import re
@@ -43,6 +44,58 @@ AUTO_CLEAN = os.getenv("TMJDLC_AUTO_CLEAN", "true").strip().lower() in {"1", "tr
 PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "10")))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
+
+VIDEO_CODE = re.compile(r"(?i)([a-z0-9]{2,}(?:-[a-z0-9]{2,})*-\\d{2,})")
+
+
+def video_title_from_url(url: str, fallback_id: str) -> str:
+    """Extract a catalogue code from the video URL slug, falling back safely."""
+    parts = [part for part in urlparse(url).path.split("/") if part]
+    slug = parts[-1] if parts and parts[-1].lower() != "video" else ""
+    match = VIDEO_CODE.search(slug)
+    if match:
+        return match.group(1).upper()
+    if slug and not slug.isdigit():
+        return re.sub(r"[-_]+", " ", slug).strip().title()
+    return fallback_id
+
+
+def probe_video(path: Path) -> dict:
+    """Read Telegram video attributes from the actual downloaded media."""
+    result = subprocess.run(
+        ["ffprobe", "-v", "error", "-select_streams", "v:0",
+         "-show_entries", "stream=width,height:format=duration",
+         "-of", "json", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    payload = json.loads(result.stdout or "{}")
+    stream = (payload.get("streams") or [{}])[0]
+    duration = float((payload.get("format") or {}).get("duration") or 0)
+    return {
+        "duration": max(0, int(round(duration))),
+        "width": int(stream.get("width") or 0),
+        "height": int(stream.get("height") or 0),
+    }
+
+
+def create_video_thumbnail(path: Path, video_id: str) -> Path | None:
+    """Create a compact JPEG thumbnail suitable for Telegram video uploads."""
+    target = path.parent / f"javtiful-{video_id}-thumb.jpg"
+    try:
+        subprocess.run(
+            ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", "1",
+             "-i", str(path), "-frames:v", "1",
+             "-vf", "scale=320:320:force_original_aspect_ratio=decrease",
+             "-q:v", "5", "-y", str(target)],
+            capture_output=True, check=True,
+        )
+        if target.is_file() and 0 < target.stat().st_size <= 200 * 1024:
+            return target
+        target.unlink(missing_ok=True)
+    except (OSError, subprocess.CalledProcessError):
+        log.exception("Could not generate Telegram thumbnail for video_id=%s", video_id)
+    return None
+
 
 if not TOKEN or not API_ID or not API_HASH or not ADMINS:
     raise RuntimeError("Set TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
@@ -229,22 +282,23 @@ async def process_job(job: dict, identity: str):
         if not video_chat:
             raise RuntimeError("Set video destination first with /setup or /setupload CHANNEL_ID.")
 
-        # FFprobe is independent of Telegram upload, so its failure cannot duplicate a video.
+        # Probe the actual file so Telegram receives duration and frame dimensions.
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
-        if not media_stage:
-            probe = await asyncio.to_thread(subprocess.run, [
-                "ffprobe", "-v", "error", "-show_entries", "format=duration",
-                "-of", "default=noprint_wrappers=1:nokey=1", str(path)
-            ], capture_output=True, text=True, check=True)
-            duration = float(probe.stdout.strip())
+        if not media_stage or not all(media_stage.get(k) for k in ("duration", "width", "height")):
+            media_info = await asyncio.to_thread(probe_video, path)
             await asyncio.to_thread(queue.complete_stage, jid, identity, "media_probe",
-                                    {"duration_seconds": duration, "size": path.stat().st_size})
-            await asyncio.to_thread(queue.save_media, vid, jid, str(path),
-                                    path.stat().st_size, duration)
+                                    {**media_info, "size": path.stat().st_size})
         else:
-            duration = float(media_stage.get("duration_seconds") or 0)
-            await asyncio.to_thread(queue.save_media, vid, jid, str(path),
-                                    path.stat().st_size, duration)
+            media_info = {
+                "duration": int(media_stage.get("duration") or 0),
+                "width": int(media_stage.get("width") or 0),
+                "height": int(media_stage.get("height") or 0),
+            }
+        duration = float(media_info["duration"])
+        await asyncio.to_thread(queue.save_media, vid, jid, str(path),
+                                path.stat().st_size, duration,
+                                media_info["width"] or None, media_info["height"] or None)
+        title = video_title_from_url(url, vid)
 
         if not await asyncio.to_thread(queue.set_status, jid, identity, "uploading",
                                        output_path=str(path), lease_seconds=LEASE):
@@ -278,8 +332,11 @@ async def process_job(job: dict, identity: str):
                     ))
                     last_upload_notice.update(percent=percent, time=now, bytes=current)
 
+            thumbnail = await asyncio.to_thread(create_video_thumbnail, path, vid)
             sent = await app.send_video(
-                chat_id=int(video_chat), video=str(path), caption=vid,
+                chat_id=int(video_chat), video=str(path), caption=title,
+                duration=media_info["duration"], width=media_info["width"],
+                height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
                 supports_streaming=True, parse_mode=ParseMode.DISABLED,
                 progress=upload_progress,
             )
@@ -309,7 +366,7 @@ async def process_job(job: dict, identity: str):
                     ], capture_output=True, check=True)
                 check_stop()
                 sent = await app.send_photo(chat_id=int(image_chat), photo=str(target),
-                                            caption=f"{vid} | Screenshot {i+1}/{SHOT_COUNT}")
+                                            caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
                 sent_shots += 1
