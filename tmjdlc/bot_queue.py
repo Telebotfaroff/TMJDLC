@@ -38,6 +38,7 @@ class JobQueue:
                     video_id TEXT NOT NULL,
                     post_url TEXT NOT NULL,
                     quality INTEGER,
+                    upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE,
                     status TEXT NOT NULL DEFAULT 'queued'
                         CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
                     attempts INTEGER NOT NULL DEFAULT 0,
@@ -57,6 +58,7 @@ class JobQueue:
                     UNIQUE(video_id)
                 )
             """)
+            conn.execute("ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
                 ON tmjdlc_bot_jobs(priority, created_at) WHERE status='queued'
@@ -77,16 +79,17 @@ class JobQueue:
         self, video_id: str, post_url: str, quality: int | None = None, *,
         requested_by: int | None = None, status_chat_id: int | None = None,
         status_message_id: int | None = None, priority: int = 100,
+        upload_screenshots: bool = True,
     ) -> tuple[dict[str, Any], bool]:
         with self.connect() as conn:
             row = conn.execute("""
                 INSERT INTO tmjdlc_bot_jobs
-                    (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,priority,max_attempts)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+                    (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,priority,max_attempts,upload_screenshots)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(video_id) DO NOTHING
                 RETURNING *
             """, (video_id, post_url, quality, requested_by, status_chat_id,
-                  status_message_id, priority, self.max_attempts)).fetchone()
+                  status_message_id, priority, self.max_attempts, upload_screenshots)).fetchone()
             if row:
                 return dict(row), True
             existing = conn.execute(
@@ -97,10 +100,10 @@ class JobQueue:
                     UPDATE tmjdlc_bot_jobs SET post_url=%s, quality=%s, status='queued',
                         attempts=0, last_error=NULL, output_path=NULL, worker_id=NULL,
                         lease_until=NULL, requested_by=%s, status_chat_id=%s,
-                        status_message_id=%s, priority=%s, updated_at=now()
+                        status_message_id=%s, priority=%s, upload_screenshots=%s, updated_at=now()
                     WHERE video_id=%s RETURNING *
                 """, (post_url, quality, requested_by, status_chat_id,
-                      status_message_id, priority, video_id)).fetchone()
+                      status_message_id, priority, upload_screenshots, video_id)).fetchone()
                 return dict(row), True
             return dict(existing), False
 
