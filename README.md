@@ -1,6 +1,6 @@
 # TMJDLC
 
-[![Open Download Test in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
+[![Open Javtiful Download Test in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
 ## Test Javtiful downloads in Google Colab
 
