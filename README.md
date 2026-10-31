@@ -93,3 +93,28 @@ the downloader. Do not log `stream.stream_url`, `stream.headers`, or the
 FFmpeg header string. Use `to_public_dict()` for diagnostics and persistent
 job metadata. The detector does not download media itself; it provides a
 download target to the existing/future download worker.
+
+The resolved result can be passed directly to the yt-dlp adapter:
+
+```python
+from tmjdlc.downloaders import YtDlpStreamDownloader
+from tmjdlc.providers.javtiful import JavtifulStreamDetector
+
+stream = JavtifulStreamDetector().detect(
+    "https://javtiful.com/video/113371/dvmm-444",
+    preferred_quality=720,
+)
+file_path = YtDlpStreamDownloader().download(
+    stream,
+    output_dir="/content/tmjdlc-downloads",
+    filename="DVMM-444",
+    concurrent_fragments=4,
+)
+print(file_path)
+```
+
+The adapter passes the live stream URL and its Referer/User-Agent (and any
+matching browser cookies) directly to yt-dlp in memory, supports fragment
+retries and bounded parallel fragment downloads, and never prints the signed
+URL in its own exception message. The caller should still keep progress-hook
+payloads and browser headers out of persistent logs.
