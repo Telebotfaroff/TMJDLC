@@ -6,6 +6,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 SENSITIVE_QUERY_KEYS = {
     "auth", "authorization", "key", "sig", "signature", "token", "ticket", "verify",
+    "x-amz-credential", "x-amz-signature", "x-amz-security-token",
 }
 
 
