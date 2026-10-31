@@ -90,9 +90,42 @@ def main() -> int:
             ),
             ignore_https_errors=False,
         )
+        # Prevent ad/pop-under navigations from replacing the Javtiful page.
+        # Media requests from the actual page may use external CDN hosts; only
+        # external *top-level document navigations* are blocked here.
         page = context.new_page()
         page.set_default_timeout(min(args.timeout, 10) * 1000)
         page.set_default_navigation_timeout(args.timeout * 1000)
+
+        def block_external_top_navigation(route) -> None:
+            request = route.request
+            try:
+                is_main_document = (
+                    request.is_navigation_request()
+                    and request.frame == page.main_frame
+                )
+            except Exception:
+                is_main_document = False
+            target_host = (urlsplit(request.url).hostname or "").lower()
+            if is_main_document and target_host not in {"javtiful.com", "www.javtiful.com"}:
+                print(
+                    f"[guard] Blocking external top-level navigation: {target_host or 'unknown host'}",
+                    flush=True,
+                )
+                route.abort()
+                return
+            route.continue_()
+
+        context.route("**/*", block_external_top_navigation)
+
+        def close_popup(popup) -> None:
+            try:
+                print(f"[guard] Closing popup: {urlsplit(popup.url).hostname or 'unknown host'}", flush=True)
+                popup.close()
+            except Exception:
+                pass
+
+        page.on("popup", close_popup)
 
         def on_request(request) -> None:
             url = request.url
@@ -306,6 +339,14 @@ def main() -> int:
             pass
 
         final_url = page.url
+        final_host = (urlsplit(final_url).hostname or "").lower()
+        if final_host not in {"javtiful.com", "www.javtiful.com"}:
+            # Fail closed: never accept media captured after leaving the target site.
+            requests_seen.clear()
+            navigation_error = (
+                f"Target page left Javtiful unexpectedly (final host: {final_host or 'unknown'}). "
+                "External media requests were discarded."
+            )
         page_state["iframes"] = [
             {"host": urlsplit(u).hostname, "path": urlsplit(u).path[:180]}
             for u in page_state.get("iframes", [])
@@ -347,6 +388,8 @@ def main() -> int:
             "Media URLs in this report are redacted; full signed URLs are written only to the optional local --resolved-output file.",
             "Never upload or commit the --resolved-output file because signed media URLs are short-lived credentials.",
             "Playback tickets and common signed query parameters are redacted from report URLs.",
+            "External top-level navigations and popups are blocked to prevent ad/pop-under pages from being mistaken for the target stream.",
+            "Media captured after the main page leaves javtiful.com is discarded.",
             "An empty media list means playback was not triggered or the stream was delivered through an unclassified mechanism.",
         ],
     }
