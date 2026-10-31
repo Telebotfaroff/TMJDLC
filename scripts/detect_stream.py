@@ -22,6 +22,7 @@ SECRET_KEYS = {
     "ticket", "token", "authorization", "auth", "key", "signature", "sig",
     "verify", "expires", "exp", "jwt", "x-amz-signature",
     "x-amz-credential", "x-amz-security-token", "x-amz-date", "x-amz-expires",
+    "pkey", "policy", "hdnts", "auth_key", "hash", "key-pair-id",
 }
 
 
@@ -69,6 +70,7 @@ def main() -> int:
     output.mkdir(parents=True, exist_ok=True)
 
     requests_seen: dict[str, dict] = {}
+    playback_sources: list[dict] = []
     network_events: list[dict] = []
     all_links: dict[str, dict] = {}
     failed_requests: list[dict] = []
@@ -136,7 +138,7 @@ def main() -> int:
                 all_links[url] = {"url": redact_url(url), "method": request.method, "resource_type": kind, "status": None}
             if kind in {"xhr", "fetch", "media"} or any(word in path_hint for word in ("playback", "playlist", "stream", "source", "video", "master")):
                 network_events.append({"url": redact_url(url), "method": request.method, "resource_type": kind})
-            if is_media_url(url):
+            if is_media_url(url) and not urlsplit(url).path.lower().endswith("/ping.m3u8"):
                 requests_seen[url] = {
                     "url": redact_url(url),
                     "redacted_url": redact_url(url),
@@ -152,7 +154,7 @@ def main() -> int:
                 all_links[url] = {"url": redact_url(url), "method": response.request.method, "resource_type": response.request.resource_type, "status": response.status, "content_type": content_type}
             if response.request.resource_type in {"xhr", "fetch", "media"} or any(word in url.lower() for word in ("playback", "playlist", "stream", "source", "video", "master")):
                 network_events.append({"url": redact_url(url), "status": response.status, "resource_type": response.request.resource_type, "content_type": content_type})
-            if is_media_url(url, content_type):
+            if is_media_url(url, content_type) and not urlsplit(url).path.lower().endswith("/ping.m3u8"):
                 item = requests_seen.setdefault(
                     url,
                     {
@@ -170,34 +172,32 @@ def main() -> int:
                     }
                 )
 
-            if "playback" in url.lower() or "playlist" in url.lower():
-                item = {
-                    "url": redact_url(url),
-                    "status": response.status,
-                    "content_type": content_type,
-                }
+            response_parts = urlsplit(url)
+            is_playback_api = (
+                (response_parts.hostname or "").lower() in {"javtiful.com", "www.javtiful.com"}
+                and "/playback" in response_parts.path.lower()
+                and "json" in content_type.lower()
+            )
+            if is_playback_api:
+                item = {"url": redact_url(url), "status": response.status, "content_type": content_type}
                 try:
-                    if "json" in content_type.lower():
-                        payload = response.json()
-                        item["json_keys"] = sorted(payload.keys()) if isinstance(payload, dict) else []
-                        sources = payload.get("sources", []) if isinstance(payload, dict) else []
-                        if isinstance(sources, list):
-                            item["sources"] = [
-                                {
-                                    key: (
-                                        redact_url(value)
-                                        if key.lower() in {"src", "fallbacksrc"} and isinstance(value, str)
-                                        else value
-                                    )
-                                    for key, value in source.items()
-                                    if key.lower() not in SECRET_KEYS
-                                }
-                                for source in sources
-                                if isinstance(source, dict)
-                            ]
-                        fallback = payload.get("fallbackSrc") if isinstance(payload, dict) else None
-                        if fallback:
-                            item["fallback_source"] = redact_url(fallback)
+                    payload = response.json()
+                    item["json_keys"] = sorted(payload.keys()) if isinstance(payload, dict) else []
+                    sources = payload.get("sources", []) if isinstance(payload, dict) else []
+                    public_sources = []
+                    for source in sources if isinstance(sources, list) else []:
+                        if not isinstance(source, dict) or not isinstance(source.get("src"), str):
+                            continue
+                        source_url = urljoin(url, source["src"].strip())
+                        if urlsplit(source_url).scheme not in {"http", "https"}:
+                            continue
+                        try:
+                            quality = int(source.get("size")) if source.get("size") is not None else None
+                        except (TypeError, ValueError):
+                            quality = None
+                        playback_sources.append({"url": source_url, "content_type": str(source.get("type") or ""), "quality": quality})
+                        public_sources.append({"src": redact_url(source_url), "type": source.get("type"), "size": quality, "label": source.get("label")})
+                    item["sources"] = public_sources
                 except Exception as exc:
                     item["body_parse_error"] = type(exc).__name__
                 api_responses.append(item)
@@ -353,6 +353,11 @@ def main() -> int:
         ]
         page_state["player_scripts"] = [{"url": redact_url(u)} for u in page_state.get("player_scripts", [])]
         page_state["media_resource_entries"] = [redact_url(u) for u in page_state.get("media_resource_entries", [])]
+        for video in page_state.get("videos", []):
+            if isinstance(video, dict):
+                for key in ("current_src", "src_attribute"):
+                    if isinstance(video.get(key), str):
+                        video[key] = redact_url(video[key])
         context.close()
         browser.close()
 
@@ -365,6 +370,14 @@ def main() -> int:
             2 if urlsplit(item["url"]).path.lower().endswith((".mp4", ".m4v")) else 3
         )
     )
+    selected_playback_source = None
+    if final_host in {"javtiful.com", "www.javtiful.com"} and playback_sources:
+        candidates = playback_sources
+        if args.quality is not None:
+            exact = [item for item in candidates if item.get("quality") == args.quality]
+            if exact:
+                candidates = exact
+        selected_playback_source = max(candidates, key=lambda item: item.get("quality") or 0)
 
     report = {
         "requested_url": args.url,
@@ -399,7 +412,7 @@ def main() -> int:
 
     # This optional file is intended only for the local downloader process.
     # It contains a short-lived signed URL, so never print it or upload it as an artifact.
-    if args.resolved_output and media:
+    if args.resolved_output and (selected_playback_source or media):
         def quality_from_item(item: dict) -> int | None:
             candidates = [
                 str(item.get("url", "")),
@@ -415,15 +428,15 @@ def main() -> int:
             item for item in media
             if args.quality is not None and quality_from_item(item) == args.quality
         ]
-        selected = matching_quality[0] if matching_quality else media[0]
+        selected = matching_quality[0] if matching_quality else (media[0] if media else None)
         resolved_payload = {
-            "url": next(
-                (raw_url for raw_url in requests_seen if redact_url(raw_url) == selected["redacted_url"]),
+            "url": selected_playback_source["url"] if selected_playback_source else next(
+                (raw_url for raw_url in requests_seen if selected and redact_url(raw_url) == selected["redacted_url"]),
                 None,
             ),
-            "content_type": selected.get("content_type", ""),
-            "status": selected.get("status"),
-            "quality": quality_from_item(selected),
+            "content_type": selected_playback_source.get("content_type", "") if selected_playback_source else (selected or {}).get("content_type", ""),
+            "status": 200 if selected_playback_source else (selected or {}).get("status"),
+            "quality": selected_playback_source.get("quality") if selected_playback_source else quality_from_item(selected or {}),
             "duration_seconds": next(
                 (
                     video.get("duration")
