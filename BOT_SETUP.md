@@ -38,8 +38,10 @@ The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_set
 - `/queue` — show queue counts and recent jobs.
 - `/cancel JOB_ID` — cancel a queued or failed job.
 - `/retry JOB_ID` — requeue a failed job.
-- `/setupload CHANNEL_ID` — configure the video destination.
-- `/setimages CHANNEL_ID` — configure the screenshot destination.
+- `/setup` — guided setup: forward a post from the video channel, then forward a post from the screenshot channel; public `@usernames` and numeric IDs are also accepted. Send `SKIP` to disable screenshot uploads.
+- `/cancelsetup` — cancel the guided setup.
+- `/setupload CHANNEL_ID` — configure the video destination manually.
+- `/setimages CHANNEL_ID` — configure the screenshot destination manually.
 - `/settings` — show current destinations and worker settings.
 
 ## Queue behavior
