@@ -247,19 +247,13 @@ async def channel_callback(_, query: CallbackQuery):
         await query.message.edit_text(f"⏳ Collecting links from {len(pages)} page(s)…")
         try:
             urls = await asyncio.to_thread(JavtifulChannelScraper().videos_for_pages, s["info"], pages)
-            added = skipped = 0
-            for url in urls:
-                vid = get_video_id(url)
-                existing = await asyncio.to_thread(queue.get_by_video, vid)
-                if s["skip_existing"] and existing:
-                    skipped += 1
-                    continue
-                _, created = await asyncio.to_thread(queue.enqueue, vid, url, 720,
-                    requested_by=uid, upload_screenshots=s["screenshots"])
-                if created:
-                    added += 1
-                else:
-                    skipped += 1
+            items = [
+                (get_video_id(url), url, 720, uid, s["screenshots"])
+                for url in urls
+            ]
+            added, skipped = await asyncio.to_thread(
+                queue.enqueue_many, items, skip_existing=s["skip_existing"]
+            )
             await query.message.edit_text(
                 f"✅ Channel batch queued\nChannel: {s['info'].name}\nPages: {len(pages)}\n"
                 f"Videos found: {len(urls)}\nAdded: {added}\nSkipped existing: {skipped}\n"
