@@ -500,7 +500,7 @@ def main() -> int:
             indent=2,
         )
     )
-    return 0 if media else 2
+    return 0 if (media or selected_playback_source) else 2
 
 
 if __name__ == "__main__":
