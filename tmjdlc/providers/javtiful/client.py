@@ -60,6 +60,7 @@ class JavtifulProvider:
         *,
         quality: int | None = None,
         progress_hook: Callable[[dict[str, Any]], None] | None = None,
+        concurrent_fragments: int = 8,
     ) -> tuple[Path, StreamResult]:
         """Resolve immediately before each download attempt.
 
@@ -87,6 +88,7 @@ class JavtifulProvider:
                     output_dir,
                     attempt_name,
                     progress_hook=progress_hook,
+                    concurrent_fragments=concurrent_fragments,
                 )
                 self._progress(f"Download completed: {path.name}")
                 return path, stream
