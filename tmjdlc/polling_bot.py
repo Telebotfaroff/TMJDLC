@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import re
+import shutil
 import socket
 import subprocess
 import uuid
@@ -35,6 +36,7 @@ POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
 SHOT_COUNT = 10
+MIN_FREE_DISK_GB = float(os.getenv("TMJDLC_MIN_FREE_DISK_GB", "3"))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
@@ -81,69 +83,151 @@ async def status_edit(chat_id, message_id, text):
             log.exception("Could not edit status message chat_id=%s message_id=%s", chat_id, message_id)
 
 
+async def _cancelled(job_id: int, identity: str) -> bool:
+    return await asyncio.to_thread(queue.is_cancel_requested, job_id, identity)
+
+
+async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyncio.Event):
+    while not stop.is_set():
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=30)
+            break
+        except asyncio.TimeoutError:
+            ok = await asyncio.to_thread(queue.heartbeat, job_id, identity, LEASE)
+            if not ok:
+                lost.set()
+                break
+
+
 async def process_job(job: dict, identity: str):
     jid, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
     chat_id, message_id = job.get("status_chat_id"), job.get("status_message_id")
     out = WORK / "downloads"
     out.mkdir(parents=True, exist_ok=True)
-    await status_edit(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
+    lost, stop = asyncio.Event(), asyncio.Event()
+    heartbeat_task = asyncio.create_task(_heartbeat(jid, identity, lost, stop))
+
+    def check_stop() -> None:
+        if lost.is_set():
+            raise RuntimeError("Worker lease was lost; stopping this worker.")
+        if queue.is_cancel_requested(jid, identity):
+            raise asyncio.CancelledError("Cancellation requested.")
+
     try:
-        path = await asyncio.to_thread(
-            lambda: JavtifulProvider(max_attempts=2).download(
-                url, out, f"javtiful-{vid}", quality=job.get("quality")
-            )[0]
-        )
-        if not path.is_file() or path.stat().st_size == 0:
-            raise RuntimeError("Downloader returned an empty file.")
-        if not await asyncio.to_thread(queue.set_status, jid, identity, "uploading", output_path=str(path), lease_seconds=LEASE):
-            raise RuntimeError("Job lease was lost before upload.")
+        download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
+        path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
+        if not path or not path.is_file() or path.stat().st_size == 0:
+            check_stop()
+            await status_edit(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
+
+            def progress_hook(data):
+                if queue.is_cancel_requested(jid, identity):
+                    raise RuntimeError("Cancellation requested.")
+                if data.get("status") == "downloading":
+                    total = data.get("total_bytes") or data.get("total_bytes_estimate")
+                    done = data.get("downloaded_bytes", 0)
+                    if total:
+                        queue.update_progress(jid, identity, "downloading", int(done * 100 / total))
+
+            path = await asyncio.to_thread(
+                lambda: JavtifulProvider(max_attempts=2).download(
+                    url, out, f"javtiful-{vid}", quality=job.get("quality"),
+                    progress_hook=progress_hook,
+                )[0]
+            )
+            if not path.is_file() or path.stat().st_size == 0:
+                raise RuntimeError("Downloader returned an empty file.")
+            if not await asyncio.to_thread(queue.complete_stage, jid, identity, "download",
+                                           {"path": str(path), "size": path.stat().st_size}):
+                raise RuntimeError("Could not persist download stage; worker ownership was lost.")
+        check_stop()
         video_chat = await asyncio.to_thread(queue.get_setting, "upload_channel")
         image_chat = await asyncio.to_thread(queue.get_setting, "image_channel")
         if not video_chat:
             raise RuntimeError("Set video destination first with /setup or /setupload CHANNEL_ID.")
-        size_mb = path.stat().st_size / 1048576
-        await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
-        await app.send_video(
-            chat_id=int(video_chat),
-            video=str(path),
-            caption=vid,
-            supports_streaming=True,
-            parse_mode=ParseMode.DISABLED,
-        )
+
+        # FFprobe is independent of Telegram upload, so its failure cannot duplicate a video.
+        media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
+        if not media_stage:
+            probe = await asyncio.to_thread(subprocess.run, [
+                "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1", str(path)
+            ], capture_output=True, text=True, check=True)
+            duration = float(probe.stdout.strip())
+            await asyncio.to_thread(queue.complete_stage, jid, identity, "media_probe",
+                                    {"duration_seconds": duration, "size": path.stat().st_size})
+        else:
+            duration = float(media_stage.get("duration_seconds") or 0)
+
+        if not await asyncio.to_thread(queue.set_status, jid, identity, "uploading",
+                                       output_path=str(path), lease_seconds=LEASE):
+            raise RuntimeError("Job lease was lost before upload.")
+
+        video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+        if not video_stage:
+            check_stop()
+            size_mb = path.stat().st_size / 1048576
+            await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
+            sent = await app.send_video(chat_id=int(video_chat), video=str(path), caption=vid,
+                                        supports_streaming=True, parse_mode=ParseMode.DISABLED)
+            if not await asyncio.to_thread(queue.complete_stage, jid, identity, "video_upload",
+                                           {"chat_id": sent.chat.id, "message_id": sent.id}):
+                raise RuntimeError("Video sent, but its receipt could not be saved in Neon.")
+        else:
+            log.info("Skipping completed video upload for job=%s message_id=%s", jid,
+                     video_stage.get("message_id"))
+
         sent_shots = 0
         if image_chat and job.get("upload_screenshots", True):
             shots_dir = WORK / "screenshots" / vid
             shots_dir.mkdir(parents=True, exist_ok=True)
-            probe = subprocess.run(
-                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                 "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
-                capture_output=True, text=True, check=True,
-            )
-            duration = float(probe.stdout.strip())
             for i in range(SHOT_COUNT):
+                check_stop()
+                stage_name = f"screenshot_{i+1:02d}"
+                if await asyncio.to_thread(queue.stage_done, jid, stage_name):
+                    sent_shots += 1
+                    continue
                 target = shots_dir / f"{vid}-{i+1:02d}.jpg"
-                stamp = duration * (i + 1) / (SHOT_COUNT + 1)
-                subprocess.run(
-                    ["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(stamp),
-                     "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)],
-                    capture_output=True, check=True,
-                )
-                await app.send_photo(
-                    chat_id=int(image_chat),
-                    photo=str(target),
-                    caption=f"{vid} | Screenshot {i+1}/{SHOT_COUNT}",
-                )
+                if not target.is_file():
+                    stamp = duration * (i + 1) / (SHOT_COUNT + 1)
+                    await asyncio.to_thread(subprocess.run, [
+                        "ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(stamp),
+                        "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)
+                    ], capture_output=True, check=True)
+                check_stop()
+                sent = await app.send_photo(chat_id=int(image_chat), photo=str(target),
+                                            caption=f"{vid} | Screenshot {i+1}/{SHOT_COUNT}")
+                await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
+                                        {"chat_id": sent.chat.id, "message_id": sent.id})
                 sent_shots += 1
-        await asyncio.to_thread(queue.set_status, jid, identity, "completed", output_path=str(path), lease_seconds=LEASE)
+        else:
+            await asyncio.to_thread(queue.complete_stage, jid, identity, "screenshots_skipped", {})
+        check_stop()
+        if not await asyncio.to_thread(queue.set_status, jid, identity, "completed",
+                                       output_path=str(path), lease_seconds=LEASE):
+            raise RuntimeError("Could not mark job completed because worker ownership was lost.")
         await status_edit(chat_id, message_id, f"✅ Completed {vid}. Screenshots sent: {sent_shots}")
+    except asyncio.CancelledError:
+        await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
+                                error="Cancelled by administrator.", lease_seconds=LEASE)
+        await status_edit(chat_id, message_id, f"🛑 Cancelled {vid}.")
     except Exception as exc:
         error = f"{type(exc).__name__}: {str(exc)[:650]}"
         log.exception("Job failed id=%s video_id=%s", jid, vid)
         current = await asyncio.to_thread(queue.get, jid)
         if current and current.get("worker_id") == identity:
-            state = "queued" if int(current["attempts"]) < int(current["max_attempts"]) else "failed"
-            await asyncio.to_thread(queue.set_status, jid, identity, state, error=error, lease_seconds=LEASE)
-            await status_edit(chat_id, message_id, f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} {vid}: {error}")
+            if current.get("cancel_requested"):
+                state = "cancelled"
+            else:
+                state = "queued" if int(current["attempts"]) < int(current["max_attempts"]) else "failed"
+            await asyncio.to_thread(queue.set_status, jid, identity, state,
+                                    error=error, lease_seconds=LEASE)
+            await status_edit(chat_id, message_id,
+                              f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} {vid}: {error}")
+    finally:
+        stop.set()
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
 async def worker_loop(index: int):
@@ -155,6 +239,10 @@ async def worker_loop(index: int):
                 await condition.wait_for(lambda: active < parallel)
                 active += 1
             try:
+                disk_free = shutil.disk_usage(WORK).free / (1024 ** 3)
+                if disk_free < MIN_FREE_DISK_GB:
+                    await asyncio.sleep(max(POLL_SECONDS, 15))
+                    continue
                 job = await asyncio.to_thread(queue.claim, identity, LEASE)
                 if job:
                     await process_job(job, identity)
@@ -174,13 +262,77 @@ async def worker_loop(index: int):
 async def start_cmd(client, message):
     if await deny(message): return
     await message.reply_text(
-        "TMJDLC Pyrogram Bot (MTProto)\n\n"
-        "Send a Javtiful channel URL to inspect it.\n"
-        "/dl POST_URL — queue one video\n/queue — queue status\n"
-        "/setup — guided channel setup\n/setupload CHANNEL_ID — video destination\n"
-        "/setimages CHANNEL_ID — screenshot destination\n/settings — configuration\n"
-        "/cancel JOB_ID — cancel queued job\n/retry JOB_ID — retry failed job"
+        "TMJDLC Control Center · Pyrogram MTProto\n\n"
+        "/panel — dashboard\n/dl POST_URL — queue one video\n"
+        "/batch CHANNEL_URL [PAGES] — queue all or selected pages (e.g. 1-5,8)\n"
+        "/queue — queue status\n/jobs — recent jobs\n"
+        "/setup — guided destination setup\n/settings — configuration\n"
+        "/storage — disk status\n/cancel JOB_ID — cancel a job\n/retry JOB_ID — retry failed job"
     )
+
+
+async def panel_cmd(client, message):
+    if await deny(message): return
+    counts = await asyncio.to_thread(queue.counts)
+    jobs = await asyncio.to_thread(queue.list_jobs, 5)
+    text = "\n".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "No jobs yet."
+    recent = "\n".join(f"#{x['id']} {x['video_id']} · {x['status']} · {x.get('current_stage') or '-'}" for x in jobs)
+    free = shutil.disk_usage(WORK).free / (1024 ** 3)
+    await message.reply_text(
+        f"🧭 TMJDLC Dashboard\n\n{text}\n\nDisk free: {free:.1f} GiB\n"
+        f"Workers: {parallel}/{MAX_WORKERS}\n\nRecent jobs\n{recent}"[:4000]
+    )
+
+
+async def storage_cmd(client, message):
+    if await deny(message): return
+    usage = shutil.disk_usage(WORK)
+    await message.reply_text(
+        f"💽 TMJDLC Storage\nTotal: {usage.total / 1024**3:.1f} GiB\n"
+        f"Used: {usage.used / 1024**3:.1f} GiB\nFree: {usage.free / 1024**3:.1f} GiB\n"
+        f"New downloads pause below {MIN_FREE_DISK_GB:.1f} GiB free."
+    )
+
+
+async def batch_cmd(client, message):
+    if await deny(message): return
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 2:
+        return await message.reply_text("Usage: /batch CHANNEL_URL [all|1-5,8]")
+    url = parts[1].strip()
+    selection = parts[2].strip().lower() if len(parts) > 2 else "all"
+    try:
+        info = await asyncio.to_thread(JavtifulChannelScraper().inspect, url)
+        if selection == "all":
+            pages = list(range(1, info.total_pages + 1))
+        else:
+            pages = []
+            for token in selection.split(","):
+                token = token.strip()
+                if "-" in token:
+                    first, last = (int(x) for x in token.split("-", 1))
+                    if first > last:
+                        raise ValueError("Page range must be ascending.")
+                    pages.extend(range(first, last + 1))
+                else:
+                    pages.append(int(token))
+            pages = sorted(set(pages))
+            if not pages or min(pages) < 1 or max(pages) > info.total_pages:
+                raise ValueError(f"Choose pages from 1 to {info.total_pages}.")
+        status = await message.reply_text(
+            f"📚 {info.name}\nPages: {', '.join(map(str, pages[:30]))}"
+            f"{'…' if len(pages) > 30 else ''}\nCollecting links…"
+        )
+        urls = await asyncio.to_thread(JavtifulChannelScraper().videos_for_pages, info, pages)
+        items = [(VIDEO_ID.search(u).group(1), u, 720, message.from_user.id, True)
+                 for u in urls if VIDEO_ID.search(u)]
+        added, skipped = await asyncio.to_thread(queue.enqueue_many, items, skip_existing=True)
+        await status.edit_text(
+            f"✅ Batch queued\nChannel: {info.name}\nPages: {len(pages)}\n"
+            f"Found: {len(urls)}\nAdded: {added}\nSkipped: {skipped}"
+        )
+    except Exception as exc:
+        await message.reply_text(f"Batch failed: {type(exc).__name__}: {str(exc)[:400]}")
 
 
 async def settings_cmd(client, message):
@@ -320,8 +472,12 @@ async def cancel_cmd(client, message):
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2 or not parts[1].strip().isdigit():
         return await message.reply_text("Usage: /cancel JOB_ID")
-    ok = await asyncio.to_thread(queue.cancel, int(parts[1].strip()))
-    await message.reply_text("🛑 Cancelled." if ok else "Job not found or already running/completed.")
+    result = await asyncio.to_thread(queue.request_cancel, int(parts[1].strip()))
+    if result == "cancelled":
+        return await message.reply_text("🛑 Job cancelled.")
+    if result in {"downloading", "uploading"}:
+        return await message.reply_text("🛑 Cancellation requested. The worker will stop at its next safe checkpoint.")
+    await message.reply_text("Job not found or already completed.")
 
 
 async def retry_cmd(client, message):
@@ -370,6 +526,9 @@ async def on_stop(client):
 
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
+app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
+app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
+app.add_handler(MessageHandler(batch_cmd, filters.command("batch") & filters.private))
 app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filters.private))
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
 app.add_handler(MessageHandler(setup_cmd, filters.command("setup") & filters.private))
