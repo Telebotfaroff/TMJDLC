@@ -64,15 +64,15 @@ class JavtifulProvider:
 
         last_error: Exception | None = None
         for attempt in range(1, self.max_attempts + 1):
-            self._progress(
-                f"Resolving a fresh Javtiful stream (attempt {attempt}/{self.max_attempts})..."
-            )
-            stream = self.resolve(post_url, quality=quality)
-            self._progress(
-                f"Resolved {stream.format} source ({stream.label or stream.quality or 'quality unknown'}); starting download."
-            )
-            attempt_name = filename if attempt == 1 else f"{filename}.retry{attempt}"
             try:
+                self._progress(
+                    f"Resolving a fresh Javtiful stream (attempt {attempt}/{self.max_attempts})..."
+                )
+                stream = self.resolve(post_url, quality=quality)
+                self._progress(
+                    f"Resolved {stream.format} source ({stream.label or stream.quality or 'quality unknown'}); starting download."
+                )
+                attempt_name = filename if attempt == 1 else f"{filename}.retry{attempt}"
                 path = self.downloader.download(
                     stream,
                     output_dir,
@@ -84,10 +84,10 @@ class JavtifulProvider:
             except Exception as exc:
                 last_error = exc
                 self._progress(
-                    f"Download attempt {attempt} failed ({type(exc).__name__})."
+                    f"Attempt {attempt} failed ({type(exc).__name__})."
                 )
                 if attempt < self.max_attempts:
-                    self._progress("Refreshing the temporary stream URL before retrying.")
+                    self._progress("Resolving a new stream before retrying.");
 
         raise RuntimeError(
             f"Javtiful download failed after {self.max_attempts} fresh resolution attempt(s). "
