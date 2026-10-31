@@ -1,4 +1,4 @@
-"""TMJDLC bot using Telegram Bot API long polling; Pyrogram is upload-only."""
+"""TMJDLC bot using Telegram Bot API long polling for updates and media uploads."""
 from __future__ import annotations
 
 import asyncio
@@ -12,7 +12,6 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from dotenv import load_dotenv
-from pyrogram import Client
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes, MessageHandler, TypeHandler, filters
 
@@ -24,8 +23,6 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("tmjdlc.polling")
-API_ID = int(os.getenv("TG_API_ID", "0"))
-API_HASH = os.getenv("TG_API_HASH", "")
 TOKEN = os.getenv("TG_BOT_TOKEN", "")
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
@@ -36,13 +33,11 @@ SHOT_COUNT = 10
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
-if not API_ID or not API_HASH or not TOKEN or not ADMINS:
-    raise RuntimeError("Set TG_API_ID, TG_API_HASH, TG_BOT_TOKEN and TG_ADMIN_IDS.")
+if not TOKEN or not ADMINS:
+    raise RuntimeError("Set TG_BOT_TOKEN and TG_ADMIN_IDS.")
 
 queue = JobQueue(max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK.mkdir(parents=True, exist_ok=True)
-# Pyrogram is deliberately upload-only. Telegram updates are received by Bot API getUpdates polling.
-uploader = Client("tmjdlc_upload_session", api_id=API_ID, api_hash=API_HASH, bot_token=TOKEN, no_updates=True)
 worker_id = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 workers: list[asyncio.Task] = []
 parallel = MAX_WORKERS
@@ -90,7 +85,7 @@ async def process_job(job: dict, identity: str, bot):
         if not video_chat:
             raise RuntimeError("Set video destination first with /setupload CHANNEL_ID.")
         await status_edit(bot, chat_id, message_id, f"📤 Uploading {vid} ({path.stat().st_size / 1048576:.1f} MiB)…")
-        await uploader.send_video(int(video_chat), str(path), caption=vid, supports_streaming=True)
+        with path.open("rb") as video_file:\n            await bot.send_video(chat_id=int(video_chat), video=video_file, caption=vid, supports_streaming=True)
         shots = []
         if image_chat and job.get("upload_screenshots", True):
             shots_dir = WORK / "screenshots" / vid
@@ -103,7 +98,7 @@ async def process_job(job: dict, identity: str, bot):
                 subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(stamp), "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)], capture_output=True, check=True)
                 shots.append(target)
             for i, shot in enumerate(shots, 1):
-                await uploader.send_photo(int(image_chat), str(shot), caption=f"{vid} | Screenshot {i}/{SHOT_COUNT}")
+                with shot.open("rb") as photo_file:\n                    await bot.send_photo(chat_id=int(image_chat), photo=photo_file, caption=f"{vid} | Screenshot {i}/{SHOT_COUNT}")
         queue.set_status(jid, identity, "completed", output_path=str(path))
         await status_edit(bot, chat_id, message_id, f"✅ Completed {vid}. Screenshots sent: {len(shots)}")
     except Exception as exc:
@@ -305,8 +300,6 @@ async def log_incoming_update(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def post_init(application: Application):
-    await uploader.start()
-    log.info("Pyrogram upload client ready (updates disabled)")
     await asyncio.to_thread(queue.initialize)
     recovered = await asyncio.to_thread(queue.recover_expired)
     log.info("Neon queue ready; recovered expired jobs=%s", recovered)
@@ -320,8 +313,6 @@ async def post_shutdown(application: Application):
         task.cancel()
     if application.bot_data.get("worker_tasks"):
         await asyncio.gather(*application.bot_data["worker_tasks"], return_exceptions=True)
-    if uploader.is_connected:
-        await uploader.stop()
 
 
 def main():
@@ -337,7 +328,7 @@ def main():
     application.add_handler(CommandHandler("retry", retry_cmd))
     application.add_handler(CallbackQueryHandler(callback_handler, pattern=r"^channel:"))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
-    log.info("Starting Telegram Bot API long polling (getUpdates)")
+    log.info("Starting Telegram Bot API long polling for ALL Telegram operations (getUpdates + sendVideo/sendPhoto)")
     application.run_polling(drop_pending_updates=False, allowed_updates=Update.ALL_TYPES, poll_interval=1.0, timeout=30)
 
 
