@@ -18,7 +18,11 @@ MEDIA_TYPES = (
     "video/mp4",
     "video/webm",
 )
-SECRET_KEYS = {"ticket", "token", "authorization", "auth", "key", "signature", "sig", "verify", "expires", "exp", "jwt"}
+SECRET_KEYS = {
+    "ticket", "token", "authorization", "auth", "key", "signature", "sig",
+    "verify", "expires", "exp", "jwt", "x-amz-signature",
+    "x-amz-credential", "x-amz-security-token", "x-amz-date", "x-amz-expires",
+}
 
 
 def is_media_url(url: str, content_type: str = "") -> bool:
