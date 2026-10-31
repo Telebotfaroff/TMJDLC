@@ -156,8 +156,12 @@ async def process_job(job: dict, identity: str):
             duration = float(probe.stdout.strip())
             await asyncio.to_thread(queue.complete_stage, jid, identity, "media_probe",
                                     {"duration_seconds": duration, "size": path.stat().st_size})
+            await asyncio.to_thread(queue.save_media, vid, jid, str(path),
+                                    path.stat().st_size, duration)
         else:
             duration = float(media_stage.get("duration_seconds") or 0)
+            await asyncio.to_thread(queue.save_media, vid, jid, str(path),
+                                    path.stat().st_size, duration)
 
         if not await asyncio.to_thread(queue.set_status, jid, identity, "uploading",
                                        output_path=str(path), lease_seconds=LEASE):
