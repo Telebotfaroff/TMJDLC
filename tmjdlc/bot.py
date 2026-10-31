@@ -12,10 +12,11 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters
-from pyrogram.types import Message
+from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup, Message
 
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
+from tmjdlc.providers.javtiful.channel import ChannelInfo, JavtifulChannelScraper
 
 load_dotenv()
 API_ID = int(os.getenv("TG_API_ID", "0"))
@@ -38,6 +39,10 @@ app = Client("tmjdlc_admin_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT
 worker_prefix = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 worker_tasks: list[asyncio.Task] = []
 setup_states: dict[int, str] = {}
+channel_sessions: dict[int, dict] = {}
+active_parallelism = MAX_PARALLEL
+active_jobs = 0
+concurrency_condition = asyncio.Condition()
 
 
 def get_video_id(url: str) -> str:
@@ -101,16 +106,13 @@ async def process_job(job: dict, identity: str) -> None:
         image_chat = await asyncio.to_thread(queue.get_setting, "image_channel")
         if not upload_chat:
             raise RuntimeError("Set video destination first: /setupload CHANNEL_ID")
-        shots = await asyncio.to_thread(
-            make_screenshots, path, WORK_DIR / "screenshots" / vid
-        )
+        shots = []
         await app.send_video(int(upload_chat), str(path), caption=vid, supports_streaming=True)
-        if image_chat:
+        if image_chat and job.get("upload_screenshots", True):
+            shots = await asyncio.to_thread(make_screenshots, path, WORK_DIR / "screenshots" / vid)
             for index, shot in enumerate(shots, 1):
-                await app.send_photo(
-                    int(image_chat), str(shot),
-                    caption=f"{vid} | Screenshot {index}/{SCREENSHOT_COUNT}",
-                )
+                await app.send_photo(int(image_chat), str(shot),
+                    caption=f"{vid} | Screenshot {index}/{SCREENSHOT_COUNT}")
         queue.set_status(job_id, identity, "completed", output_path=str(path))
         await edit_status(chat_id, message_id, f"✅ Completed {vid}\nVideo uploaded. Screenshots sent: {len(shots)}")
     except Exception as exc:
@@ -126,14 +128,23 @@ async def process_job(job: dict, identity: str) -> None:
 
 
 async def worker_loop(index: int) -> None:
+    global active_jobs
     identity = f"{worker_prefix}-{index}"
     while True:
         try:
-            job = await asyncio.to_thread(queue.claim, identity, LEASE_SECONDS)
-            if job:
-                await process_job(job, identity)
-            else:
-                await asyncio.sleep(POLL_SECONDS)
+            async with concurrency_condition:
+                await concurrency_condition.wait_for(lambda: active_jobs < active_parallelism)
+                active_jobs += 1
+            try:
+                job = await asyncio.to_thread(queue.claim, identity, LEASE_SECONDS)
+                if job:
+                    await process_job(job, identity)
+                else:
+                    await asyncio.sleep(POLL_SECONDS)
+            finally:
+                async with concurrency_condition:
+                    active_jobs = max(0, active_jobs - 1)
+                    concurrency_condition.notify_all()
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -158,11 +169,122 @@ def admin_filter():
     return filters.user(list(ADMIN_IDS))
 
 
+def parse_page_selection(value: str, total_pages: int) -> list[int]:
+    pages: set[int] = set()
+    for part in value.replace(" ", "").split(","):
+        if "-" in part:
+            a, b = part.split("-", 1)
+            if not a.isdigit() or not b.isdigit() or int(a) > int(b):
+                raise ValueError("Use ranges like 1-5,8,10-12.")
+            pages.update(range(int(a), int(b) + 1))
+        elif part.isdigit():
+            pages.add(int(part))
+        else:
+            raise ValueError("Use page numbers like 1-5,8,10-12.")
+    if not pages or min(pages) < 1 or max(pages) > total_pages:
+        raise ValueError(f"Choose pages between 1 and {total_pages}.")
+    return sorted(pages)
+
+
+def channel_keyboard(session: dict) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬇️ All pages", callback_data="ch:all"),
+         InlineKeyboardButton("↔️ Page range", callback_data="ch:range")],
+        [InlineKeyboardButton("🔢 Select pages", callback_data="ch:pages")],
+        [InlineKeyboardButton(f"🖼 Screenshots: {'ON' if session['screenshots'] else 'OFF'}", callback_data="ch:shots")],
+        [InlineKeyboardButton(f"⚡ Parallel workers: {session['parallelism']}/{MAX_PARALLEL}", callback_data="ch:parallel")],
+        [InlineKeyboardButton(f"⏭ Skip existing: {'ON' if session['skip_existing'] else 'OFF'}", callback_data="ch:duplicates")],
+        [InlineKeyboardButton("✅ Queue selected pages", callback_data="ch:confirm"),
+         InlineKeyboardButton("✖ Cancel", callback_data="ch:cancel")],
+    ])
+
+
+async def send_channel_options(target, user_id: int):
+    s = channel_sessions[user_id]
+    info: ChannelInfo = s["info"]
+    text = (f"📚 **{info.name}**\nVideos: **{info.total_videos:,}**\n"
+            f"Pages: **{info.total_pages:,}** (23/page; final page: {info.last_page_count})\n"
+            f"Quality: **720p**\nSelected pages: **{len(s['pages'])}**")
+    if isinstance(target, Message):
+        return await target.reply_text(text, reply_markup=channel_keyboard(s))
+    return await target.edit_text(text, reply_markup=channel_keyboard(s))
+
+
+@app.on_callback_query(filters.user(list(ADMIN_IDS)) & filters.regex(r"^ch:"))
+async def channel_callback(_, query: CallbackQuery):
+    global active_parallelism
+    uid = query.from_user.id
+    s = channel_sessions.get(uid)
+    if not s:
+        return await query.answer("Session expired.", show_alert=True)
+    action = query.data.split(":", 1)[1]
+    if action == "cancel":
+        channel_sessions.pop(uid, None)
+        await query.message.edit_text("Channel download cancelled.")
+        return await query.answer()
+    if action == "all":
+        s["pages"] = list(range(1, s["info"].total_pages + 1))
+    elif action in {"range", "pages"}:
+        s["input_mode"] = action
+        await query.answer()
+        prompt = "Send a page range, e.g. 1-10." if action == "range" else "Send pages, e.g. 1,3,5-8."
+        return await query.message.reply_text(prompt)
+    elif action == "shots":
+        s["screenshots"] = not s["screenshots"]
+    elif action == "duplicates":
+        s["skip_existing"] = not s["skip_existing"]
+    elif action == "parallel":
+        active_parallelism = 1 if active_parallelism >= MAX_PARALLEL else active_parallelism + 1
+        s["parallelism"] = active_parallelism
+        async with concurrency_condition:
+            concurrency_condition.notify_all()
+    elif action == "confirm":
+        pages = s["pages"]
+        if not pages:
+            return await query.answer("Select pages first.", show_alert=True)
+        await query.answer("Collecting video links…")
+        await query.message.edit_text(f"⏳ Collecting links from {len(pages)} page(s)…")
+        try:
+            urls = await asyncio.to_thread(JavtifulChannelScraper().videos_for_pages, s["info"], pages)
+            added = skipped = 0
+            for url in urls:
+                vid = get_video_id(url)
+                existing = await asyncio.to_thread(queue.get_by_video, vid)
+                if s["skip_existing"] and existing:
+                    skipped += 1
+                    continue
+                _, created = await asyncio.to_thread(queue.enqueue, vid, url, 720,
+                    requested_by=uid, upload_screenshots=s["screenshots"])
+                if created:
+                    added += 1
+                else:
+                    skipped += 1
+            await query.message.edit_text(
+                f"✅ Channel batch queued\nChannel: {s['info'].name}\nPages: {len(pages)}\n"
+                f"Videos found: {len(urls)}\nAdded: {added}\nSkipped existing: {skipped}\n"
+                f"Quality: 720p | Screenshots: {'ON' if s['screenshots'] else 'OFF'}\n"
+                f"Worker parallelism: {active_parallelism}/{MAX_PARALLEL}"
+            )
+        except Exception as exc:
+            await query.message.edit_text(f"❌ Channel queue failed: {type(exc).__name__}: {str(exc)[:450]}")
+        finally:
+            channel_sessions.pop(uid, None)
+        return
+    await query.answer()
+    info = s["info"]
+    await query.message.edit_text(
+        f"📚 **{info.name}**\nVideos: **{info.total_videos:,}**\n"
+        f"Pages: **{info.total_pages:,}** (23/page; final page: {info.last_page_count})\n"
+        f"Quality: **720p**\nSelected pages: **{len(s['pages'])}**",
+        reply_markup=channel_keyboard(s),
+    )
+
+
 @app.on_message(filters.command(["start", "help"]) & admin_filter())
 async def help_handler(_, message: Message):
     await message.reply_text(
         "TMJDLC Durable Queue Bot\n\n"
-        "/dl URL [quality] — enqueue a post\n"
+        "Send a Javtiful /channel/SLUG URL for batch download.\n/dl URL — enqueue one 720p post\n"
         "/queue — show counts and recent jobs\n"
         "/cancel JOB_ID — cancel a queued job\n"
         "/retry JOB_ID — retry a failed job\n"
@@ -203,6 +325,24 @@ async def setup_input_handler(_, message: Message):
         return
 
     raw_value = (message.text or message.caption or "").strip()
+    session = channel_sessions.get(user_id)
+    if session and session.get("input_mode"):
+        mode = session.pop("input_mode")
+        try:
+            session["pages"] = parse_page_selection(raw_value, session["info"].total_pages)
+        except ValueError as exc:
+            session["input_mode"] = mode
+            return await message.reply_text(str(exc))
+        return await send_channel_options(message, user_id)
+    if not stage and re.match(r"https?://(?:www\\.)?javtiful\\.com/channel/", raw_value, re.I):
+        status = await message.reply_text("🔎 Inspecting channel and pagination…")
+        try:
+            info = await asyncio.to_thread(JavtifulChannelScraper().inspect, raw_value)
+        except Exception as exc:
+            return await status.edit_text(f"Couldn't inspect channel: {type(exc).__name__}: {str(exc)[:400]}")
+        channel_sessions[user_id] = {"info": info, "pages": [], "screenshots": True,
+            "skip_existing": True, "parallelism": active_parallelism}
+        return await send_channel_options(status, user_id)
     if raw_value.upper() == "CANCEL":
         setup_states.pop(user_id, None)
         return await message.reply_text("Channel setup cancelled.")
@@ -328,7 +468,7 @@ async def download_handler(_, message: Message):
         return await message.reply_text("Usage: /dl https://javtiful.com/video/ID/slug [720]")
     try:
         get_video_id(args[0])
-        quality = int(args[1]) if len(args) > 1 and args[1].isdigit() else None
+        quality = 720
     except ValueError as exc:
         return await message.reply_text(str(exc))
     await enqueue_url(args[0], await message.reply_text("Adding to durable queue…"), quality)
