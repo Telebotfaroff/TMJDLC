@@ -101,7 +101,7 @@ async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyn
                 break
 
 
-async def cleanup_completed_job(path: Path, video_id: str) -> None:
+async def cleanup_completed_job(path: Path, video_id: str) -> bool:
     """Delete only this completed job's local media and screenshot artifacts."""
     try:
         if path.exists() and path.is_file():
@@ -113,8 +113,10 @@ async def cleanup_completed_job(path: Path, video_id: str) -> None:
         if shots_dir.exists():
             shutil.rmtree(shots_dir, ignore_errors=True)
         log.info("Auto-cleaned completed job media video_id=%s", video_id)
+        return not path.exists() and not shots_dir.exists()
     except OSError:
         log.exception("Auto-clean failed for video_id=%s", video_id)
+        return False
 
 
 async def process_job(job: dict, identity: str):
@@ -266,11 +268,16 @@ async def process_job(job: dict, identity: str):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
         await status_edit(chat_id, message_id, f"✅ Completed {vid}. Screenshots sent: {sent_shots}")
         if AUTO_CLEAN:
-            await cleanup_completed_job(path, vid)
-            await asyncio.to_thread(queue.clear_media_path, vid)
-            await status_edit(chat_id, message_id,
-                              f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
-                              "🧹 Local video and screenshot files cleaned.")
+            cleaned = await cleanup_completed_job(path, vid)
+            if cleaned:
+                await asyncio.to_thread(queue.clear_media_path, vid)
+                await status_edit(chat_id, message_id,
+                                  f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
+                                  "🧹 Local video and screenshot files cleaned.")
+            else:
+                await status_edit(chat_id, message_id,
+                                  f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
+                                  "⚠️ Upload finished, but some local files could not be cleaned.")
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
                                 error="Cancelled by administrator.", lease_seconds=LEASE)
