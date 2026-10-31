@@ -10,9 +10,9 @@ from tmjdlc.providers.javtiful.channel import (
 )
 
 
-def listing(count: int, *, total: str = "2,123 Videos", name: str = "Madonna") -> str:
+def listing(count: int, *, start: int = 1000, total: str = "2,123 Videos", name: str = "Madonna") -> str:
     anchors = "".join(
-        f'<a href="/video/{1000 + i}/sample">Video {i}</a>' for i in range(count)
+        f'<a href="/video/{start + i}/sample">Video {i}</a>' for i in range(count)
     )
     return f"<html><head><title>{name} - Javtiful</title></head><body><h1>{name}</h1><p>{total}</p>{anchors}</body></html>"
 
@@ -33,7 +33,7 @@ class FakeSession:
     def get(self, url: str, timeout: int):
         self.urls.append(url)
         page = int(parse_qs(urlsplit(url).query).get("page", ["1"])[0])
-        return FakeResponse(listing(23 if page == 1 else 7))
+        return FakeResponse(listing(23 if page == 1 else 7, start=1000 if page == 1 else 2000))
 
 
 def test_normalize_and_build_page_urls():
