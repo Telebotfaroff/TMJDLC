@@ -1,13 +1,15 @@
 # TMJDLC Telegram Bot
 
-The bot is an admin-only Telegram Bot API controller using long polling (`getUpdates`) for updates and Bot API methods for all messaging and media uploads. It has a durable PostgreSQL queue.
+The bot uses **Pyrogram (MTProto) for every Telegram operation**: receiving updates, commands, callbacks, sending messages, and uploading large videos/photos. It does not use Bot API long polling or webhooks. A Neon PostgreSQL database stores the durable queue and channel settings.
 
 ## Environment
 
-Create a private `.env` file; never commit it:
+Keep these values in Colab Secrets or deployment environment variables; never commit credentials:
 
 ```env
 TG_BOT_TOKEN=123456:your_bot_token
+TG_API_ID=123456
+TG_API_HASH=your_api_hash
 TG_ADMIN_IDS=123456789
 DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
 TMJDLC_MAX_PARALLEL=2
@@ -16,48 +18,47 @@ TMJDLC_JOB_LEASE_SECONDS=3600
 TMJDLC_WORK_DIR=/content/tmjdlc-bot
 ```
 
-Use the Neon connection string for the dedicated `Javtiful-uploader` database in the `Javtiful` project (production branch, role `neondb_owner`) for `DATABASE_URL`. The database has already been created and the bot tables have been initialized. Keep the full connection string in Colab Secrets or deployment environment variables; never commit it to the repository or notebook source.
+Use the Neon connection string for the dedicated `Javtiful-uploader` database in the `Javtiful` project for `DATABASE_URL`. Keep it private.
 
 ## Install and run in Colab
 
 ```bash
-!pip install -e .
-!sudo apt-get update -qq && sudo apt-get install -y ffmpeg
-!python -m playwright install --with-deps chromium
-!python -m tmjdlc.bot
+pip install -e .
+sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+python -m playwright install --with-deps chromium
+python -m tmjdlc.bot
 ```
 
-No Telegram API ID, API hash, Pyrogram dependency, MTProto session, or user account login is required. The bot initializes two namespaced tables, `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additive schema is checked into `sql/001_tmjdlc_bot_queue.sql`. It does not modify the existing Javtiful/Telegram tables.
+The bot uses a Pyrogram bot session created from `TG_API_ID`, `TG_API_HASH`, and `TG_BOT_TOKEN`. It does not require a personal-user login or session string. Pyrogram handles updates and uploads through MTProto; no `getUpdates` polling or webhook endpoint is used.
+
+The bot initializes `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additive schema is in `sql/001_tmjdlc_bot_queue.sql`; existing unrelated tables are not modified.
 
 ## Commands
 
-- Send `https://javtiful.com/channel/SLUG` — inspect the channel, then choose all pages, a range, or individual pages.
-- Channel options: fixed 720p, screenshot uploads on/off, skip existing jobs, and runtime worker parallelism (1–`TMJDLC_MAX_PARALLEL`).
+- Send a Javtiful channel URL to inspect it and queue all pages.
 - `/dl POST_URL` — enqueue one Javtiful post at 720p.
 - `/queue` — show queue counts and recent jobs.
 - `/cancel JOB_ID` — cancel a queued or failed job.
 - `/retry JOB_ID` — requeue a failed job.
-- `/setup` — guided setup: forward a post from the video channel, then forward a post from the screenshot channel; public `@usernames` and numeric IDs are also accepted. Send `SKIP` to disable screenshot uploads.
-- `/cancelsetup` — cancel the guided setup.
+- `/setup` — guided setup for video and screenshot destination channels; send `SKIP` to disable screenshots.
 - `/setupload CHANNEL_ID` — configure the video destination manually.
 - `/setimages CHANNEL_ID` — configure the screenshot destination manually.
-- `/settings` — show current destinations and worker settings.
+- `/settings` — show saved destinations and worker settings.
 
 ## Queue behavior
 
 - PostgreSQL is the source of truth; jobs survive bot process/runtime restarts.
-- Workers claim jobs with PostgreSQL `FOR UPDATE SKIP LOCKED`, so multiple workers/instances do not claim the same queued job.
-- Unique `video_id` prevents duplicate queue entries. Channel downloads skip existing jobs by default.
-- Per-job screenshot preference is stored in `upload_screenshots`; the bot adds this column safely during startup.
-- Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue a failed job.
-- Worker leases allow expired in-progress jobs to be recovered on startup.
-- `TMJDLC_MAX_PARALLEL` controls worker count (1–4).
-- Downloaded files and generated screenshots remain on the worker's local disk. The database stores job state and local output path, not video bytes. A Colab runtime reset can therefore remove local files even though job history remains persistent.
+- Workers claim jobs with PostgreSQL `FOR UPDATE SKIP LOCKED`.
+- Unique `video_id` prevents duplicate queue entries.
+- Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue failed jobs.
+- Worker leases recover abandoned jobs after a runtime restart.
+- `TMJDLC_MAX_PARALLEL` controls concurrent jobs (1–4).
+- Media and generated screenshots remain on local worker disk; Colab resets remove local files, but Neon retains job history.
 
 ## Telegram permissions
 
-Add the bot to the video destination and screenshot destination channels as an administrator with permission to post. The Javtiful source is read over HTTP; no Telegram source channel is required. Only Telegram IDs listed in `TG_ADMIN_IDS` can use bot commands.
+Add the bot as an administrator to both destination channels with permission to post. Only IDs listed in `TG_ADMIN_IDS` can use the private bot.
 
 ## Operational note
 
-The bot process must remain running to process jobs. The database queue is durable across restarts, but Colab is an ephemeral worker; use a persistent worker host for continuous service.
+Keep the Colab runtime running while jobs process. The queue is durable, but Colab is an ephemeral worker host.
