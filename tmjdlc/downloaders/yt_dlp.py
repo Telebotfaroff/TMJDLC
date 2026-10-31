@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from tmjdlc.providers.javtiful.stream_detector import StreamResult
+from tmjdlc.models.stream import StreamResult
 
 
 class YtDlpStreamDownloader:
