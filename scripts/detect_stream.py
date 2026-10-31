@@ -305,7 +305,7 @@ def main() -> int:
                 str(item.get("content_type", "")),
             ]
             for candidate in candidates:
-                match = re.search(r"(?:_|/)(\\d{3,4})p(?:\\.|/|$)", candidate, re.IGNORECASE)
+                match = re.search(r"(?:_|/)(\d{3,4})p(?:\.|/|$)", candidate, re.IGNORECASE)
                 if match:
                     return int(match.group(1))
             return None
