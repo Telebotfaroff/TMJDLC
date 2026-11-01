@@ -382,6 +382,27 @@ class JobQueue:
             """).fetchall()
             return len(rows)
 
+    def cancel_all(self) -> dict[str, int]:
+        """Cancel every unfinished job; active workers stop cooperatively."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET
+                  status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
+                  cancel_requested=TRUE,
+                  worker_id=CASE WHEN status='queued' THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status='queued' THEN NULL ELSE lease_until END,
+                  updated_at=now()
+                WHERE status IN ('queued','downloading','uploading')
+                RETURNING status
+            """).fetchall()
+            counts = {"cancelled": 0, "stopping": 0}
+            for row in rows:
+                if row["status"] == "cancelled":
+                    counts["cancelled"] += 1
+                else:
+                    counts["stopping"] += 1
+            return counts
+
     def clear_completed_history(self) -> int:
         """Remove completed queue rows that are not referenced by retained media records."""
         with self.connect() as conn:
