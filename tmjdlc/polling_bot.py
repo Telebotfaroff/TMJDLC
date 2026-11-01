@@ -34,10 +34,12 @@ TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
 API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
-MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
+MAX_WORKERS = max(2, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 UPLOAD_WORKERS = max(1, min(16, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
+MAX_PENDING_UPLOADS = max(0, min(4, int(os.getenv("TMJDLC_MAX_PENDING_UPLOADS", "1"))))
+UPLOAD_QUEUE_POLL_SECONDS = max(1, int(os.getenv("TMJDLC_UPLOAD_QUEUE_POLL_SECONDS", "2")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
 SHOT_COUNT = 10
@@ -116,6 +118,9 @@ workers: list[asyncio.Task] = []
 parallel = MAX_WORKERS
 active = 0
 condition = asyncio.Condition()
+# One active MTProto video upload at a time. Jobs waiting for this slot count
+# against the durable upload-backlog limit enforced by JobQueue.claim().
+video_upload_semaphore = asyncio.Semaphore(1)
 setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
@@ -182,6 +187,16 @@ async def status_edit(chat_id, message_id, text):
                 return
             log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
                         chat_id, message_id, exc)
+
+
+async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
+    """Serialize video uploads and expose the waiting state to Telegram."""
+    await status_edit(
+        status_chat_id, status_message_id,
+        "⏳ Waiting for the video-upload slot. Download queue is applying backpressure…",
+    )
+    async with video_upload_semaphore:
+        return await upload_client.send_video(**kwargs)
 
 
 class DestinationError(RuntimeError):
@@ -484,7 +499,8 @@ async def process_job(job: dict, identity: str):
                         "Sending directly to your private bot chat…",
                     )
                 await sync_upload_peer(upload_chat_id)
-                sent = await upload_client.send_video(
+                sent = await send_video_with_slot(
+                    chat_id, message_id,
                     chat_id=upload_chat_id, video=str(path), caption=title,
                     duration=media_info["duration"], width=media_info["width"],
                     height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
@@ -506,7 +522,8 @@ async def process_job(job: dict, identity: str):
                 )
                 try:
                     await sync_upload_peer(fallback_chat_id)
-                    sent = await upload_client.send_video(
+                    sent = await send_video_with_slot(
+                        chat_id, message_id,
                         chat_id=fallback_chat_id, video=str(path), caption=title,
                         duration=media_info["duration"], width=media_info["width"],
                         height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
@@ -623,11 +640,14 @@ async def worker_loop(index: int):
                 if disk_free < MIN_FREE_DISK_GB:
                     await asyncio.sleep(max(POLL_SECONDS, 15))
                     continue
-                job = await asyncio.to_thread(queue.claim, identity, LEASE)
+                job = await asyncio.to_thread(
+                    queue.claim, identity, LEASE,
+                    max_pending_uploads=MAX_PENDING_UPLOADS,
+                )
                 if job:
                     await process_job(job, identity)
                 else:
-                    await asyncio.sleep(POLL_SECONDS)
+                    await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
             finally:
                 async with condition:
                     active = max(0, active - 1)
@@ -1212,7 +1232,7 @@ async def callback_handler(client, callback):
         if direction == "up":
             parallel = min(MAX_WORKERS, parallel + 1)
         elif direction == "down":
-            parallel = max(1, parallel - 1)
+            parallel = max(2, parallel - 1)
         async with condition:
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
