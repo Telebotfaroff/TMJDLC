@@ -1072,7 +1072,6 @@ async def callback_handler(client, callback):
         return await render_queue(callback.message, edit=True)
     if data == "queue:cancel_all:ask":
         counts = await asyncio.to_thread(queue.counts)
-        unfinished = counts.get("queued", 0) + counts.get("downloading", 0) + counts.get("uploading", 0)
         await callback.answer()
         return await callback.message.edit_text(
             "🚨 <b>Cancel ALL unfinished tasks?</b>\\n"
