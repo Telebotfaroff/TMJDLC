@@ -749,6 +749,7 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
         [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
                               callback_data="queue:pause" if not paused else "queue:resume"),
          InlineKeyboardButton("🛑 Cancel queued", callback_data="queue:cancel_queued")],
+        [InlineKeyboardButton("🚨 Cancel ALL tasks", callback_data="queue:cancel_all:ask")],
         [InlineKeyboardButton("🧹 Clear completed", callback_data="queue:clear:ask"),
          InlineKeyboardButton("🔄 Refresh", callback_data=f"queue:page:{offset}")],
         [InlineKeyboardButton("🏠 Home", callback_data="home:show")],
@@ -1069,6 +1070,37 @@ async def callback_handler(client, callback):
         count = await asyncio.to_thread(queue.cancel_queued)
         await callback.answer(f"Cancelled {count} queued jobs.", show_alert=True)
         return await render_queue(callback.message, edit=True)
+    if data == "queue:cancel_all:ask":
+        counts = await asyncio.to_thread(queue.counts)
+        unfinished = counts.get("queued", 0) + counts.get("downloading", 0) + counts.get("uploading", 0)
+        await callback.answer()
+        return await callback.message.edit_text(
+            "🚨 <b>Cancel ALL unfinished tasks?</b>\\n"
+            f"Queued: <b>{counts.get('queued', 0)}</b>\\n"
+            f"Downloading: <b>{counts.get('downloading', 0)}</b>\\n"
+            f"Uploading: <b>{counts.get('uploading', 0)}</b>\\n\\n"
+            "This affects every batch and individual job. Active transfers will stop at their next safe checkpoint. "
+            "Completed jobs will not be changed.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("🚨 Yes, cancel ALL", callback_data="queue:cancel_all:confirm"),
+                 InlineKeyboardButton("↩️ Go back", callback_data="home:queue")]
+            ]),
+            parse_mode=ParseMode.HTML,
+        )
+    if data == "queue:cancel_all:confirm":
+        result = await asyncio.to_thread(queue.cancel_all)
+        await callback.answer("All unfinished tasks cancellation requested.", show_alert=True)
+        return await callback.message.edit_text(
+            "🛑 <b>Cancel all requested</b>\\n"
+            f"Queued cancelled: <b>{result['cancelled']}</b>\\n"
+            f"Active tasks stopping: <b>{result['stopping']}</b>\\n"
+            "Completed tasks were left untouched.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("📋 Open queue", callback_data="home:queue"),
+                 InlineKeyboardButton("🏠 Home", callback_data="home:show")]
+            ]),
+            parse_mode=ParseMode.HTML,
+        )
     if data == "queue:clear:ask":
         await callback.answer()
         return await callback.message.edit_text(
