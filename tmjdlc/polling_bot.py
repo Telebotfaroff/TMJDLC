@@ -471,7 +471,9 @@ async def start_cmd(client, message):
         "/batch CHANNEL_URL [PAGES] — queue all or selected pages (e.g. 1-5,8)\n"
         "/queue — queue status\n/jobs — recent jobs\n"
         "/setup — guided destination setup\n/settings — configuration\n"
-        "/storage — disk status\n/cancel JOB_ID — cancel a job\n/retry JOB_ID — retry failed job"
+        "/storage — disk status\n/cancel JOB_ID — cancel a job\n"
+        "/batch — use the Cancel remaining button to stop a whole batch\n"
+        "/retry JOB_ID — retry failed job"
     )
 
 
@@ -618,15 +620,22 @@ async def queue_channel_batch(message, uid: int):
                 ))
         if not items:
             raise RuntimeError("No video links were found in the selected pages.")
+        batch_id = uuid.uuid4().hex[:12]
         added, skipped = await asyncio.to_thread(
-            queue.enqueue_many, items, skip_existing=state.get("skip_existing", True)
+            queue.enqueue_many, items, skip_existing=state.get("skip_existing", True),
+            batch_id=batch_id,
         )
+        keyboard = InlineKeyboardMarkup([[
+            InlineKeyboardButton("🛑 Cancel remaining batch jobs", callback_data=f"batch:cancel:{batch_id}")
+        ]]) if added else None
         await message.edit_text(
-            f"✅ <b>Batch queued</b>\nChannel: {html.escape(info.name)}\n"
+            f"✅ <b>Batch queued</b> · <code>{batch_id}</code>\n"
+            f"Channel: {html.escape(info.name)}\n"
             f"Selection: {html.escape(selection)}\nFound: {len(items)}\n"
             f"Added: {added}\nSkipped: {skipped}\nQuality: "
-            f"{'Best' if state.get('quality') is None else str(state.get('quality')) + 'p'}",
-            parse_mode=ParseMode.HTML,
+            f"{'Best' if state.get('quality') is None else str(state.get('quality')) + 'p'}\n\n"
+            "Use the button below to cancel all unfinished jobs from this batch.",
+            reply_markup=keyboard, parse_mode=ParseMode.HTML,
         )
     except Exception as exc:
         await message.edit_text(f"❌ Batch failed: {type(exc).__name__}: {str(exc)[:350]}")
@@ -753,6 +762,17 @@ async def callback_handler(client, callback):
     if uid not in ADMINS:
         return await callback.answer("Not authorized.", show_alert=True)
     data = callback.data or ""
+    if data.startswith("batch:cancel:"):
+        batch_id = data.rsplit(":", 1)[-1]
+        result = await asyncio.to_thread(queue.cancel_batch, batch_id)
+        await callback.answer("Batch cancellation processed.")
+        return await callback.message.edit_text(
+            f"🛑 <b>Batch cancellation requested</b> · <code>{batch_id}</code>\n"
+            f"Queued jobs cancelled: <b>{result['cancelled']}</b>\n"
+            f"Active jobs stopping: <b>{result['stopping']}</b>\n"
+            "Other batches and individual jobs were not changed.",
+            parse_mode=ParseMode.HTML,
+        )
     state = channel_state.get(uid)
     if data == "channel:cancel":
         channel_state.pop(uid, None)
