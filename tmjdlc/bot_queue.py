@@ -170,20 +170,32 @@ class JobQueue:
                     skipped += 1
         return added, skipped
 
-    def claim(self, worker_id: str, lease_seconds: int = 900) -> dict[str, Any] | None:
+    def claim(self, worker_id: str, lease_seconds: int = 900, *,
+              max_pending_uploads: int = 1) -> dict[str, Any] | None:
+        """Claim a download only while the upload pipeline has capacity.
+
+        The uploading status includes the active upload and jobs waiting for
+        the single upload semaphore. A limit of 1 permits one waiting upload
+        in addition to the active transfer. Claims are serialized across
+        workers/instances with a transaction advisory lock.
+        """
         with self.connect() as conn:
+            conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
                 WITH candidate AS (
                   SELECT id FROM tmjdlc_bot_jobs
                   WHERE status='queued' AND attempts < max_attempts AND cancel_requested=FALSE
-                  ORDER BY priority,created_at FOR UPDATE SKIP LOCKED LIMIT 1
+                    AND NOT EXISTS (
+                      SELECT 1 FROM tmjdlc_bot_jobs WHERE status='downloading'
+                    )
+                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='uploading') < %s
                 )
                 UPDATE tmjdlc_bot_jobs j SET status='downloading',
                   attempts=j.attempts+1,worker_id=%s,
                   lease_until=now()+(%s*interval '1 second'),
                   started_at=COALESCE(j.started_at,now()),updated_at=now()
                 FROM candidate c WHERE j.id=c.id RETURNING j.*
-            """, (worker_id, lease_seconds)).fetchone()
+            """, (max(1, int(max_pending_uploads)) + 1, worker_id, lease_seconds)).fetchone()
             if row:
                 conn.execute("""
                     INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
