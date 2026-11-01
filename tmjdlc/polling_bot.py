@@ -358,6 +358,12 @@ async def process_job(job: dict, identity: str):
                     jid, exc,
                 )
 
+        # Reuse a previously completed upload receipt without introducing a
+        # post-download peer lookup when recovering a job after a retry.
+        video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+        if video_stage and video_stage.get("chat_id"):
+            await sync_upload_peer(int(video_stage["chat_id"]))
+
         download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
         path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
         if not path or not path.is_file() or path.stat().st_size == 0:
@@ -426,7 +432,6 @@ async def process_job(job: dict, identity: str):
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Job lease was lost before upload.")
 
-        video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
         default_upload_chat_id = (
             video_destination.id if video_destination is not None
             else int(job.get("requested_by") or 0)
