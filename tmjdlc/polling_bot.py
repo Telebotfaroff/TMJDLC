@@ -444,6 +444,9 @@ async def worker_loop(index: int):
                 await condition.wait_for(lambda: active < parallel)
                 active += 1
             try:
+                if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
+                    await asyncio.sleep(POLL_SECONDS)
+                    continue
                 disk_free = shutil.disk_usage(WORK).free / (1024 ** 3)
                 if disk_free < MIN_FREE_DISK_GB:
                     await asyncio.sleep(max(POLL_SECONDS, 15))
@@ -635,21 +638,93 @@ async def queue_channel_batch(message, uid: int):
         channel_state.pop(uid, None)
 
 
-async def settings_cmd(client, message):
-    if await deny(message): return
-    video, images = await asyncio.gather(
-        asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
-        asyncio.to_thread(queue.get_setting, "image_channel", "Not set"),
+def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
+    rows = []
+    for job in jobs:
+        jid, status = int(job["id"]), str(job["status"])
+        label = f"#{jid} · {str(job['video_id'])[:18]} · {status}"
+        if status in {"queued", "downloading", "uploading"}:
+            rows.append([InlineKeyboardButton("🛑 " + label, callback_data=f"job:cancel:{jid}")])
+        elif status == "failed":
+            rows.append([InlineKeyboardButton("🔁 " + label, callback_data=f"job:retry:{jid}")])
+    nav = []
+    if offset > 0:
+        nav.append(InlineKeyboardButton("⬅️ Newer", callback_data=f"queue:page:{max(0, offset-10)}"))
+    if len(jobs) == 10:
+        nav.append(InlineKeyboardButton("Older ➡️", callback_data=f"queue:page:{offset+10}"))
+    if nav: rows.append(nav)
+    rows.extend([
+        [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
+                              callback_data="queue:pause" if not paused else "queue:resume"),
+         InlineKeyboardButton("🛑 Cancel queued", callback_data="queue:cancel_queued")],
+        [InlineKeyboardButton("🧹 Clear completed", callback_data="queue:clear:ask"),
+         InlineKeyboardButton("🔄 Refresh", callback_data=f"queue:page:{offset}")],
+        [InlineKeyboardButton("🏠 Home", callback_data="home:show")],
+    ])
+    return InlineKeyboardMarkup(rows)
+
+
+async def render_queue(target, offset: int = 0, edit: bool = False):
+    counts, jobs, paused = await asyncio.gather(
+        asyncio.to_thread(queue.counts),
+        asyncio.to_thread(queue.list_jobs, 10, offset),
+        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
     )
-    await message.reply_text(f"Video destination: {video}\nScreenshot destination: {images}\nWorkers: {parallel}/{MAX_WORKERS}\nLease: {LEASE}s")
+    paused = str(paused).lower() in {"1", "true", "yes", "on"}
+    lines = ["📋 <b>Queue Manager</b>", f"Status: <b>{'PAUSED' if paused else 'RUNNING'}</b>", ""]
+    for key in ("queued", "downloading", "uploading", "completed", "failed", "cancelled"):
+        lines.append(f"{key.title()}: <b>{counts.get(key, 0)}</b>")
+    lines.append("")
+    lines.append(f"<b>Recent jobs · {offset+1}–{offset+len(jobs)}</b>" if jobs else "No jobs on this page.")
+    for job in jobs:
+        stage = f" · {html.escape(str(job.get('current_stage') or ''))}" if job.get("current_stage") else ""
+        progress = f" · {int(job.get('progress_percent') or 0)}%" if job.get("status") in {"downloading", "uploading"} else ""
+        lines.append(f"#{job['id']} <code>{html.escape(str(job['video_id']))}</code> · <b>{html.escape(str(job['status']))}</b>{stage}{progress}")
+    body = "\n".join(lines)[:3900]
+    markup = queue_keyboard(jobs, offset, paused)
+    if edit:
+        return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
 async def queue_cmd(client, message):
     if await deny(message): return
-    counts, jobs = await asyncio.gather(asyncio.to_thread(queue.counts), asyncio.to_thread(queue.list_jobs, 12))
-    summary = "\n".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "No jobs yet."
-    recent = "\n".join(f"#{x['id']} · {x['video_id']} · {x['status']} · try {x['attempts']}" for x in jobs)
-    await message.reply_text(f"📊 Queue\n{summary}\n\nRecent jobs\n{recent}"[:4000])
+    return await render_queue(message)
+
+
+async def settings_cmd(client, message):
+    if await deny(message): return
+    video, images, shots, paused = await asyncio.gather(
+        asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
+        asyncio.to_thread(queue.get_setting, "image_channel", "Not set"),
+        asyncio.to_thread(queue.get_setting, "upload_screenshots", "true"),
+        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
+    )
+    enabled = str(shots).lower() in {"1", "true", "yes", "on"}
+    paused = str(paused).lower() in {"1", "true", "yes", "on"}
+    body = (
+        "⚙️ <b>Settings</b>\\n\\n"
+        f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
+        f"🖼 Screenshot destination: <code>{html.escape(str(images))}</code>\\n"
+        f"📸 Screenshot delivery: <b>{'ON' if enabled else 'OFF'}</b>\\n"
+        "🎥 Quality: <b>720p automatic</b>\\n"
+        f"⚡ Worker concurrency: <b>{parallel}/{MAX_WORKERS}</b>\\n"
+        f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
+        f"⏱ Lease: <b>{LEASE}s</b>"
+    )
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton(f"📸 Screenshots: {'ON' if enabled else 'OFF'}", callback_data="settings:shots")],
+        [InlineKeyboardButton("🎞 Set video destination", callback_data="settings:video"),
+         InlineKeyboardButton("🖼 Set screenshot destination", callback_data="settings:images")],
+        [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
+         InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
+         InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
+        [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
+                              callback_data="queue:pause" if not paused else "queue:resume")],
+        [InlineKeyboardButton("🏠 Home", callback_data="home:show"),
+         InlineKeyboardButton("📋 Queue manager", callback_data="home:queue")],
+    ])
+    await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
 async def set_channel(message, key):
@@ -942,7 +1017,7 @@ app.add_handler(MessageHandler(setimages_cmd, filters.command("setimages") & fil
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
-app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(channel:|batch:cancel:)")))
+app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:)")))
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 
