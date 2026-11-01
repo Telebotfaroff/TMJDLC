@@ -485,14 +485,23 @@ async def start_cmd(client, message):
 async def panel_cmd(client, message):
     if await deny(message): return
     counts = await asyncio.to_thread(queue.counts)
-    jobs = await asyncio.to_thread(queue.list_jobs, 5)
-    text = "\n".join(f"{k}: {v}" for k, v in sorted(counts.items())) or "No jobs yet."
-    recent = "\n".join(f"#{x['id']} {x['video_id']} · {x['status']} · {x.get('current_stage') or '-'}" for x in jobs)
     free = shutil.disk_usage(WORK).free / (1024 ** 3)
-    await message.reply_text(
-        f"🧭 TMJDLC Dashboard\n\n{text}\n\nDisk free: {free:.1f} GiB\n"
-        f"Workers: {parallel}/{MAX_WORKERS}\n\nRecent jobs\n{recent}"[:4000]
+    running = counts.get("downloading", 0) + counts.get("uploading", 0)
+    body = (
+        "🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
+        f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
+        f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
+        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>"
     )
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
+         InlineKeyboardButton("📚 Batch", callback_data="home:batch")],
+        [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
+         InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
+        [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
+         InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
+    ])
+    await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
 async def storage_cmd(client, message):
@@ -692,8 +701,8 @@ async def queue_cmd(client, message):
     return await render_queue(message)
 
 
-async def settings_cmd(client, message):
-    if await deny(message): return
+async def settings_cmd(client, message, check_access=True):
+    if check_access and await deny(message): return
     video, images, shots, paused = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "image_channel", "Not set"),
@@ -904,7 +913,7 @@ async def callback_handler(client, callback):
         return await render_queue(callback.message, edit=True)
     if data == "home:settings":
         await callback.answer()
-        return await settings_cmd(client, callback.message)
+        return await settings_cmd(client, callback.message, check_access=False)
     if data == "home:download":
         download_state.add(uid)
         await callback.answer("Send a Javtiful video URL.")
