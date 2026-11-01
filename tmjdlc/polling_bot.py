@@ -521,12 +521,6 @@ def batch_keyboard(uid: int) -> InlineKeyboardMarkup:
         ],
         [InlineKeyboardButton("✍️ Custom pages", callback_data="channel:custom_pages")],
         [
-            InlineKeyboardButton(("480p ✓" if quality == 480 else "480p"), callback_data="channel:quality:480"),
-            InlineKeyboardButton(("720p ✓" if quality == 720 else "720p"), callback_data="channel:quality:720"),
-            InlineKeyboardButton(("1080p ✓" if quality == 1080 else "1080p"), callback_data="channel:quality:1080"),
-            InlineKeyboardButton(("Best ✓" if quality is None else "Best"), callback_data="channel:quality:best"),
-        ],
-        [
             InlineKeyboardButton(f"🖼 Screenshots: {screenshots}", callback_data="channel:toggle:screenshots"),
             InlineKeyboardButton(f"⏭ Skip existing: {skip}", callback_data="channel:toggle:skip"),
         ],
@@ -547,13 +541,11 @@ def batch_summary(info, state: dict) -> str:
         "latest:50": "Latest 50 videos",
         "custom": f"Pages {state.get('pages', [])}",
     }.get(selection, selection)
-    quality = state.get("quality", 720)
-    quality_label = "Best available" if quality is None else f"{quality}p"
     return (
         f"📚 <b>{html.escape(info.name)}</b>\n"
         f"Videos: <b>{info.total_videos}</b> · Pages: <b>{info.total_pages}</b>\n\n"
         f"Selection: <b>{html.escape(selection_label)}</b>\n"
-        f"Quality: <b>{quality_label}</b>\n"
+"
         f"Screenshots: <b>{'Enabled' if state.get('screenshots', True) else 'Disabled'}</b>\n"
         f"Skip existing: <b>{'Yes' if state.get('skip_existing', True) else 'No'}</b>\n\n"
         "Choose every option below, then press Review & queue."
@@ -617,7 +609,7 @@ async def queue_channel_batch(message, uid: int):
             match = VIDEO_ID.search(url)
             if match:
                 items.append((
-                    match.group(1), url, state.get("quality", 720), uid,
+                    match.group(1), url, 720, uid,
                     state.get("screenshots", True),
                 ))
         if not items:
@@ -849,11 +841,6 @@ async def callback_handler(client, callback):
         else:
             return await callback.answer("Unknown selection.", show_alert=True)
         await callback.answer("Selection updated.")
-        return await show_batch_menu(callback.message, uid)
-    if data.startswith("channel:quality:"):
-        value = data.rsplit(":", 1)[-1]
-        state["quality"] = None if value == "best" else int(value)
-        await callback.answer("Quality updated.")
         return await show_batch_menu(callback.message, uid)
     if data == "channel:toggle:screenshots":
         state["screenshots"] = not state.get("screenshots", True)
