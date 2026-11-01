@@ -545,7 +545,6 @@ def batch_summary(info, state: dict) -> str:
         f"📚 <b>{html.escape(info.name)}</b>\n"
         f"Videos: <b>{info.total_videos}</b> · Pages: <b>{info.total_pages}</b>\n\n"
         f"Selection: <b>{html.escape(selection_label)}</b>\n"
-"
         f"Screenshots: <b>{'Enabled' if state.get('screenshots', True) else 'Disabled'}</b>\n"
         f"Skip existing: <b>{'Yes' if state.get('skip_existing', True) else 'No'}</b>\n\n"
         "Choose every option below, then press Review & queue."
@@ -626,8 +625,7 @@ async def queue_channel_batch(message, uid: int):
             f"✅ <b>Batch queued</b> · <code>{batch_id}</code>\n"
             f"Channel: {html.escape(info.name)}\n"
             f"Selection: {html.escape(selection)}\nFound: {len(items)}\n"
-            f"Added: {added}\nSkipped: {skipped}\nQuality: "
-            f"{'Best' if state.get('quality') is None else str(state.get('quality')) + 'p'}\n\n"
+            f"Added: {added}\nSkipped: {skipped}\nQuality: 720p (automatic)\n\n"
             "Use the button below to cancel all unfinished jobs from this batch.",
             reply_markup=keyboard, parse_mode=ParseMode.HTML,
         )
