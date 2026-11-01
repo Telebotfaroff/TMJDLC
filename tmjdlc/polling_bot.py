@@ -118,6 +118,7 @@ active = 0
 condition = asyncio.Condition()
 setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
+download_state: set[int] = set()
 
 app = Client(
     "tmjdlc_bot",
@@ -681,10 +682,58 @@ async def setup_cmd(client, message):
     await message.reply_text("Step 1/2: send your video channel @username or numeric ID. The bot must be an admin there.")
 
 
+async def queue_single_url(message, url: str):
+    match = VIDEO_ID.search(url)
+    if not match:
+        return await message.reply_text("Expected a Javtiful /video/ URL.")
+    status = await message.reply_text("⏳ Adding Javtiful video to the queue…")
+    shots = str(await asyncio.to_thread(queue.get_setting, "upload_screenshots", "true")).lower() in {"1", "true", "yes", "on"}
+    job, created = await asyncio.to_thread(
+        queue.enqueue, match.group(1), url, 720,
+        requested_by=message.from_user.id, status_chat_id=status.chat.id,
+        status_message_id=status.id, upload_screenshots=shots,
+    )
+    await status.edit_text(
+        f"{'🕒 Added to queue' if created else '⏭ Already exists'} · <code>{match.group(1)}</code>\\n"
+        f"Job #{job['id']} · {html.escape(str(job['status']))} · 720p automatic",
+        parse_mode=ParseMode.HTML,
+    )
+
+
 async def text_handler(client, message):
     if await deny(message): return
     text = (message.text or "").strip()
     uid = message.from_user.id
+    menu = {
+        "⬇️ Download Video": "download",
+        "📚 Batch Download": "batch",
+        "📋 Queue": "queue",
+        "⚙️ Settings": "settings",
+        "💽 Storage": "storage",
+        "🖥 Worker Status": "worker",
+    }
+    if text in menu:
+        action = menu[text]
+        if action == "download":
+            download_state.add(uid)
+            return await message.reply_text("⬇️ Send a Javtiful video URL. Send /cancel to stop.")
+        if action == "batch":
+            return await message.reply_text("📚 Send a Javtiful channel URL to start batch selection.")
+        if action == "queue":
+            return await queue_cmd(client, message)
+        if action == "settings":
+            return await settings_cmd(client, message)
+        if action == "storage":
+            return await storage_cmd(client, message)
+        return await message.reply_text(
+            f"🖥 Worker Status\\nWorkers: {parallel}/{MAX_WORKERS}\\nActive: {active}\\n"
+            f"Queue polling: {POLL_SECONDS}s\\nFree disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
+        )
+    if uid in download_state:
+        download_state.discard(uid)
+        if not VIDEO_ID.search(text) or urlparse(text).hostname not in {"javtiful.com", "www.javtiful.com"}:
+            return await message.reply_text("Please send a valid Javtiful video URL.")
+        return await queue_single_url(message, text)
     batch = channel_state.get(uid)
     if batch and batch.get("awaiting") == "custom_pages":
         if text.upper() == "CANCEL":
@@ -755,7 +804,9 @@ async def text_handler(client, message):
         except Exception as exc:
             await status.edit_text(f"Channel inspection failed: {type(exc).__name__}: {str(exc)[:400]}")
         return
-    await message.reply_text("Send /help to see available commands.")
+    if VIDEO_ID.search(text) and urlparse(text).hostname in {"javtiful.com", "www.javtiful.com"}:
+        return await queue_single_url(message, text)
+    await message.reply_text("Use the menu buttons or send a Javtiful video/channel URL.")
 
 
 async def callback_handler(client, callback):
