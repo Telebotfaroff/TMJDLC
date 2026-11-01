@@ -31,11 +31,13 @@ logging.getLogger("pyrogram").setLevel(logging.WARNING)
 log = logging.getLogger("tmjdlc.pyrogram")
 
 TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
+SCREENSHOT_TOKEN = os.getenv("TG_SCREENSHOT_BOT_TOKEN", "").strip()
 API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(2, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 UPLOAD_WORKERS = max(1, min(16, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
+SCREENSHOT_UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_SCREENSHOT_UPLOAD_WORKERS", "2"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 MAX_PENDING_UPLOADS = max(0, min(4, int(os.getenv("TMJDLC_MAX_PENDING_UPLOADS", "1"))))
@@ -108,8 +110,10 @@ def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -
     return None
 
 
-if not TOKEN or not API_ID or not API_HASH or not ADMINS:
-    raise RuntimeError("Set TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
+if not TOKEN or not SCREENSHOT_TOKEN or not API_ID or not API_HASH or not ADMINS:
+    raise RuntimeError("Set TG_BOT_TOKEN, TG_SCREENSHOT_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
+if SCREENSHOT_TOKEN == TOKEN:
+    raise RuntimeError("TG_SCREENSHOT_BOT_TOKEN must belong to a separate Telegram bot.")
 
 queue = JobQueue(max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK.mkdir(parents=True, exist_ok=True)
@@ -145,6 +149,18 @@ upload_client = Client(
     no_updates=True,
     workers=4,
     max_concurrent_transmissions=UPLOAD_WORKERS,
+    sleep_threshold=300,
+)
+
+# Separate Telegram identity/session dedicated to screenshot delivery.
+screenshot_client = Client(
+    "tmjdlc_screenshots",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=SCREENSHOT_TOKEN,
+    no_updates=True,
+    workers=2,
+    max_concurrent_transmissions=SCREENSHOT_UPLOAD_WORKERS,
     sleep_threshold=300,
 )
 
@@ -203,19 +219,19 @@ class DestinationError(RuntimeError):
     """Destination is missing, inaccessible, or not writable by this bot."""
 
 
-async def resolve_destination(value: str):
-    """Resolve a channel into Pyrogram's peer cache and verify posting rights."""
+async def resolve_destination(value: str, client: Client = app):
+    """Resolve a channel using the selected bot and verify its posting rights."""
     raw = str(value or "").strip()
     if not raw:
         raise DestinationError("Video destination is not configured. Open Settings and set the video destination.")
     try:
-        chat = await app.get_chat(raw if raw.startswith("@") else int(raw))
+        chat = await client.get_chat(raw if raw.startswith("@") else int(raw))
     except Exception as first_error:
         chat = None
         if not raw.startswith("@"):
             try:
                 target_id = int(raw)
-                async for dialog in app.get_dialogs():
+                async for dialog in client.get_dialogs():
                     if dialog.chat.id == target_id:
                         chat = dialog.chat
                         break
@@ -228,8 +244,8 @@ async def resolve_destination(value: str):
                 "receive a channel post so Pyrogram can cache the channel peer."
             ) from first_error
     try:
-        me = await app.get_me()
-        member = await app.get_chat_member(chat.id, me.id)
+        me = await client.get_me()
+        member = await client.get_chat_member(chat.id, me.id)
     except Exception as exc:
         raise DestinationError(
             f"Bot cannot access destination {chat.id}. Add it to the channel as an administrator."
@@ -365,8 +381,8 @@ async def process_job(job: dict, identity: str):
         image_destination = None
         if image_chat_value and job.get("upload_screenshots", True):
             try:
-                image_destination = await resolve_destination(image_chat_value)
-                await sync_upload_peer(image_destination.id)
+                image_destination = await resolve_destination(image_chat_value, screenshot_client)
+                await screenshot_client.resolve_peer(image_destination.id)
             except DestinationError as exc:
                 log.warning(
                     "Screenshot destination unavailable for job=%s; skipping screenshots: %s",
@@ -565,8 +581,8 @@ async def process_job(job: dict, identity: str):
                 check_stop()
                 screenshot_chat_id = upload_chat_id if fallback_used else image_destination.id
                 await sync_upload_peer(screenshot_chat_id)
-                sent = await upload_client.send_photo(chat_id=screenshot_chat_id, photo=str(target),
-                                                       caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
+                sent = await screenshot_client.send_photo(chat_id=image_destination.id, photo=str(target),
+                                                          caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
                 sent_shots += 1
@@ -947,7 +963,8 @@ async def set_channel(message, key):
         )
     value = parts[1].strip()
     try:
-        chat = await resolve_destination(value)
+        target_client = screenshot_client if key == "image_channel" else app
+        chat = await resolve_destination(value, target_client)
     except DestinationError as exc:
         return await message.reply_text(
             f"❌ {html.escape(str(exc))}\n\n"
@@ -988,13 +1005,17 @@ async def forwarded_destination_handler(client, message):
     try:
         # The forwarded update carries the channel peer/access hash into Pyrogram storage.
         chat = await app.get_chat(source.id)
-        verified = await resolve_destination(str(chat.id))
+        target_client = screenshot_client if key == "image_channel" else app
+        verified = await resolve_destination(str(chat.id), target_client)
     except Exception as exc:
         return await message.reply_text(
             f"❌ Could not verify forwarded channel: {html.escape(str(exc)[:450])}\n"
             "Confirm the bot is an administrator with permission to post, then forward a fresh post."
         )
-    await sync_upload_peer(verified.id)
+    if key == "image_channel":
+        await screenshot_client.resolve_peer(verified.id)
+    else:
+        await sync_upload_peer(verified.id)
     await asyncio.to_thread(queue.set_setting, key, str(verified.id))
     setup_state.pop(message.from_user.id, None)
     label = "Video" if key == "upload_channel" else "Screenshot"
@@ -1461,19 +1482,23 @@ async def run_bot():
     await app.start()
     try:
         await upload_client.start()
+        await screenshot_client.start()
     except Exception:
+        if upload_client.is_connected:
+            await upload_client.stop()
         await app.stop()
         raise
     await on_start(app)
     log.info(
-        "TMJDLC started | update session=tmjdlc_bot | upload session=tmjdlc_upload "
-        "| upload transmissions=%s",
-        UPLOAD_WORKERS,
+        "TMJDLC started | update=tmjdlc_bot | video_upload=tmjdlc_upload "
+        "| screenshot_upload=tmjdlc_screenshots | video transmissions=%s | screenshot transmissions=%s",
+        UPLOAD_WORKERS, SCREENSHOT_UPLOAD_WORKERS,
     )
     try:
         await idle()
     finally:
         await on_stop(app)
+        await screenshot_client.stop()
         await upload_client.stop()
         await app.stop()
 
