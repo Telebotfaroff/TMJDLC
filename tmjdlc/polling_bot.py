@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ParseMode, ChatMemberStatus
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
@@ -35,7 +35,7 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "4"))))
+UPLOAD_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "2"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
@@ -147,8 +147,53 @@ async def status_edit(chat_id, message_id, text):
     if chat_id and message_id:
         try:
             await app.edit_message_text(chat_id, message_id, text[:4000], parse_mode=ParseMode.HTML)
-        except Exception:
-            log.exception("Could not edit status message chat_id=%s message_id=%s", chat_id, message_id)
+        except Exception as exc:
+            if "MESSAGE_NOT_MODIFIED" in str(exc):
+                return
+            log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
+                        chat_id, message_id, exc)
+
+
+class DestinationError(RuntimeError):
+    """Destination is missing, inaccessible, or not writable by this bot."""
+
+
+async def resolve_destination(value: str):
+    """Resolve a channel into Pyrogram's peer cache and verify posting rights."""
+    raw = str(value or "").strip()
+    if not raw:
+        raise DestinationError("Video destination is not configured. Open Settings and set the video destination.")
+    try:
+        chat = await app.get_chat(raw if raw.startswith("@") else int(raw))
+    except Exception as first_error:
+        chat = None
+        if not raw.startswith("@"):
+            try:
+                target_id = int(raw)
+                async for dialog in app.get_dialogs():
+                    if dialog.chat.id == target_id:
+                        chat = dialog.chat
+                        break
+            except Exception:
+                pass
+        if chat is None:
+            raise DestinationError(
+                "Pyrogram cannot resolve this channel. Add the bot as an administrator, "
+                "then configure its public @username. For a private channel, make the bot "
+                "receive a channel post so Pyrogram can cache the channel peer."
+            ) from first_error
+    try:
+        me = await app.get_me()
+        member = await app.get_chat_member(chat.id, me.id)
+    except Exception as exc:
+        raise DestinationError(
+            f"Bot cannot access destination {chat.id}. Add it to the channel as an administrator."
+        ) from exc
+    if member.status not in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER}:
+        raise DestinationError(f"Bot must be an administrator in destination {chat.id}.")
+    if getattr(member, "can_post_messages", True) is False:
+        raise DestinationError(f"Bot has no permission to post in destination {chat.id}.")
+    return chat
 
 
 async def _cancelled(job_id: int, identity: str) -> bool:
@@ -289,10 +334,12 @@ async def process_job(job: dict, identity: str):
                                            {"path": str(path), "size": path.stat().st_size}):
                 raise RuntimeError("Could not persist download stage; worker ownership was lost.")
         check_stop()
-        video_chat = await asyncio.to_thread(queue.get_setting, "upload_channel")
-        image_chat = await asyncio.to_thread(queue.get_setting, "image_channel")
-        if not video_chat:
-            raise RuntimeError("Set video destination first with /setup or /setupload CHANNEL_ID.")
+        video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
+        image_chat_value = await asyncio.to_thread(queue.get_setting, "image_channel")
+        video_destination = await resolve_destination(video_chat_value)
+        image_destination = None
+        if image_chat_value and job.get("upload_screenshots", True):
+            image_destination = await resolve_destination(image_chat_value)
 
         # Probe the actual file so Telegram receives duration and frame dimensions.
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
@@ -348,7 +395,7 @@ async def process_job(job: dict, identity: str):
                 create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
             )
             sent = await app.send_video(
-                chat_id=int(video_chat), video=str(path), caption=title,
+                chat_id=video_destination.id, video=str(path), caption=title,
                 duration=media_info["duration"], width=media_info["width"],
                 height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
                 supports_streaming=True, parse_mode=ParseMode.DISABLED,
@@ -362,7 +409,7 @@ async def process_job(job: dict, identity: str):
                      video_stage.get("message_id"))
 
         sent_shots = 0
-        if image_chat and job.get("upload_screenshots", True):
+        if image_destination and job.get("upload_screenshots", True):
             shots_dir = WORK / "screenshots" / vid
             shots_dir.mkdir(parents=True, exist_ok=True)
             for i in range(SHOT_COUNT):
@@ -379,7 +426,7 @@ async def process_job(job: dict, identity: str):
                         "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)
                     ], capture_output=True, check=True)
                 check_stop()
-                sent = await app.send_photo(chat_id=int(image_chat), photo=str(target),
+                sent = await app.send_photo(chat_id=image_destination.id, photo=str(target),
                                             caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
@@ -423,6 +470,8 @@ async def process_job(job: dict, identity: str):
         if current and current.get("worker_id") == identity:
             if current.get("cancel_requested"):
                 state = "cancelled"
+            elif isinstance(exc, DestinationError):
+                state = "failed"
             else:
                 state = "queued" if int(current["attempts"]) < int(current["max_attempts"]) else "failed"
             await asyncio.to_thread(queue.set_status, jid, identity, state,
@@ -692,7 +741,12 @@ async def render_queue(target, offset: int = 0, edit: bool = False):
     body = "\n".join(lines)[:3900]
     markup = queue_keyboard(jobs, offset, paused)
     if edit:
-        return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        try:
+            return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            if "MESSAGE_NOT_MODIFIED" in str(exc):
+                return target
+            raise
     return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
@@ -740,10 +794,17 @@ async def set_channel(message, key):
     if await deny(message): return
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
-        return await message.reply_text("Usage: /setupload -1001234567890")
+        return await message.reply_text("Usage: /setupload @channelusername or -1001234567890")
     value = parts[1].strip()
-    await asyncio.to_thread(queue.set_setting, key, value)
-    await message.reply_text(f"✅ Saved {value} in Neon.")
+    try:
+        chat = await resolve_destination(value)
+    except DestinationError as exc:
+        return await message.reply_text(f"❌ {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
+    await asyncio.to_thread(queue.set_setting, key, str(chat.id))
+    await message.reply_text(
+        f"✅ Verified administrator access and saved channel <code>{chat.id}</code> in Neon.",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def setupload_cmd(client, message): await set_channel(message, "upload_channel")
@@ -854,8 +915,13 @@ async def text_handler(client, message):
                 value = str(chat.id)
             except Exception as exc:
                 return await message.reply_text(f"Cannot resolve channel: {exc}")
-        if not re.fullmatch(r"-?\d+", value):
+        if not re.fullmatch(r"-?\d+", value) and not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
             return await message.reply_text("Send a numeric channel ID or public @username.")
+        try:
+            chat = await resolve_destination(value)
+        except DestinationError as exc:
+            return await message.reply_text(f"❌ {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
+        value = str(chat.id)
         key = "upload_channel" if stage == "upload_channel" else "image_channel"
         await asyncio.to_thread(queue.set_setting, key, value)
         if stage == "upload_channel":
