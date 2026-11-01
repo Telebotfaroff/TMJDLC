@@ -579,8 +579,6 @@ async def process_job(job: dict, identity: str):
                         "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)
                     ], capture_output=True, check=True)
                 check_stop()
-                screenshot_chat_id = upload_chat_id if fallback_used else image_destination.id
-                await sync_upload_peer(screenshot_chat_id)
                 sent = await screenshot_client.send_photo(chat_id=image_destination.id, photo=str(target),
                                                           caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
@@ -968,7 +966,7 @@ async def set_channel(message, key):
     except DestinationError as exc:
         return await message.reply_text(
             f"❌ {html.escape(str(exc))}\n\n"
-            "For a private channel, run /setupload without an ID and forward a channel post.",
+            "For a private channel, run this command without an ID and forward a post from the target channel.",
             parse_mode=ParseMode.HTML,
         )
     await asyncio.to_thread(queue.set_setting, key, str(chat.id))
@@ -1003,9 +1001,9 @@ async def forwarded_destination_handler(client, message):
             "(use Telegram Forward, not copy/paste), or send CANCEL."
         )
     try:
-        # The forwarded update carries the channel peer/access hash into Pyrogram storage.
-        chat = await app.get_chat(source.id)
+        # Resolve and verify with the bot that will actually publish to this channel.
         target_client = screenshot_client if key == "image_channel" else app
+        chat = await target_client.get_chat(source.id)
         verified = await resolve_destination(str(chat.id), target_client)
     except Exception as exc:
         return await message.reply_text(
