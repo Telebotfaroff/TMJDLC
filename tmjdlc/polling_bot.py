@@ -394,15 +394,47 @@ async def process_job(job: dict, identity: str):
             thumbnail = await asyncio.to_thread(
                 create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
             )
-            sent = await app.send_video(
-                chat_id=video_destination.id, video=str(path), caption=title,
-                duration=media_info["duration"], width=media_info["width"],
-                height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
-                supports_streaming=True, parse_mode=ParseMode.DISABLED,
-                progress=upload_progress,
-            )
+            upload_chat_id = video_destination.id
+            fallback_used = False
+            try:
+                sent = await app.send_video(
+                    chat_id=upload_chat_id, video=str(path), caption=title,
+                    duration=media_info["duration"], width=media_info["width"],
+                    height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                    supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                    progress=upload_progress,
+                )
+            except Exception as channel_error:
+                fallback_chat_id = int(job.get("requested_by") or 0)
+                if not fallback_chat_id or fallback_chat_id == upload_chat_id:
+                    raise
+                log.exception(
+                    "Channel upload failed for job=%s; trying private bot chat user_id=%s",
+                    jid, fallback_chat_id,
+                )
+                await status_edit(
+                    chat_id, message_id,
+                    f"⚠️ Channel upload failed for <code>{vid}</code>. "
+                    "Trying fallback delivery to your private bot chat…",
+                )
+                try:
+                    sent = await app.send_video(
+                        chat_id=fallback_chat_id, video=str(path), caption=title,
+                        duration=media_info["duration"], width=media_info["width"],
+                        height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                        supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                        progress=upload_progress,
+                    )
+                    upload_chat_id = fallback_chat_id
+                    fallback_used = True
+                except Exception as fallback_error:
+                    raise RuntimeError(
+                        "Channel upload failed and private-chat fallback also failed: "
+                        f"{type(fallback_error).__name__}: {str(fallback_error)[:350]}"
+                    ) from fallback_error
             if not await asyncio.to_thread(queue.complete_stage, jid, identity, "video_upload",
-                                           {"chat_id": sent.chat.id, "message_id": sent.id}):
+                                           {"chat_id": sent.chat.id, "message_id": sent.id,
+                                            "fallback": fallback_used}):
                 raise RuntimeError("Video sent, but its receipt could not be saved in Neon.")
         else:
             log.info("Skipping completed video upload for job=%s message_id=%s", jid,
@@ -426,7 +458,8 @@ async def process_job(job: dict, identity: str):
                         "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)
                     ], capture_output=True, check=True)
                 check_stop()
-                sent = await app.send_photo(chat_id=image_destination.id, photo=str(target),
+                screenshot_chat_id = upload_chat_id if fallback_used else image_destination.id
+                sent = await app.send_photo(chat_id=screenshot_chat_id, photo=str(target),
                                             caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
@@ -447,7 +480,8 @@ async def process_job(job: dict, identity: str):
             f"🎬 Video: <code>{vid}</code>\n"
             f"🖼️ Screenshots delivered: <b>{sent_shots}</b>\n"
             f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
-            f"🔁 Attempts used: <b>{job['attempts']}</b>")
+            f"🔁 Attempts used: <b>{job['attempts']}</b>\n"
+            f"{'📩 Delivered to your private bot chat (fallback).' if video_stage is None and fallback_used else ''}")
         if AUTO_CLEAN:
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
