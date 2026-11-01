@@ -364,6 +364,8 @@ async def process_job(job: dict, identity: str):
             raise RuntimeError("Job lease was lost before upload.")
 
         video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+        upload_chat_id = int(video_stage.get("chat_id") or video_destination.id) if video_stage else video_destination.id
+        fallback_used = bool(video_stage.get("fallback")) if video_stage else False
         if not video_stage:
             check_stop()
             size_mb = path.stat().st_size / 1048576
@@ -394,8 +396,6 @@ async def process_job(job: dict, identity: str):
             thumbnail = await asyncio.to_thread(
                 create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
             )
-            upload_chat_id = video_destination.id
-            fallback_used = False
             try:
                 sent = await app.send_video(
                     chat_id=upload_chat_id, video=str(path), caption=title,
