@@ -35,7 +35,7 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "2"))))
+UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "4"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
@@ -225,12 +225,14 @@ def _progress_bar(percent: int, width: int = 12) -> str:
     return "█" * filled + "░" * (width - filled)
 
 
-def _progress_text(stage: str, video_id: str, percent: int, done: float,
+def _progress_text(stage: str, video_id: str, title: str, percent: int, done: float,
                    total: float | None, speed: float | None, eta: float | None,
                    attempt: int) -> str:
     icon = "⬇️" if stage == "Download" else "📤"
     size = _fmt_bytes(total) if total else "size unknown"
-    return (f"{icon} <b>{stage}</b> · <code>{video_id}</code>\n"
+    safe_title = html.escape(title or video_id)
+    return (f"{icon} <b>{stage}</b> · <b>{safe_title}</b>\n"
+            f"🎬 ID: <code>{html.escape(video_id)}</code>\n"
             f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
             f"📦 {_fmt_bytes(done)} / {size}\n"
             f"⚡ {_fmt_bytes(speed)}/s   ⏳ {_fmt_eta(eta)}\n"
@@ -281,6 +283,7 @@ async def process_job(job: dict, identity: str):
         if queue.is_cancel_requested(jid, identity):
             raise asyncio.CancelledError("Cancellation requested.")
 
+    title = video_title_from_url(url, vid)
     notify_chat = chat_id or job.get("requested_by")
     if notify_chat and not message_id:
         try:
@@ -314,7 +317,7 @@ async def process_job(job: dict, identity: str):
                             last_download_notice.update(percent=percent, time=now)
                             if chat_id and message_id:
                                 notice = _progress_text(
-                                    "Download", vid, percent, done, total,
+                                    "Download", vid, title, percent, done, total,
                                     data.get("speed"), data.get("eta"), int(job["attempts"])
                                 )
                                 asyncio.run_coroutine_threadsafe(
@@ -380,8 +383,6 @@ async def process_job(job: dict, identity: str):
         await asyncio.to_thread(queue.save_media, vid, jid, str(path),
                                 path.stat().st_size, duration,
                                 media_info["width"] or None, media_info["height"] or None)
-        title = video_title_from_url(url, vid)
-
         if not await asyncio.to_thread(queue.set_status, jid, identity, "uploading",
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Job lease was lost before upload.")
@@ -424,7 +425,7 @@ async def process_job(job: dict, identity: str):
                     speed = last_upload_notice["speed"]
                     eta = (total - current) / speed if speed else None
                     await status_edit(chat_id, message_id, _progress_text(
-                        "Upload", vid, percent, current, total, speed, eta, int(job["attempts"])
+                        "Upload", vid, title, percent, current, total, speed, eta, int(job["attempts"])
                     ))
                     last_upload_notice.update(percent=percent, time=now, bytes=current)
 
