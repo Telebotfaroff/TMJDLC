@@ -1370,7 +1370,7 @@ async def on_stop(client):
 
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
-app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & ~filters.text))
+app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & filters.forwarded))
 app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
 app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
