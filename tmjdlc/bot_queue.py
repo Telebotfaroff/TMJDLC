@@ -363,13 +363,35 @@ class JobQueue:
             rows = conn.execute("SELECT status,count(*) AS total FROM tmjdlc_bot_jobs GROUP BY status").fetchall()
             return {row["status"]: row["total"] for row in rows}
 
-    def list_jobs(self, limit: int = 10) -> list[dict[str, Any]]:
+    def list_jobs(self, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
         with self.connect() as conn:
             rows = conn.execute("""
-                SELECT id,video_id,status,attempts,last_error,created_at,current_stage,progress_percent
-                FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s
-            """, (max(1, min(50, limit)),)).fetchall()
+                SELECT id,video_id,post_url,quality,status,attempts,max_attempts,
+                       upload_screenshots,last_error,created_at,current_stage,progress_percent
+                FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s OFFSET %s
+            """, (max(1, min(50, limit)), max(0, offset))).fetchall()
             return [dict(row) for row in rows]
+
+    def cancel_queued(self) -> int:
+        """Cancel every job that has not started; active jobs are left untouched."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET status='cancelled',cancel_requested=TRUE,
+                    worker_id=NULL,lease_until=NULL,updated_at=now()
+                WHERE status='queued' RETURNING id
+            """).fetchall()
+            return len(rows)
+
+    def clear_completed_history(self) -> int:
+        """Remove completed queue rows that are not referenced by retained media records."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                DELETE FROM tmjdlc_bot_jobs j
+                WHERE j.status='completed'
+                  AND NOT EXISTS (SELECT 1 FROM tmjdlc_media m WHERE m.job_id=j.id)
+                RETURNING id
+            """).fetchall()
+            return len(rows)
 
     def get_setting(self, key: str, default: str = "") -> str:
         with self.connect() as conn:
