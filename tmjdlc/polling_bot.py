@@ -341,11 +341,9 @@ async def process_job(job: dict, identity: str):
         # video. Prefer the configured channel, but fall back directly to the
         # requesting user's private bot chat when peer resolution fails.
         video_destination = None
-        destination_error = None
         try:
             video_destination = await resolve_destination(video_chat_value)
         except DestinationError as exc:
-            destination_error = exc
             fallback_chat_id = int(job.get("requested_by") or 0)
             if not fallback_chat_id:
                 raise
