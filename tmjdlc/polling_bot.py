@@ -323,6 +323,41 @@ async def process_job(job: dict, identity: str):
             log.exception("Could not create Telegram status message for job=%s", jid)
 
     try:
+        # Resolve destinations and warm the dedicated upload session before downloading.
+        # This removes Telegram peer lookups from the download-complete -> upload path.
+        video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
+        image_chat_value = await asyncio.to_thread(queue.get_setting, "image_channel")
+
+        # A missing/unresolvable channel must not discard a successfully downloaded
+        # video. Prefer the configured channel, but fall back directly to the
+        # requesting user's private bot chat when peer resolution fails.
+        video_destination = None
+        try:
+            video_destination = await resolve_destination(video_chat_value)
+            await sync_upload_peer(video_destination.id)
+        except DestinationError as exc:
+            fallback_chat_id = int(job.get("requested_by") or 0)
+            if not fallback_chat_id:
+                raise
+            log.warning(
+                "Video destination unavailable for job=%s; using private-chat fallback user_id=%s: %s",
+                jid, fallback_chat_id, exc,
+            )
+            await sync_upload_peer(fallback_chat_id)
+
+        # Screenshot delivery is optional; a bad screenshot destination must
+        # not block the primary video upload.
+        image_destination = None
+        if image_chat_value and job.get("upload_screenshots", True):
+            try:
+                image_destination = await resolve_destination(image_chat_value)
+                await sync_upload_peer(image_destination.id)
+            except DestinationError as exc:
+                log.warning(
+                    "Screenshot destination unavailable for job=%s; skipping screenshots: %s",
+                    jid, exc,
+                )
+
         download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
         path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
         if not path or not path.is_file() or path.stat().st_size == 0:
@@ -367,35 +402,9 @@ async def process_job(job: dict, identity: str):
                                            {"path": str(path), "size": path.stat().st_size}):
                 raise RuntimeError("Could not persist download stage; worker ownership was lost.")
         check_stop()
-        video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
-        image_chat_value = await asyncio.to_thread(queue.get_setting, "image_channel")
-
-        # A missing/unresolvable channel must not discard a successfully downloaded
-        # video. Prefer the configured channel, but fall back directly to the
-        # requesting user's private bot chat when peer resolution fails.
-        video_destination = None
-        try:
-            video_destination = await resolve_destination(video_chat_value)
-        except DestinationError as exc:
-            fallback_chat_id = int(job.get("requested_by") or 0)
-            if not fallback_chat_id:
-                raise
-            log.warning(
-                "Video destination unavailable for job=%s; using private-chat fallback user_id=%s: %s",
-                jid, fallback_chat_id, exc,
-            )
-
-        # Screenshot delivery is optional; a bad screenshot destination must
-        # not block the primary video upload.
-        image_destination = None
-        if image_chat_value and job.get("upload_screenshots", True):
-            try:
-                image_destination = await resolve_destination(image_chat_value)
-            except DestinationError as exc:
-                log.warning(
-                    "Screenshot destination unavailable for job=%s; skipping screenshots: %s",
-                    jid, exc,
-                )
+        await status_edit(chat_id, message_id,
+                          f"✅ Download complete · <code>{html.escape(title)}</code>\n"
+                          "⚡ Upload session ready. Preparing Telegram media…")
 
         # Probe the actual file so Telegram receives duration and frame dimensions.
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
