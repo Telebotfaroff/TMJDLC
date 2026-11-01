@@ -879,6 +879,121 @@ async def callback_handler(client, callback):
     if uid not in ADMINS:
         return await callback.answer("Not authorized.", show_alert=True)
     data = callback.data or ""
+    global parallel
+    if data == "home:show":
+        counts = await asyncio.to_thread(queue.counts)
+        free = shutil.disk_usage(WORK).free / (1024 ** 3)
+        running = counts.get("downloading", 0) + counts.get("uploading", 0)
+        body = ("🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
+                f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
+                f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
+                f"💽 Free storage: <b>{free:.1f} GiB</b>\\n"
+                f"⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>")
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
+             InlineKeyboardButton("📚 Batch", callback_data="home:batch")],
+            [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
+             InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
+            [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
+             InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
+        ])
+        await callback.answer()
+        return await callback.message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    if data == "home:queue":
+        await callback.answer()
+        return await render_queue(callback.message, edit=True)
+    if data == "home:settings":
+        await callback.answer()
+        return await settings_cmd(client, callback.message)
+    if data == "home:download":
+        download_state.add(uid)
+        await callback.answer("Send a Javtiful video URL.")
+        return await callback.message.reply_text("⬇️ Send a Javtiful video URL. Downloads use 720p automatically.")
+    if data == "home:batch":
+        await callback.answer("Send a Javtiful channel URL.")
+        return await callback.message.reply_text("📚 Send a Javtiful channel URL to open batch selection.")
+    if data == "home:storage":
+        usage = shutil.disk_usage(WORK)
+        await callback.answer()
+        return await callback.message.edit_text(
+            f"💽 <b>Storage</b>\\nTotal: {usage.total/1024**3:.1f} GiB\\n"
+            f"Used: {usage.used/1024**3:.1f} GiB\\nFree: {usage.free/1024**3:.1f} GiB\\n"
+            f"New downloads pause below {MIN_FREE_DISK_GB:.1f} GiB free.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
+            parse_mode=ParseMode.HTML)
+    if data == "home:worker":
+        await callback.answer()
+        return await callback.message.edit_text(
+            f"🖥 <b>Worker Status</b>\\nWorkers: {parallel}/{MAX_WORKERS}\\nActive: {active}\\n"
+            f"Queue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
+            parse_mode=ParseMode.HTML)
+    if data == "settings:shots":
+        current = str(await asyncio.to_thread(queue.get_setting, "upload_screenshots", "true")).lower() in {"1", "true", "yes", "on"}
+        await asyncio.to_thread(queue.set_setting, "upload_screenshots", "false" if current else "true")
+        await callback.answer(f"Screenshots {'disabled' if current else 'enabled'}.")
+        return await settings_cmd(client, callback.message)
+    if data in {"settings:video", "settings:images"}:
+        setup_state[uid] = "upload_channel" if data == "settings:video" else "image_channel"
+        await callback.answer()
+        label = "video destination" if data == "settings:video" else "screenshot destination"
+        return await callback.message.reply_text(f"Send the {label} channel @username or numeric ID. Send CANCEL to stop.")
+    if data.startswith("settings:workers:"):
+        direction = data.rsplit(":", 1)[-1]
+        if direction == "up":
+            parallel = min(MAX_WORKERS, parallel + 1)
+        elif direction == "down":
+            parallel = max(1, parallel - 1)
+        async with condition:
+            condition.notify_all()
+        await callback.answer(f"Worker concurrency: {parallel}")
+        return await settings_cmd(client, callback.message)
+    if data == "queue:pause":
+        await asyncio.to_thread(queue.set_setting, "queue_paused", "true")
+        await callback.answer("Queue paused. Active jobs will finish.")
+        return await render_queue(callback.message, edit=True)
+    if data == "queue:resume":
+        await asyncio.to_thread(queue.set_setting, "queue_paused", "false")
+        await callback.answer("Queue resumed.")
+        return await render_queue(callback.message, edit=True)
+    if data == "queue:cancel_queued":
+        count = await asyncio.to_thread(queue.cancel_queued)
+        await callback.answer(f"Cancelled {count} queued jobs.", show_alert=True)
+        return await render_queue(callback.message, edit=True)
+    if data == "queue:clear:ask":
+        await callback.answer()
+        return await callback.message.edit_text(
+            "🧹 <b>Clear completed history?</b>\\nCompleted jobs still referenced by the media catalogue will be retained.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("Yes, clear history", callback_data="queue:clear:confirm"),
+                 InlineKeyboardButton("No, go back", callback_data="home:queue")]]),
+            parse_mode=ParseMode.HTML)
+    if data == "queue:clear:confirm":
+        count = await asyncio.to_thread(queue.clear_completed_history)
+        await callback.answer(f"Removed {count} completed history rows.", show_alert=True)
+        return await render_queue(callback.message, edit=True)
+    if data.startswith("queue:page:"):
+        offset = int(data.rsplit(":", 1)[-1])
+        await callback.answer()
+        return await render_queue(callback.message, offset=offset, edit=True)
+    if data.startswith("job:cancel:"):
+        job_id = int(data.rsplit(":", 1)[-1])
+        result = await asyncio.to_thread(queue.request_cancel, job_id)
+        await callback.answer("Cancellation requested." if result else "Job is no longer cancellable.")
+        return await render_queue(callback.message, edit=True)
+    if data.startswith("job:retry:"):
+        job_id = int(data.rsplit(":", 1)[-1])
+        old = await asyncio.to_thread(queue.get, job_id)
+        if not old or old["status"] != "failed":
+            return await callback.answer("Only failed jobs can be retried.", show_alert=True)
+        status = await callback.message.reply_text("🔁 Requeueing failed job…")
+        job, created = await asyncio.to_thread(
+            queue.enqueue, old["video_id"], old["post_url"], 720,
+            requested_by=uid, status_chat_id=status.chat.id, status_message_id=status.id,
+            upload_screenshots=old.get("upload_screenshots", True))
+        await callback.answer("Retry queued." if created else "Job already queued.")
+        await status.edit_text(f"🔁 Job #{job['id']} · {html.escape(str(job['status']))}")
+        return await render_queue(callback.message, edit=True)
     if data.startswith("batch:cancel:"):
         batch_id = data.rsplit(":", 1)[-1]
         result = await asyncio.to_thread(queue.cancel_batch, batch_id)
