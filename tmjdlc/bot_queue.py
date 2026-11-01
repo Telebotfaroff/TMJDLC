@@ -195,7 +195,7 @@ class JobQueue:
                   lease_until=now()+(%s*interval '1 second'),
                   started_at=COALESCE(j.started_at,now()),updated_at=now()
                 FROM candidate c WHERE j.id=c.id RETURNING j.*
-            """, (max(1, int(max_pending_uploads)) + 1, worker_id, lease_seconds)).fetchone()
+            """, (max(0, int(max_pending_uploads)) + 1, worker_id, lease_seconds)).fetchone()
             if row:
                 conn.execute("""
                     INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
