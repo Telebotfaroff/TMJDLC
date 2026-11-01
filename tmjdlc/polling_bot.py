@@ -336,10 +336,35 @@ async def process_job(job: dict, identity: str):
         check_stop()
         video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
         image_chat_value = await asyncio.to_thread(queue.get_setting, "image_channel")
-        video_destination = await resolve_destination(video_chat_value)
+
+        # A missing/unresolvable channel must not discard a successfully downloaded
+        # video. Prefer the configured channel, but fall back directly to the
+        # requesting user's private bot chat when peer resolution fails.
+        video_destination = None
+        destination_error = None
+        try:
+            video_destination = await resolve_destination(video_chat_value)
+        except DestinationError as exc:
+            destination_error = exc
+            fallback_chat_id = int(job.get("requested_by") or 0)
+            if not fallback_chat_id:
+                raise
+            log.warning(
+                "Video destination unavailable for job=%s; using private-chat fallback user_id=%s: %s",
+                jid, fallback_chat_id, exc,
+            )
+
+        # Screenshot delivery is optional; a bad screenshot destination must
+        # not block the primary video upload.
         image_destination = None
         if image_chat_value and job.get("upload_screenshots", True):
-            image_destination = await resolve_destination(image_chat_value)
+            try:
+                image_destination = await resolve_destination(image_chat_value)
+            except DestinationError as exc:
+                log.warning(
+                    "Screenshot destination unavailable for job=%s; skipping screenshots: %s",
+                    jid, exc,
+                )
 
         # Probe the actual file so Telegram receives duration and frame dimensions.
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
@@ -364,8 +389,20 @@ async def process_job(job: dict, identity: str):
             raise RuntimeError("Job lease was lost before upload.")
 
         video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
-        upload_chat_id = int(video_stage.get("chat_id") or video_destination.id) if video_stage else video_destination.id
-        fallback_used = bool(video_stage.get("fallback")) if video_stage else False
+        default_upload_chat_id = (
+            video_destination.id if video_destination is not None
+            else int(job.get("requested_by") or 0)
+        )
+        if not default_upload_chat_id:
+            raise DestinationError("No usable video destination or requesting-user chat is available.")
+        upload_chat_id = (
+            int(video_stage.get("chat_id") or default_upload_chat_id)
+            if video_stage else default_upload_chat_id
+        )
+        fallback_used = (
+            bool(video_stage.get("fallback"))
+            if video_stage else video_destination is None
+        )
         if not video_stage:
             check_stop()
             size_mb = path.stat().st_size / 1048576
@@ -397,6 +434,12 @@ async def process_job(job: dict, identity: str):
                 create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
             )
             try:
+                if video_destination is None:
+                    await status_edit(
+                        chat_id, message_id,
+                        f"⚠️ Channel destination unavailable for <code>{vid}</code>. "
+                        "Sending directly to your private bot chat…",
+                    )
                 sent = await app.send_video(
                     chat_id=upload_chat_id, video=str(path), caption=title,
                     duration=media_info["duration"], width=media_info["width"],
