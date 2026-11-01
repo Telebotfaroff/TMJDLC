@@ -905,7 +905,7 @@ app.add_handler(MessageHandler(setimages_cmd, filters.command("setimages") & fil
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
-app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^channel:")))
+app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(channel:|batch:cancel:)")))
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 
