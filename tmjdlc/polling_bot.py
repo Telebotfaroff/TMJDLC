@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
 from pyrogram.enums import ParseMode
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
@@ -465,16 +465,17 @@ async def worker_loop(index: int):
 
 async def start_cmd(client, message):
     if await deny(message): return
-    await message.reply_text(
-        "TMJDLC Control Center · Pyrogram MTProto\n\n"
-        "/panel — dashboard\n/dl POST_URL — queue one video\n"
-        "/batch CHANNEL_URL [PAGES] — queue all or selected pages (e.g. 1-5,8)\n"
-        "/queue — queue status\n/jobs — recent jobs\n"
-        "/setup — guided destination setup\n/settings — configuration\n"
-        "/storage — disk status\n/cancel JOB_ID — cancel a job\n"
-        "/batch — use the Cancel remaining button to stop a whole batch\n"
-        "/retry JOB_ID — retry failed job"
+    keyboard = ReplyKeyboardMarkup(
+        [[KeyboardButton("⬇️ Download Video"), KeyboardButton("📚 Batch Download")],
+         [KeyboardButton("📋 Queue"), KeyboardButton("⚙️ Settings")],
+         [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")]],
+        resize_keyboard=True, is_persistent=True,
     )
+    await message.reply_text(
+        "🎬 <b>TMJDLC · Javtiful Downloader</b>\\nChoose an action or send a Javtiful video URL.",
+        reply_markup=keyboard, parse_mode=ParseMode.HTML,
+    )
+    await panel_cmd(client, message)
 
 
 async def panel_cmd(client, message):
