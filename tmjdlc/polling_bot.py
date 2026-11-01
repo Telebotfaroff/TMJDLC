@@ -181,6 +181,20 @@ async def sync_upload_peer(peer_id: int) -> None:
         (int(peer_id), access_hash, peer_type, None, None)
     ])
 
+async def sync_screenshot_peer(peer_id: int) -> None:
+    """Seed the screenshot bot's peer cache from a forwarded channel peer."""
+    peer = await app.resolve_peer(int(peer_id))
+    peer_name = type(peer).__name__
+    if peer_name == "InputPeerChannel":
+        access_hash, peer_type = int(peer.access_hash), "channel"
+    elif peer_name == "InputPeerChat":
+        access_hash, peer_type = 0, "group"
+    else:
+        raise RuntimeError(f"Unsupported Telegram screenshot destination peer: {peer_name}")
+    await screenshot_client.storage.update_peers([
+        (int(peer_id), access_hash, peer_type, None, None)
+    ])
+
 
 def is_admin(message) -> bool:
     return bool(message.from_user and message.from_user.id in ADMINS)
@@ -1001,9 +1015,12 @@ async def forwarded_destination_handler(client, message):
             "(use Telegram Forward, not copy/paste), or send CANCEL."
         )
     try:
-        # Resolve and verify with the bot that will actually publish to this channel.
+        # The forwarded post exposes the channel peer to the main bot. Copy its
+        # access hash into the screenshot bot session before validating that bot.
+        chat = await app.get_chat(source.id)
         target_client = screenshot_client if key == "image_channel" else app
-        chat = await target_client.get_chat(source.id)
+        if key == "image_channel":
+            await sync_screenshot_peer(chat.id)
         verified = await resolve_destination(str(chat.id), target_client)
     except Exception as exc:
         return await message.reply_text(
