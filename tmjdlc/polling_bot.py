@@ -481,7 +481,7 @@ async def process_job(job: dict, identity: str):
             f"🖼️ Screenshots delivered: <b>{sent_shots}</b>\n"
             f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
             f"🔁 Attempts used: <b>{job['attempts']}</b>\n"
-            f"{'📩 Delivered to your private bot chat (fallback).' if video_stage is None and fallback_used else ''}")
+            f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}")
         if AUTO_CLEAN:
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
