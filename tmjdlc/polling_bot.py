@@ -1,4 +1,4 @@
-"""TMJDLC admin bot: Pyrogram handles every Telegram update and media upload."""
+"""TMJDLC admin bot: one Pyrogram client handles updates, another handles media uploads."""
 from __future__ import annotations
 
 import asyncio
@@ -126,9 +126,39 @@ app = Client(
     api_hash=API_HASH,
     bot_token=TOKEN,
     workers=16,
-    max_concurrent_transmissions=UPLOAD_WORKERS,
+    max_concurrent_transmissions=1,
     sleep_threshold=60,
 )
+
+# Keep media transfers off the update/command session. Both clients authenticate
+# as the same bot, but maintain separate Pyrogram peer caches.
+upload_client = Client(
+    "tmjdlc_upload",
+    api_id=API_ID,
+    api_hash=API_HASH,
+    bot_token=TOKEN,
+    no_updates=True,
+    workers=4,
+    max_concurrent_transmissions=UPLOAD_WORKERS,
+    sleep_threshold=300,
+)
+
+
+async def sync_upload_peer(peer_id: int) -> None:
+    """Copy a peer's access-hash record from the update session to upload session."""
+    peer = await app.resolve_peer(int(peer_id))
+    peer_name = type(peer).__name__
+    if peer_name == "InputPeerChannel":
+        access_hash, peer_type = int(peer.access_hash), "channel"
+    elif peer_name == "InputPeerUser":
+        access_hash, peer_type = int(peer.access_hash), "user"
+    elif peer_name == "InputPeerChat":
+        access_hash, peer_type = 0, "group"
+    else:
+        raise RuntimeError(f"Unsupported Telegram peer type for upload: {peer_name}")
+    await upload_client.storage.update_peers([
+        (int(peer_id), access_hash, peer_type, None, None)
+    ])
 
 
 def is_admin(message) -> bool:
@@ -439,7 +469,8 @@ async def process_job(job: dict, identity: str):
                         f"⚠️ Channel destination unavailable for <code>{vid}</code>. "
                         "Sending directly to your private bot chat…",
                     )
-                sent = await app.send_video(
+                await sync_upload_peer(upload_chat_id)
+                sent = await upload_client.send_video(
                     chat_id=upload_chat_id, video=str(path), caption=title,
                     duration=media_info["duration"], width=media_info["width"],
                     height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
@@ -460,7 +491,8 @@ async def process_job(job: dict, identity: str):
                     "Trying fallback delivery to your private bot chat…",
                 )
                 try:
-                    sent = await app.send_video(
+                    await sync_upload_peer(fallback_chat_id)
+                    sent = await upload_client.send_video(
                         chat_id=fallback_chat_id, video=str(path), caption=title,
                         duration=media_info["duration"], width=media_info["width"],
                         height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
@@ -501,8 +533,9 @@ async def process_job(job: dict, identity: str):
                     ], capture_output=True, check=True)
                 check_stop()
                 screenshot_chat_id = upload_chat_id if fallback_used else image_destination.id
-                sent = await app.send_photo(chat_id=screenshot_chat_id, photo=str(target),
-                                            caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
+                await sync_upload_peer(screenshot_chat_id)
+                sent = await upload_client.send_photo(chat_id=screenshot_chat_id, photo=str(target),
+                                                       caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
                 await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
                                         {"chat_id": sent.chat.id, "message_id": sent.id})
                 sent_shots += 1
@@ -927,6 +960,7 @@ async def forwarded_destination_handler(client, message):
             f"❌ Could not verify forwarded channel: {html.escape(str(exc)[:450])}\n"
             "Confirm the bot is an administrator with permission to post, then forward a fresh post."
         )
+    await sync_upload_peer(verified.id)
     await asyncio.to_thread(queue.set_setting, key, str(verified.id))
     setup_state.pop(message.from_user.id, None)
     label = "Video" if key == "upload_channel" else "Screenshot"
@@ -941,7 +975,8 @@ async def channel_post_peer_cache(client, message):
     # Incoming channel_post updates seed Pyrogram's local peer/access-hash cache.
     try:
         await app.get_chat(message.chat.id)
-        log.info("Channel peer cached | channel_id=%s | title=%s",
+        await sync_upload_peer(message.chat.id)
+        log.info("Channel peer cached in both sessions | channel_id=%s | title=%s",
                  message.chat.id, getattr(message.chat, "title", None))
     except Exception:
         log.exception("Could not cache peer from channel post | channel_id=%s", message.chat.id)
@@ -1390,12 +1425,22 @@ app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~f
 
 async def run_bot():
     await app.start()
+    try:
+        await upload_client.start()
+    except Exception:
+        await app.stop()
+        raise
     await on_start(app)
-    log.info("Starting TMJDLC with Pyrogram only: updates, commands, callbacks and large media uploads.")
+    log.info(
+        "TMJDLC started | update session=tmjdlc_bot | upload session=tmjdlc_upload "
+        "| upload transmissions=%s",
+        UPLOAD_WORKERS,
+    )
     try:
         await idle()
     finally:
         await on_stop(app)
+        await upload_client.stop()
         await app.stop()
 
 
