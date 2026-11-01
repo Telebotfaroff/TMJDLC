@@ -498,45 +498,140 @@ async def storage_cmd(client, message):
     )
 
 
+def batch_keyboard(uid: int) -> InlineKeyboardMarkup:
+    state = channel_state[uid]
+    selection = state.get("selection", "new")
+    quality = state.get("quality", 720)
+    quality_label = "Best" if quality is None else f"{quality}p"
+    screenshots = "ON" if state.get("screenshots", True) else "OFF"
+    skip = "ON" if state.get("skip_existing", True) else "OFF"
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("🆕 New only" + (" ✓" if selection == "new" else ""), callback_data="channel:select:new"),
+            InlineKeyboardButton("📚 All videos" + (" ✓" if selection == "all" else ""), callback_data="channel:select:all"),
+        ],
+        [
+            InlineKeyboardButton("Latest 10" + (" ✓" if selection == "latest:10" else ""), callback_data="channel:select:latest:10"),
+            InlineKeyboardButton("Latest 25" + (" ✓" if selection == "latest:25" else ""), callback_data="channel:select:latest:25"),
+            InlineKeyboardButton("Latest 50" + (" ✓" if selection == "latest:50" else ""), callback_data="channel:select:latest:50"),
+        ],
+        [InlineKeyboardButton("✍️ Custom pages", callback_data="channel:custom_pages")],
+        [
+            InlineKeyboardButton(("480p ✓" if quality == 480 else "480p"), callback_data="channel:quality:480"),
+            InlineKeyboardButton(("720p ✓" if quality == 720 else "720p"), callback_data="channel:quality:720"),
+            InlineKeyboardButton(("1080p ✓" if quality == 1080 else "1080p"), callback_data="channel:quality:1080"),
+            InlineKeyboardButton(("Best ✓" if quality is None else "Best"), callback_data="channel:quality:best"),
+        ],
+        [
+            InlineKeyboardButton(f"🖼 Screenshots: {screenshots}", callback_data="channel:toggle:screenshots"),
+            InlineKeyboardButton(f"⏭ Skip existing: {skip}", callback_data="channel:toggle:skip"),
+        ],
+        [
+            InlineKeyboardButton("✅ Review & queue", callback_data="channel:review"),
+            InlineKeyboardButton("✖ Cancel", callback_data="channel:cancel"),
+        ],
+    ])
+
+
+def batch_summary(info, state: dict) -> str:
+    selection = state.get("selection", "new")
+    selection_label = {
+        "new": "New videos (skip existing)",
+        "all": "All channel pages",
+        "latest:10": "Latest 10 videos",
+        "latest:25": "Latest 25 videos",
+        "latest:50": "Latest 50 videos",
+        "custom": f"Pages {state.get('pages', [])}",
+    }.get(selection, selection)
+    quality = state.get("quality", 720)
+    quality_label = "Best available" if quality is None else f"{quality}p"
+    return (
+        f"📚 <b>{html.escape(info.name)}</b>\n"
+        f"Videos: <b>{info.total_videos}</b> · Pages: <b>{info.total_pages}</b>\n\n"
+        f"Selection: <b>{html.escape(selection_label)}</b>\n"
+        f"Quality: <b>{quality_label}</b>\n"
+        f"Screenshots: <b>{'Enabled' if state.get('screenshots', True) else 'Disabled'}</b>\n"
+        f"Skip existing: <b>{'Yes' if state.get('skip_existing', True) else 'No'}</b>\n\n"
+        "Choose every option below, then press Review & queue."
+    )
+
+
+async def show_batch_menu(message, uid: int):
+    state = channel_state[uid]
+    await message.edit_text(
+        batch_summary(state["info"], state),
+        reply_markup=batch_keyboard(uid),
+        parse_mode=ParseMode.HTML,
+    )
+
+
 async def batch_cmd(client, message):
-    if await deny(message): return
+    if await deny(message):
+        return
     parts = (message.text or "").split(maxsplit=2)
     if len(parts) < 2:
-        return await message.reply_text("Usage: /batch CHANNEL_URL [all|1-5,8]")
+        return await message.reply_text("Usage: /batch CHANNEL_URL")
     url = parts[1].strip()
-    selection = parts[2].strip().lower() if len(parts) > 2 else "all"
+    status = await message.reply_text("🔎 Inspecting channel…")
     try:
         info = await asyncio.to_thread(JavtifulChannelScraper().inspect, url)
-        if selection == "all":
-            pages = list(range(1, info.total_pages + 1))
-        else:
-            pages = []
-            for token in selection.split(","):
-                token = token.strip()
-                if "-" in token:
-                    first, last = (int(x) for x in token.split("-", 1))
-                    if first > last:
-                        raise ValueError("Page range must be ascending.")
-                    pages.extend(range(first, last + 1))
-                else:
-                    pages.append(int(token))
-            pages = sorted(set(pages))
-            if not pages or min(pages) < 1 or max(pages) > info.total_pages:
-                raise ValueError(f"Choose pages from 1 to {info.total_pages}.")
-        status = await message.reply_text(
-            f"📚 {info.name}\nPages: {', '.join(map(str, pages[:30]))}"
-            f"{'…' if len(pages) > 30 else ''}\nCollecting links…"
-        )
-        urls = await asyncio.to_thread(JavtifulChannelScraper().videos_for_pages, info, pages)
-        items = [(VIDEO_ID.search(u).group(1), u, 720, message.from_user.id, True)
-                 for u in urls if VIDEO_ID.search(u)]
-        added, skipped = await asyncio.to_thread(queue.enqueue_many, items, skip_existing=True)
+        channel_state[message.from_user.id] = {
+            "info": info, "selection": "new", "quality": 720,
+            "screenshots": True, "skip_existing": True,
+            "status_chat_id": status.chat.id,
+        }
         await status.edit_text(
-            f"✅ Batch queued\nChannel: {info.name}\nPages: {len(pages)}\n"
-            f"Found: {len(urls)}\nAdded: {added}\nSkipped: {skipped}"
+            batch_summary(info, channel_state[message.from_user.id]),
+            reply_markup=batch_keyboard(message.from_user.id),
+            parse_mode=ParseMode.HTML,
         )
     except Exception as exc:
-        await message.reply_text(f"Batch failed: {type(exc).__name__}: {str(exc)[:400]}")
+        await status.edit_text(f"Channel inspection failed: {type(exc).__name__}: {str(exc)[:350]}")
+
+
+async def queue_channel_batch(message, uid: int):
+    state = channel_state.get(uid)
+    if not state:
+        return await message.edit_text("Batch session expired. Send /batch CHANNEL_URL again.")
+    info = state["info"]
+    selection = state.get("selection", "new")
+    if selection == "custom":
+        pages = state.get("pages", [])
+    elif selection.startswith("latest:"):
+        count = int(selection.split(":", 1)[1])
+        page_count = max(1, (count + 22) // 23)
+        pages = list(range(max(1, info.total_pages - page_count + 1), info.total_pages + 1))
+    else:
+        pages = list(range(1, info.total_pages + 1))
+    await message.edit_text("⏳ Collecting selected channel pages…")
+    try:
+        urls = await asyncio.to_thread(JavtifulChannelScraper().videos_for_pages, info, pages)
+        if selection.startswith("latest:"):
+            urls = urls[-int(selection.split(":", 1)[1]):]
+        items = []
+        for url in urls:
+            match = VIDEO_ID.search(url)
+            if match:
+                items.append((
+                    match.group(1), url, state.get("quality", 720), uid,
+                    state.get("screenshots", True),
+                ))
+        if not items:
+            raise RuntimeError("No video links were found in the selected pages.")
+        added, skipped = await asyncio.to_thread(
+            queue.enqueue_many, items, skip_existing=state.get("skip_existing", True)
+        )
+        await message.edit_text(
+            f"✅ <b>Batch queued</b>\nChannel: {html.escape(info.name)}\n"
+            f"Selection: {html.escape(selection)}\nFound: {len(items)}\n"
+            f"Added: {added}\nSkipped: {skipped}\nQuality: "
+            f"{'Best' if state.get('quality') is None else str(state.get('quality')) + 'p'}",
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception as exc:
+        await message.edit_text(f"❌ Batch failed: {type(exc).__name__}: {str(exc)[:350]}")
+    finally:
+        channel_state.pop(uid, None)
 
 
 async def settings_cmd(client, message):
@@ -580,6 +675,36 @@ async def text_handler(client, message):
     if await deny(message): return
     text = (message.text or "").strip()
     uid = message.from_user.id
+    batch = channel_state.get(uid)
+    if batch and batch.get("awaiting") == "custom_pages":
+        if text.upper() == "CANCEL":
+            batch.pop("awaiting", None)
+            return await message.reply_text("Custom page selection cancelled. Use the batch buttons to choose another option.")
+        try:
+            pages = []
+            for token in text.replace(" ", "").split(","):
+                if "-" in token:
+                    first, last = (int(x) for x in token.split("-", 1))
+                    if first > last:
+                        raise ValueError("Ranges must be ascending.")
+                    pages.extend(range(first, last + 1))
+                else:
+                    pages.append(int(token))
+            pages = sorted(set(pages))
+            info = batch["info"]
+            if not pages or min(pages) < 1 or max(pages) > info.total_pages:
+                raise ValueError(f"Choose pages from 1 to {info.total_pages}.")
+            batch["selection"] = "custom"
+            batch["pages"] = pages
+            batch.pop("awaiting", None)
+            status = await message.reply_text("Custom pages saved.")
+            await status.edit_text(
+                batch_summary(info, batch), reply_markup=batch_keyboard(uid),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            return await message.reply_text(f"Invalid pages: {str(exc)[:250]}\nExample: 1-5,8")
+        return
     stage = setup_state.get(uid)
     if stage:
         if text.upper() == "CANCEL":
@@ -609,15 +734,13 @@ async def text_handler(client, message):
         status = await message.reply_text("🔎 Inspecting Javtiful channel…")
         try:
             info = await asyncio.to_thread(JavtifulChannelScraper().inspect, text)
-            channel_state[uid] = {"info": info}
-            keyboard = InlineKeyboardMarkup([[
-                InlineKeyboardButton("Queue all pages", callback_data="channel:all"),
-                InlineKeyboardButton("Cancel", callback_data="channel:cancel"),
-            ]])
+            channel_state[uid] = {
+                "info": info, "selection": "new", "quality": 720,
+                "screenshots": True, "skip_existing": True,
+            }
             await status.edit_text(
-                f"📚 {info.name}\nVideos: {info.total_videos}\nPages: {info.total_pages}\n"
-                f"Final page: {info.last_page_count}\nQuality: 720p",
-                reply_markup=keyboard,
+                batch_summary(info, channel_state[uid]),
+                reply_markup=batch_keyboard(uid), parse_mode=ParseMode.HTML,
             )
         except Exception as exc:
             await status.edit_text(f"Channel inspection failed: {type(exc).__name__}: {str(exc)[:400]}")
@@ -629,28 +752,49 @@ async def callback_handler(client, callback):
     uid = callback.from_user.id
     if uid not in ADMINS:
         return await callback.answer("Not authorized.", show_alert=True)
-    await callback.answer()
-    if callback.data == "channel:cancel":
-        channel_state.pop(uid, None)
-        return await callback.message.edit_text("Channel queue cancelled.")
+    data = callback.data or ""
     state = channel_state.get(uid)
-    if not state:
-        return await callback.message.edit_text("Session expired. Send the channel URL again.")
-    info = state["info"]
-    await callback.message.edit_text("⏳ Collecting channel links…")
-    try:
-        urls = await asyncio.to_thread(
-            JavtifulChannelScraper().videos_for_pages, info, list(range(1, info.total_pages + 1))
-        )
-        items = [(VIDEO_ID.search(url).group(1), url, 720, uid, True) for url in urls]
-        added, skipped = await asyncio.to_thread(queue.enqueue_many, items, skip_existing=True)
-        await callback.message.edit_text(
-            f"✅ Batch queued\nVideos found: {len(urls)}\nAdded: {added}\nSkipped existing: {skipped}"
-        )
-    except Exception as exc:
-        await callback.message.edit_text(f"❌ Queue failed: {type(exc).__name__}: {str(exc)[:400]}")
-    finally:
+    if data == "channel:cancel":
         channel_state.pop(uid, None)
+        await callback.answer("Batch cancelled.")
+        return await callback.message.edit_text("🛑 Channel batch cancelled.")
+    if not state:
+        await callback.answer("Session expired. Send the channel URL again.", show_alert=True)
+        return await callback.message.edit_text("Batch session expired. Send /batch CHANNEL_URL again.")
+    if data == "channel:custom_pages":
+        state["awaiting"] = "custom_pages"
+        await callback.answer("Send page numbers in chat.")
+        return await callback.message.reply_text(
+            f"Send page numbers for {state['info'].name}. Example: 1-5,8\n"
+            f"Valid range: 1-{state['info'].total_pages}. Send CANCEL to stop."
+        )
+    if data.startswith("channel:select:"):
+        value = data.removeprefix("channel:select:")
+        if value in {"new", "all"}:
+            state["selection"] = value
+        elif value in {"latest:10", "latest:25", "latest:50"}:
+            state["selection"] = value
+        else:
+            return await callback.answer("Unknown selection.", show_alert=True)
+        await callback.answer("Selection updated.")
+        return await show_batch_menu(callback.message, uid)
+    if data.startswith("channel:quality:"):
+        value = data.rsplit(":", 1)[-1]
+        state["quality"] = None if value == "best" else int(value)
+        await callback.answer("Quality updated.")
+        return await show_batch_menu(callback.message, uid)
+    if data == "channel:toggle:screenshots":
+        state["screenshots"] = not state.get("screenshots", True)
+        await callback.answer("Screenshot setting updated.")
+        return await show_batch_menu(callback.message, uid)
+    if data == "channel:toggle:skip":
+        state["skip_existing"] = not state.get("skip_existing", True)
+        await callback.answer("Duplicate handling updated.")
+        return await show_batch_menu(callback.message, uid)
+    if data == "channel:review":
+        await callback.answer("Starting batch collection…")
+        return await queue_channel_batch(callback.message, uid)
+    await callback.answer("Unknown batch action.", show_alert=True)
 
 
 async def dl_cmd(client, message):
