@@ -17,7 +17,7 @@ from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
-from pyrogram.enums import ParseMode, ChatMemberStatus
+from pyrogram.enums import ParseMode, ChatMemberStatus, ChatType
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
 
@@ -870,12 +870,22 @@ async def set_channel(message, key):
     if await deny(message): return
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
-        return await message.reply_text("Usage: /setupload @channelusername or -1001234567890")
+        setup_state[message.from_user.id] = key
+        label = "video upload" if key == "upload_channel" else "screenshot"
+        return await message.reply_text(
+            f"Forward any recent post from your private {label} channel here. "
+            "The bot will resolve the channel from that forwarded post, verify posting rights, "
+            "and save it in Neon. Send CANCEL to stop."
+        )
     value = parts[1].strip()
     try:
         chat = await resolve_destination(value)
     except DestinationError as exc:
-        return await message.reply_text(f"❌ {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
+        return await message.reply_text(
+            f"❌ {html.escape(str(exc))}\n\n"
+            "For a private channel, run /setupload without an ID and forward a channel post.",
+            parse_mode=ParseMode.HTML,
+        )
     await asyncio.to_thread(queue.set_setting, key, str(chat.id))
     await message.reply_text(
         f"✅ Verified administrator access and saved channel <code>{chat.id}</code> in Neon.",
@@ -887,10 +897,62 @@ async def setupload_cmd(client, message): await set_channel(message, "upload_cha
 async def setimages_cmd(client, message): await set_channel(message, "image_channel")
 
 
+def forwarded_source_chat(message):
+    source = getattr(message, "forward_from_chat", None)
+    if source is not None:
+        return source
+    origin = getattr(message, "forward_origin", None)
+    return getattr(origin, "chat", None) if origin is not None else None
+
+
+async def forwarded_destination_handler(client, message):
+    if not message.from_user or message.from_user.id not in ADMINS:
+        return
+    key = setup_state.get(message.from_user.id)
+    if key not in {"upload_channel", "image_channel"}:
+        return
+    source = forwarded_source_chat(message)
+    if source is None or getattr(source, "type", None) != ChatType.CHANNEL:
+        return await message.reply_text(
+            "I couldn't read the channel origin. Forward a normal post from the private channel "
+            "(use Telegram Forward, not copy/paste), or send CANCEL."
+        )
+    try:
+        # The forwarded update carries the channel peer/access hash into Pyrogram storage.
+        chat = await app.get_chat(source.id)
+        verified = await resolve_destination(str(chat.id))
+    except Exception as exc:
+        return await message.reply_text(
+            f"❌ Could not verify forwarded channel: {html.escape(str(exc)[:450])}\n"
+            "Confirm the bot is an administrator with permission to post, then forward a fresh post."
+        )
+    await asyncio.to_thread(queue.set_setting, key, str(verified.id))
+    setup_state.pop(message.from_user.id, None)
+    label = "Video" if key == "upload_channel" else "Screenshot"
+    await message.reply_text(
+        f"✅ {label} channel verified and saved: <code>{verified.id}</code>\n"
+        f"Title: {html.escape(verified.title or 'Private channel')}",
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def channel_post_peer_cache(client, message):
+    # Incoming channel_post updates seed Pyrogram's local peer/access-hash cache.
+    try:
+        await app.get_chat(message.chat.id)
+        log.info("Channel peer cached | channel_id=%s | title=%s",
+                 message.chat.id, getattr(message.chat, "title", None))
+    except Exception:
+        log.exception("Could not cache peer from channel post | channel_id=%s", message.chat.id)
+
+
 async def setup_cmd(client, message):
     if await deny(message): return
     setup_state[message.from_user.id] = "upload_channel"
-    await message.reply_text("Step 1/2: send your video channel @username or numeric ID. The bot must be an admin there.")
+    await message.reply_text(
+        "Step 1/2: forward any recent post from your private video channel here. "
+        "The bot must be an administrator with permission to post."
+    )
 
 
 async def queue_single_url(message, url: str):
@@ -992,7 +1054,10 @@ async def text_handler(client, message):
             except Exception as exc:
                 return await message.reply_text(f"Cannot resolve channel: {exc}")
         if not re.fullmatch(r"-?\d+", value) and not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
-            return await message.reply_text("Send a numeric channel ID or public @username.")
+            return await message.reply_text(
+                "For private channels, forward a channel post instead of typing its numeric ID. "
+                "For public channels, send @username."
+            )
         try:
             chat = await resolve_destination(value)
         except DestinationError as exc:
@@ -1088,7 +1153,10 @@ async def callback_handler(client, callback):
         setup_state[uid] = "upload_channel" if data == "settings:video" else "image_channel"
         await callback.answer()
         label = "video destination" if data == "settings:video" else "screenshot destination"
-        return await callback.message.reply_text(f"Send the {label} channel @username or numeric ID. Send CANCEL to stop.")
+        return await callback.message.reply_text(
+            f"Forward any recent post from the private {label} channel here. "
+            "The bot will resolve and verify the channel peer before saving it. Send CANCEL to stop."
+        )
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
         if direction == "up":
@@ -1301,6 +1369,8 @@ async def on_stop(client):
 
 
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
+app.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
+app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & ~filters.text))
 app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
 app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
