@@ -47,7 +47,8 @@ class YtDlpStreamDownloader:
             "progress_hooks": hooks,
         }
         # Parallel byte-range downloads for direct HTTP MP4 sources.
-        use_aria2 = os.getenv("TMJDLC_USE_ARIA2", "true").lower() in {"1", "true", "yes", "on"}
+        # yt-dlp native hooks provide reliable per-second Telegram progress. Enable aria2 explicitly if preferred.
+        use_aria2 = os.getenv("TMJDLC_USE_ARIA2", "false").lower() in {"1", "true", "yes", "on"}
         if stream.format == "mp4" and use_aria2 and shutil.which("aria2c"):
             options["external_downloader"] = {"http": "aria2c", "https": "aria2c"}
             options["external_downloader_args"] = {
