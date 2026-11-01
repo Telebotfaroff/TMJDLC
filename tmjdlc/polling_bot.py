@@ -35,7 +35,7 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "4"))))
+UPLOAD_WORKERS = max(1, min(16, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
@@ -43,7 +43,7 @@ WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
 SHOT_COUNT = 10
 MIN_FREE_DISK_GB = float(os.getenv("TMJDLC_MIN_FREE_DISK_GB", "3"))
 AUTO_CLEAN = os.getenv("TMJDLC_AUTO_CLEAN", "true").strip().lower() in {"1", "true", "yes", "on"}
-PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "10")))
+PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "2")))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
@@ -313,7 +313,7 @@ async def process_job(job: dict, identity: str):
                         queue.update_progress(jid, identity, "downloading", percent)
                         now = time.monotonic()
                         if (percent >= last_download_notice["percent"] + PROGRESS_STEP
-                                or now - last_download_notice["time"] >= 4 or percent >= 100):
+                                or now - last_download_notice["time"] >= 2 or percent >= 100):
                             last_download_notice.update(percent=percent, time=now)
                             if chat_id and message_id:
                                 notice = _progress_text(
@@ -421,7 +421,7 @@ async def process_job(job: dict, identity: str):
                 )
                 percent = min(100, int(current * 100 / total))
                 if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
-                        or elapsed >= 4 or percent >= 100):
+                        or elapsed >= 2 or percent >= 100):
                     speed = last_upload_notice["speed"]
                     eta = (total - current) / speed if speed else None
                     await status_edit(chat_id, message_id, _progress_text(
