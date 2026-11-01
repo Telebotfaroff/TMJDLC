@@ -51,11 +51,16 @@ class JobQueue:
                 "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
                 "current_stage TEXT",
                 "progress_percent INTEGER NOT NULL DEFAULT 0",
+                "batch_id TEXT",
             ):
                 conn.execute(f"ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS {definition}")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
                 ON tmjdlc_bot_jobs(priority, created_at) WHERE status='queued'
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_batch_idx
+                ON tmjdlc_bot_jobs(batch_id, status) WHERE batch_id IS NOT NULL
             """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_lease_idx
@@ -134,17 +139,17 @@ class JobQueue:
             return dict(existing), False
 
     def enqueue_many(self, items: list[tuple[str, str, int | None, int | None, bool]], *,
-                     skip_existing: bool = True) -> tuple[int, int]:
+                     skip_existing: bool = True, batch_id: str | None = None) -> tuple[int, int]:
         added = skipped = 0
         with self.connect() as conn:
             for video_id, post_url, quality, requested_by, screenshots in items:
                 row = conn.execute("""
                     INSERT INTO tmjdlc_bot_jobs
-                      (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots)
-                    VALUES (%s,%s,%s,%s,100,%s,%s)
+                      (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots,batch_id)
+                    VALUES (%s,%s,%s,%s,100,%s,%s,%s)
                     ON CONFLICT(video_id) DO NOTHING RETURNING id
                 """, (video_id, post_url, quality, requested_by,
-                      self.max_attempts, screenshots)).fetchone()
+                      self.max_attempts, screenshots, batch_id)).fetchone()
                 if row:
                     added += 1
                     continue
@@ -236,6 +241,27 @@ class JobQueue:
                 RETURNING status
             """, (job_id,)).fetchone()
             return row["status"] if row else None
+
+    def cancel_batch(self, batch_id: str) -> dict[str, int]:
+        """Cancel all unfinished jobs created by one batch; active jobs stop cooperatively."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                UPDATE tmjdlc_bot_jobs SET
+                  status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
+                  cancel_requested=TRUE,
+                  worker_id=CASE WHEN status='queued' THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status='queued' THEN NULL ELSE lease_until END,
+                  updated_at=now()
+                WHERE batch_id=%s AND status IN ('queued','downloading','uploading')
+                RETURNING status
+            """, (batch_id,)).fetchall()
+            counts = {"cancelled": 0, "stopping": 0}
+            for row in rows:
+                if row["status"] == "cancelled":
+                    counts["cancelled"] += 1
+                else:
+                    counts["stopping"] += 1
+            return counts
 
     def is_cancel_requested(self, job_id: int, worker_id: str) -> bool:
         with self.connect() as conn:
