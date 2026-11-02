@@ -148,17 +148,21 @@ class JobQueue:
             return dict(existing), False
 
     def enqueue_many(self, items: list[tuple[str, str, int | None, int | None, bool]], *,
-                     skip_existing: bool = True, batch_id: str | None = None) -> tuple[int, int]:
+                     skip_existing: bool = True, batch_id: str | None = None,
+                     status_chat_id: int | None = None,
+                     status_message_id: int | None = None) -> tuple[int, int]:
         added = skipped = 0
         with self.connect() as conn:
             for video_id, post_url, quality, requested_by, screenshots in items:
                 row = conn.execute("""
                     INSERT INTO tmjdlc_bot_jobs
-                      (video_id,post_url,quality,requested_by,priority,max_attempts,upload_screenshots,batch_id)
-                    VALUES (%s,%s,%s,%s,100,%s,%s,%s)
+                      (video_id,post_url,quality,requested_by,priority,max_attempts,
+                       upload_screenshots,batch_id,status_chat_id,status_message_id)
+                    VALUES (%s,%s,%s,%s,100,%s,%s,%s,%s,%s)
                     ON CONFLICT(video_id) DO NOTHING RETURNING id
                 """, (video_id, post_url, quality, requested_by,
-                      self.max_attempts, screenshots, batch_id)).fetchone()
+                      self.max_attempts, screenshots, batch_id,
+                      status_chat_id, status_message_id)).fetchone()
                 if row:
                     added += 1
                     continue
