@@ -506,13 +506,10 @@ async def download_job(job: dict, identity: str):
             output_path=str(path), lease_seconds=LEASE,
         ):
             raise RuntimeError("Could not hand the downloaded video to the upload queue.")
+        # Wake the uploader immediately; the shared status message moves
+        # directly from download progress to upload progress without a
+        # separate "ready" notification.
         upload_ready_event.set()
-        await status_edit(
-            chat_id, message_id,
-            f"📦 <b>Ready for upload</b> · <code>{html.escape(vid)}</code>\n"
-            f"Size: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
-            "Waiting for the Telegram upload worker…",
-        )
         log.info("Video ready for upload | job_id=%s video_id=%s", jid, vid)
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
