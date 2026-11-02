@@ -129,6 +129,12 @@ setup_state: dict[int, str] = {}
 screenshot_setup_state: set[int] = set()
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
+upload_ready_event = asyncio.Event()
+_status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
+_synced_upload_peers: set[int] = set()
+_synced_screenshot_peers: set[int] = set()
+_destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
+DESTINATION_CACHE_SECONDS = 600
 
 app = Client(
     "tmjdlc_bot",
@@ -166,8 +172,11 @@ screenshot_client = Client(
 
 
 async def sync_upload_peer(peer_id: int) -> None:
-    """Copy a peer's access-hash record from the update session to upload session."""
-    peer = await app.resolve_peer(int(peer_id))
+    """Copy a peer's access-hash record once into the upload session."""
+    peer_id = int(peer_id)
+    if peer_id in _synced_upload_peers:
+        return
+    peer = await app.resolve_peer(peer_id)
     peer_name = type(peer).__name__
     if peer_name == "InputPeerChannel":
         access_hash, peer_type = int(peer.access_hash), "channel"
@@ -180,10 +189,14 @@ async def sync_upload_peer(peer_id: int) -> None:
     await upload_client.storage.update_peers([
         (int(peer_id), access_hash, peer_type, None, None)
     ])
+    _synced_upload_peers.add(peer_id)
 
 async def sync_screenshot_peer(peer_id: int) -> None:
-    """Seed the screenshot bot's peer cache from a forwarded channel peer."""
-    peer = await app.resolve_peer(int(peer_id))
+    """Seed the screenshot bot's peer cache once from a forwarded channel peer."""
+    peer_id = int(peer_id)
+    if peer_id in _synced_screenshot_peers:
+        return
+    peer = await app.resolve_peer(peer_id)
     peer_name = type(peer).__name__
     if peer_name == "InputPeerChannel":
         access_hash, peer_type = int(peer.access_hash), "channel"
@@ -194,6 +207,7 @@ async def sync_screenshot_peer(peer_id: int) -> None:
     await screenshot_client.storage.update_peers([
         (int(peer_id), access_hash, peer_type, None, None)
     ])
+    _synced_screenshot_peers.add(peer_id)
 
 
 def is_admin(message) -> bool:
@@ -209,14 +223,32 @@ async def deny(message) -> bool:
 
 
 async def status_edit(chat_id, message_id, text):
-    if chat_id and message_id:
+    if not chat_id or not message_id:
+        return
+    key = (int(chat_id), int(message_id))
+    lock = _status_edit_locks.setdefault(key, asyncio.Lock())
+    async with lock:
         try:
-            await app.edit_message_text(chat_id, message_id, text[:4000], parse_mode=ParseMode.HTML)
+            await app.edit_message_text(chat_id, message_id, text[:4000],
+                                        parse_mode=ParseMode.HTML)
         except Exception as exc:
             if "MESSAGE_NOT_MODIFIED" in str(exc):
                 return
             log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
                         chat_id, message_id, exc)
+
+
+async def resolve_destination_cached(value: str, client: Client = app):
+    """Avoid repeating Telegram get_chat/member/peer resolution for every batch job."""
+    raw = str(value or "").strip()
+    key = (id(client), raw)
+    cached = _destination_cache.get(key)
+    now = time.monotonic()
+    if cached and now - cached[0] < DESTINATION_CACHE_SECONDS:
+        return cached[1]
+    chat = await resolve_destination(raw, client)
+    _destination_cache[key] = (now, chat)
+    return chat
 
 
 async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
@@ -441,6 +473,7 @@ async def download_job(job: dict, identity: str):
             output_path=str(path), lease_seconds=LEASE,
         ):
             raise RuntimeError("Could not hand the downloaded video to the upload queue.")
+        upload_ready_event.set()
         await status_edit(
             chat_id, message_id,
             f"📦 <b>Ready for upload</b> · <code>{html.escape(vid)}</code>\n"
@@ -506,7 +539,7 @@ async def process_job(job: dict, identity: str):
         # requesting user's private bot chat when peer resolution fails.
         video_destination = None
         try:
-            video_destination = await resolve_destination(video_chat_value)
+            video_destination = await resolve_destination_cached(video_chat_value)
             await sync_upload_peer(video_destination.id)
         except DestinationError as exc:
             fallback_chat_id = int(job.get("requested_by") or 0)
@@ -523,7 +556,7 @@ async def process_job(job: dict, identity: str):
         image_destination = None
         if image_chat_value and job.get("upload_screenshots", True):
             try:
-                image_destination = await resolve_destination(image_chat_value, screenshot_client)
+                image_destination = await resolve_destination_cached(image_chat_value, screenshot_client)
                 await screenshot_client.resolve_peer(image_destination.id)
             except DestinationError as exc:
                 log.warning(
@@ -823,7 +856,18 @@ async def upload_worker_loop():
             if job:
                 await process_job(job, identity)
                 continue
-            await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+            upload_ready_event.clear()
+            # Recheck after clearing so a ready event cannot be lost between
+            # the empty claim and the wait.
+            job = await asyncio.to_thread(queue.claim_upload, identity, LEASE)
+            if job:
+                await process_job(job, identity)
+                continue
+            try:
+                await asyncio.wait_for(upload_ready_event.wait(),
+                                       timeout=UPLOAD_QUEUE_POLL_SECONDS)
+            except asyncio.TimeoutError:
+                pass
         except asyncio.CancelledError:
             raise
         except Exception:
