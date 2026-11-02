@@ -1159,10 +1159,22 @@ async def queue_channel_batch(message, uid: int):
         if not items:
             raise RuntimeError("No video links were found in the selected pages.")
         batch_id = uuid.uuid4().hex[:12]
+        live_status = await message.reply_text(
+            f"⏳ <b>Batch pipeline</b> · <code>{batch_id}</code>\n"
+            f"Queued jobs will share this live status message.",
+            parse_mode=ParseMode.HTML,
+        )
         added, skipped = await asyncio.to_thread(
             queue.enqueue_many, items, skip_existing=state.get("skip_existing", True),
-            batch_id=batch_id,
+            batch_id=batch_id, status_chat_id=live_status.chat.id,
+            status_message_id=live_status.id,
         )
+        if not added:
+            await live_status.edit_text(
+                f"ℹ️ <b>No new jobs</b> · <code>{batch_id}</code>\n"
+                f"All {skipped} selected videos were already in the queue.",
+                parse_mode=ParseMode.HTML,
+            )
         keyboard = InlineKeyboardMarkup([[
             InlineKeyboardButton("🛑 Cancel remaining batch jobs", callback_data=f"batch:cancel:{batch_id}")
         ]]) if added else None
