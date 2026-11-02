@@ -980,7 +980,7 @@ async def panel_cmd(client, message):
         "🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
         f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
         f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
-        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>"
+        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>1 download + 1 upload</b>"
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
