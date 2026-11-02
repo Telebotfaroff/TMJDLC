@@ -189,6 +189,8 @@ class JobQueue:
                       SELECT 1 FROM tmjdlc_bot_jobs WHERE status='downloading'
                     )
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='uploading') < %s
+                  ORDER BY priority ASC, created_at ASC, id ASC
+                  LIMIT 1
                 )
                 UPDATE tmjdlc_bot_jobs j SET status='downloading',
                   attempts=j.attempts+1,worker_id=%s,
