@@ -174,9 +174,11 @@ class JobQueue:
                         UPDATE tmjdlc_bot_jobs SET status='queued',attempts=0,last_error=NULL,
                           worker_id=NULL,lease_until=NULL,cancel_requested=FALSE,
                           current_stage=NULL,progress_percent=0,post_url=%s,quality=%s,
-                          requested_by=%s,upload_screenshots=%s,updated_at=now()
+                          requested_by=%s,upload_screenshots=%s,status_chat_id=%s,
+                          status_message_id=%s,updated_at=now()
                         WHERE id=%s
-                    """, (post_url, quality, requested_by, screenshots, old["id"]))
+                    """, (post_url, quality, requested_by, screenshots,
+                          status_chat_id, status_message_id, old["id"]))
                     conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (old["id"],))
                     added += 1
                 else:
