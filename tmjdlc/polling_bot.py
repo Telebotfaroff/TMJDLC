@@ -700,7 +700,8 @@ async def start_cmd(client, message):
         setup_state[message.from_user.id] = "upload_channel"
         await message.reply_text(
             "🎞 <b>First-time setup · Video upload channel</b>\\n"
-            "Send the public channel username (example: <code>@myvideos</code>). "
+            "Send <code>@channelusername</code> for a public channel, or forward a recent post "
+            "from your private channel to this bot. "
             "I will verify that this bot is an administrator with posting permission, then save it in Neon.\\n"
             "Use /cancelsetup to stop.",
             parse_mode=ParseMode.HTML,
@@ -732,7 +733,8 @@ async def screenshot_start_cmd(client, message):
     screenshot_setup_state.add(message.from_user.id)
     await message.reply_text(
         "🖼 <b>Screenshot bot setup</b>\\n"
-        "Send the public screenshot channel username (example: <code>@myscreenshots</code>).\\n"
+        "Send <code>@channelusername</code> for a public channel, or forward a recent post "
+        "from your private screenshot channel directly to this bot.\\n"
         "Make sure <b>this screenshot bot</b> is an administrator with permission to post photos. "
         "I will verify access and save the channel in Neon.\\n"
         "Use /cancelsetup to stop.",
@@ -745,7 +747,8 @@ async def screenshot_setchannel_cmd(client, message):
         return
     screenshot_setup_state.add(message.from_user.id)
     await message.reply_text(
-        "Send the public screenshot channel username, e.g. <code>@myscreenshots</code>. "
+        "Send <code>@channelusername</code> for a public channel, or forward a recent post "
+        "from the private channel to this screenshot bot. "
         "This screenshot bot must be an administrator with permission to post photos.",
         parse_mode=ParseMode.HTML,
     )
@@ -756,6 +759,39 @@ async def screenshot_cancelsetup_cmd(client, message):
         return
     screenshot_setup_state.discard(message.from_user.id)
     await message.reply_text("Screenshot channel setup cancelled.")
+
+
+async def screenshot_forwarded_destination_handler(client, message):
+    if not message.from_user or message.from_user.id not in ADMINS:
+        return
+    uid = message.from_user.id
+    if uid not in screenshot_setup_state:
+        return
+    source = forwarded_source_chat(message)
+    if source is None or getattr(source, "type", None) != ChatType.CHANNEL:
+        return await message.reply_text(
+            "I couldn't read the channel origin. Use Telegram Forward to send a normal post "
+            "from the private screenshot channel (not copy/paste), or send CANCEL."
+        )
+    try:
+        # The screenshot bot receives the forwarded post itself, resolves the
+        # private channel peer, and checks its own posting permissions.
+        chat = await screenshot_client.get_chat(source.id)
+        await screenshot_client.resolve_peer(chat.id)
+        verified = await resolve_destination(str(chat.id), screenshot_client)
+    except Exception as exc:
+        return await message.reply_text(
+            f"❌ Could not verify forwarded screenshot channel: {html.escape(str(exc)[:450])}\\n"
+            "Confirm this screenshot bot is an administrator with permission to post photos, "
+            "then forward a fresh post from that channel."
+        )
+    await asyncio.to_thread(queue.set_setting, "image_channel", str(verified.id))
+    screenshot_setup_state.discard(uid)
+    await message.reply_text(
+        f"✅ Screenshot channel verified and saved: <code>{verified.id}</code>\\n"
+        f"Title: {html.escape(verified.title or 'Private channel')}",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def screenshot_text_handler(client, message):
@@ -770,7 +806,7 @@ async def screenshot_text_handler(client, message):
         return await message.reply_text("Screenshot channel setup cancelled.")
     if not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
         return await message.reply_text(
-            "Please send the public channel @username, for example <code>@myscreenshots</code>.",
+            "Please send a public channel @username, or forward a recent post from the private channel.",
             parse_mode=ParseMode.HTML,
         )
     try:
@@ -1059,9 +1095,8 @@ async def set_channel(message, key):
         setup_state[message.from_user.id] = key
         label = "video upload" if key == "upload_channel" else "screenshot"
         return await message.reply_text(
-            f"Forward any recent post from your private {label} channel here. "
-            "The bot will resolve the channel from that forwarded post, verify posting rights, "
-            "and save it in Neon. Send CANCEL to stop."
+            f"Send @channelusername for a public channel, or forward a recent post from your private {label} channel here. "
+            "The bot will resolve the channel, verify posting rights, and save it in Neon. Send CANCEL to stop."
         )
     value = parts[1].strip()
     try:
@@ -1258,7 +1293,7 @@ async def text_handler(client, message):
                 return await message.reply_text(f"Cannot resolve channel: {exc}")
         if not re.fullmatch(r"-?\d+", value) and not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
             return await message.reply_text(
-                "For private channels, forward a channel post instead of typing its numeric ID. "
+                "For private channels, forward a recent channel post to this bot. "
                 "For public channels, send @username."
             )
         try:
@@ -1574,6 +1609,7 @@ async def on_stop(client):
 screenshot_client.add_handler(MessageHandler(screenshot_start_cmd, filters.command(["start", "help"]) & filters.private))
 screenshot_client.add_handler(MessageHandler(screenshot_setchannel_cmd, filters.command("setchannel") & filters.private))
 screenshot_client.add_handler(MessageHandler(screenshot_cancelsetup_cmd, filters.command("cancelsetup") & filters.private))
+screenshot_client.add_handler(MessageHandler(screenshot_forwarded_destination_handler, filters.private & filters.forwarded))
 screenshot_client.add_handler(MessageHandler(screenshot_text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
