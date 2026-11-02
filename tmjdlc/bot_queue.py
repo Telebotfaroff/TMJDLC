@@ -433,10 +433,10 @@ class JobQueue:
         with self.connect() as conn:
             rows = conn.execute("""
                 UPDATE tmjdlc_bot_jobs SET
-                  status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
+                  status=CASE WHEN status IN ('queued','ready') THEN 'cancelled' ELSE status END,
                   cancel_requested=TRUE,
-                  worker_id=CASE WHEN status='queued' THEN NULL ELSE worker_id END,
-                  lease_until=CASE WHEN status='queued' THEN NULL ELSE lease_until END,
+                  worker_id=CASE WHEN status IN ('queued','ready') THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status IN ('queued','ready') THEN NULL ELSE lease_until END,
                   updated_at=now()
                 WHERE status IN ('queued','ready','downloading','uploading')
                 RETURNING status
