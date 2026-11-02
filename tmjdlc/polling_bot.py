@@ -27,7 +27,8 @@ from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-logging.getLogger("pyrogram").setLevel(logging.WARNING)
+PYROGRAM_LOG_LEVEL = os.getenv("TMJDLC_PYROGRAM_LOG_LEVEL", "INFO").strip().upper()
+logging.getLogger("pyrogram").setLevel(getattr(logging, PYROGRAM_LOG_LEVEL, logging.INFO))
 log = logging.getLogger("tmjdlc.pyrogram")
 
 TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
@@ -697,8 +698,14 @@ async def process_job(job: dict, identity: str):
             check_stop()
             size_mb = path.stat().st_size / 1048576
             await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
-            last_upload_notice = {"percent": -PROGRESS_STEP, "time": time.monotonic(),
+            upload_started_at = time.monotonic()
+            last_upload_notice = {"percent": -PROGRESS_STEP, "time": upload_started_at,
                                   "bytes": 0, "speed": 0.0}
+
+            log.info(
+                "Telegram upload started | job_id=%s video_id=%s size=%s destination=%s",
+                jid, vid, _fmt_bytes(path.stat().st_size), upload_chat_id,
+            )
 
             async def upload_progress(current, total, *_):
                 if not total:
@@ -715,6 +722,12 @@ async def process_job(job: dict, identity: str):
                         or elapsed >= 2 or percent >= 100):
                     speed = last_upload_notice["speed"]
                     eta = (total - current) / speed if speed else None
+                    log.info(
+                        "Telegram upload progress | job_id=%s video_id=%s "
+                        "progress=%s%% sent=%s/%s speed=%s/s elapsed=%ss",
+                        jid, vid, percent, _fmt_bytes(current), _fmt_bytes(total),
+                        _fmt_bytes(speed), int(now - upload_started_at),
+                    )
                     await status_edit(chat_id, message_id, _progress_text(
                         "Upload", vid, title, percent, current, total, speed, eta, int(job["attempts"])
                     ))
@@ -738,6 +751,14 @@ async def process_job(job: dict, identity: str):
                     height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
                     supports_streaming=True, parse_mode=ParseMode.DISABLED,
                     progress=upload_progress,
+                )
+                upload_elapsed = max(time.monotonic() - upload_started_at, 0.001)
+                upload_size = path.stat().st_size
+                log.info(
+                    "Telegram upload completed | job_id=%s video_id=%s size=%s "
+                    "elapsed=%ss average_speed=%s/s telegram_message_id=%s",
+                    jid, vid, _fmt_bytes(upload_size), int(upload_elapsed),
+                    _fmt_bytes(upload_size / upload_elapsed), sent.id,
                 )
             except Exception as channel_error:
                 fallback_chat_id = int(job.get("requested_by") or 0)
