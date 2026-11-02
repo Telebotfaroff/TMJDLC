@@ -533,7 +533,8 @@ async def download_job(job: dict, identity: str):
                 f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} download {vid}: {html.escape(error)}",
             )
     finally:
-        if jid in _destination_warm_tasks and queue.get(jid).get("status") != "ready":
+        current_job = await asyncio.to_thread(queue.get, jid)
+        if current_job and current_job.get("status") != "ready":
             _destination_warm_tasks.pop(jid, None)
             if not warm_task.done():
                 warm_task.cancel()
