@@ -675,7 +675,22 @@ async def worker_loop(index: int):
                 if job:
                     await process_job(job, identity)
                 else:
-                    await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+                    # Reclaim expired leases while the worker is alive as well as
+                    # during startup. This also repairs orphaned batch rows left
+                    # by older claim logic after their lease expires.
+                    recovered = await asyncio.to_thread(queue.recover_expired)
+                    if recovered:
+                        log.warning("Recovered expired queue jobs=%s", recovered)
+                        job = await asyncio.to_thread(
+                            queue.claim, identity, LEASE,
+                            max_pending_uploads=MAX_PENDING_UPLOADS,
+                        )
+                        if job:
+                            await process_job(job, identity)
+                        else:
+                            await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+                    else:
+                        await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
             finally:
                 async with condition:
                     active = max(0, active - 1)
