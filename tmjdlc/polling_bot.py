@@ -134,6 +134,7 @@ _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
 _synced_upload_peers: set[int] = set()
 _synced_screenshot_peers: set[int] = set()
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
+_destination_warm_tasks: dict[int, asyncio.Task] = {}
 DESTINATION_CACHE_SECONDS = 600
 
 app = Client(
@@ -249,6 +250,36 @@ async def resolve_destination_cached(value: str, client: Client = app):
     chat = await resolve_destination(raw, client)
     _destination_cache[key] = (now, chat)
     return chat
+
+
+async def warm_upload_destinations(job: dict) -> None:
+    """Resolve destinations and seed upload peers while the video is downloading."""
+    video_value, image_value = await asyncio.gather(
+        asyncio.to_thread(queue.get_setting, "upload_channel"),
+        asyncio.to_thread(queue.get_setting, "image_channel"),
+    )
+    fallback_user = int(job.get("requested_by") or 0)
+    try:
+        if video_value:
+            chat = await resolve_destination_cached(video_value)
+            await sync_upload_peer(chat.id)
+        elif fallback_user:
+            await sync_upload_peer(fallback_user)
+    except Exception as exc:
+        log.info("Destination prewarm deferred for job=%s: %s", job.get("id"), exc)
+        if fallback_user:
+            try:
+                await sync_upload_peer(fallback_user)
+            except Exception:
+                log.debug("Private-chat peer prewarm deferred for job=%s", job.get("id"),
+                          exc_info=True)
+    if image_value and job.get("upload_screenshots", True):
+        try:
+            chat = await resolve_destination_cached(image_value, screenshot_client)
+            await screenshot_client.resolve_peer(chat.id)
+        except Exception as exc:
+            log.info("Screenshot destination prewarm deferred for job=%s: %s",
+                     job.get("id"), exc)
 
 
 async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
@@ -385,6 +416,8 @@ async def download_job(job: dict, identity: str):
     lost, stop = asyncio.Event(), asyncio.Event()
     heartbeat_task = asyncio.create_task(_heartbeat(jid, identity, lost, stop))
     title = video_title_from_url(url, vid)
+    warm_task = asyncio.create_task(warm_upload_destinations(job))
+    _destination_warm_tasks[jid] = warm_task
 
     def check_stop() -> None:
         if lost.is_set():
@@ -500,6 +533,10 @@ async def download_job(job: dict, identity: str):
                 f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} download {vid}: {html.escape(error)}",
             )
     finally:
+        if jid in _destination_warm_tasks and queue.get(jid).get("status") != "ready":
+            _destination_warm_tasks.pop(jid, None)
+            if not warm_task.done():
+                warm_task.cancel()
         stop.set()
         heartbeat_task.cancel()
         await asyncio.gather(heartbeat_task, return_exceptions=True)
@@ -529,6 +566,9 @@ async def process_job(job: dict, identity: str):
             log.exception("Could not create Telegram status message for job=%s", jid)
 
     try:
+        warm_task = _destination_warm_tasks.pop(jid, None)
+        if warm_task:
+            await warm_task
         # Resolve destinations and warm the dedicated upload session before downloading.
         # This removes Telegram peer lookups from the download-complete -> upload path.
         video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
