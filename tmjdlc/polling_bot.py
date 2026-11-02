@@ -126,6 +126,7 @@ condition = asyncio.Condition()
 # against the durable upload-backlog limit enforced by JobQueue.claim().
 video_upload_semaphore = asyncio.Semaphore(1)
 setup_state: dict[int, str] = {}
+screenshot_setup_state: set[int] = set()
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 
@@ -158,8 +159,7 @@ screenshot_client = Client(
     api_id=API_ID,
     api_hash=API_HASH,
     bot_token=SCREENSHOT_TOKEN,
-    no_updates=True,
-    workers=2,
+    workers=4,
     max_concurrent_transmissions=SCREENSHOT_UPLOAD_WORKERS,
     sleep_threshold=300,
 )
@@ -695,11 +695,101 @@ async def start_cmd(client, message):
          [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")]],
         resize_keyboard=True, is_persistent=True,
     )
+    configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
+    if not configured_video:
+        setup_state[message.from_user.id] = "upload_channel"
+        await message.reply_text(
+            "🎞 <b>First-time setup · Video upload channel</b>\\n"
+            "Send the public channel username (example: <code>@myvideos</code>). "
+            "I will verify that this bot is an administrator with posting permission, then save it in Neon.\\n"
+            "Use /cancelsetup to stop.",
+            parse_mode=ParseMode.HTML,
+        )
+    else:
+        await message.reply_text(
+            f"✅ Video upload channel is configured: <code>{html.escape(configured_video)}</code>\\n"
+            "Use /setupload to change it.",
+            parse_mode=ParseMode.HTML,
+        )
     await message.reply_text(
         "🎬 <b>TMJDLC · Javtiful Downloader</b>\\nChoose an action or send a Javtiful video URL.",
         reply_markup=keyboard, parse_mode=ParseMode.HTML,
     )
     await panel_cmd(client, message)
+
+
+async def screenshot_start_cmd(client, message):
+    if await deny(message):
+        return
+    configured = await asyncio.to_thread(queue.get_setting, "image_channel")
+    if configured:
+        await message.reply_text(
+            f"✅ Screenshot channel is configured: <code>{html.escape(configured)}</code>\\n"
+            "Use /setchannel to change it.",
+            parse_mode=ParseMode.HTML,
+        )
+        return
+    screenshot_setup_state.add(message.from_user.id)
+    await message.reply_text(
+        "🖼 <b>Screenshot bot setup</b>\\n"
+        "Send the public screenshot channel username (example: <code>@myscreenshots</code>).\\n"
+        "Make sure <b>this screenshot bot</b> is an administrator with permission to post photos. "
+        "I will verify access and save the channel in Neon.\\n"
+        "Use /cancelsetup to stop.",
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def screenshot_setchannel_cmd(client, message):
+    if await deny(message):
+        return
+    screenshot_setup_state.add(message.from_user.id)
+    await message.reply_text(
+        "Send the public screenshot channel username, e.g. <code>@myscreenshots</code>. "
+        "This screenshot bot must be an administrator with permission to post photos.",
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def screenshot_cancelsetup_cmd(client, message):
+    if await deny(message):
+        return
+    screenshot_setup_state.discard(message.from_user.id)
+    await message.reply_text("Screenshot channel setup cancelled.")
+
+
+async def screenshot_text_handler(client, message):
+    if not message.from_user or message.from_user.id not in ADMINS:
+        return
+    uid = message.from_user.id
+    if uid not in screenshot_setup_state:
+        return
+    value = (message.text or "").strip()
+    if value.upper() == "CANCEL":
+        screenshot_setup_state.discard(uid)
+        return await message.reply_text("Screenshot channel setup cancelled.")
+    if not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
+        return await message.reply_text(
+            "Please send the public channel @username, for example <code>@myscreenshots</code>.",
+            parse_mode=ParseMode.HTML,
+        )
+    try:
+        chat = await resolve_destination(value, screenshot_client)
+        await screenshot_client.resolve_peer(chat.id)
+    except Exception as exc:
+        return await message.reply_text(
+            f"❌ Could not verify this screenshot channel: {html.escape(str(exc)[:500])}\\n"
+            "Add this screenshot bot as an administrator with permission to post photos, then try again.",
+            parse_mode=ParseMode.HTML,
+        )
+    await asyncio.to_thread(queue.set_setting, "image_channel", str(chat.id))
+    screenshot_setup_state.discard(uid)
+    await message.reply_text(
+        f"✅ <b>Screenshot channel saved in Neon.</b>\\n"
+        f"Channel: {html.escape(chat.title or value)}\\n"
+        f"ID: <code>{chat.id}</code>",
+        parse_mode=ParseMode.HTML,
+    )
 
 
 async def panel_cmd(client, message):
@@ -988,6 +1078,13 @@ async def set_channel(message, key):
         f"✅ Verified administrator access and saved channel <code>{chat.id}</code> in Neon.",
         parse_mode=ParseMode.HTML,
     )
+
+
+async def cancelsetup_cmd(client, message):
+    if await deny(message):
+        return
+    setup_state.pop(message.from_user.id, None)
+    await message.reply_text("Channel setup cancelled.")
 
 
 async def setupload_cmd(client, message): await set_channel(message, "upload_channel")
@@ -1474,6 +1571,11 @@ async def on_stop(client):
     log.info("TMJDLC workers stopped.")
 
 
+screenshot_client.add_handler(MessageHandler(screenshot_start_cmd, filters.command(["start", "help"]) & filters.private))
+screenshot_client.add_handler(MessageHandler(screenshot_setchannel_cmd, filters.command("setchannel") & filters.private))
+screenshot_client.add_handler(MessageHandler(screenshot_cancelsetup_cmd, filters.command("cancelsetup") & filters.private))
+screenshot_client.add_handler(MessageHandler(screenshot_text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
+
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
 app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & filters.forwarded))
@@ -1486,6 +1588,7 @@ app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.pri
 app.add_handler(MessageHandler(setup_cmd, filters.command("setup") & filters.private))
 app.add_handler(MessageHandler(setupload_cmd, filters.command("setupload") & filters.private))
 app.add_handler(MessageHandler(setimages_cmd, filters.command("setimages") & filters.private))
+app.add_handler(MessageHandler(cancelsetup_cmd, filters.command("cancelsetup") & filters.private))
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
