@@ -46,6 +46,15 @@ class JobQueue:
                     started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ
                 )
             """)
+            conn.execute("""
+                ALTER TABLE tmjdlc_bot_jobs
+                DROP CONSTRAINT IF EXISTS tmjdlc_bot_jobs_status_check
+            """)
+            conn.execute("""
+                ALTER TABLE tmjdlc_bot_jobs
+                ADD CONSTRAINT tmjdlc_bot_jobs_status_check
+                CHECK (status IN ('queued','downloading','ready','uploading','completed','failed','cancelled'))
+            """)
             for definition in (
                 "upload_screenshots BOOLEAN NOT NULL DEFAULT TRUE",
                 "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
@@ -188,7 +197,7 @@ class JobQueue:
                     AND NOT EXISTS (
                       SELECT 1 FROM tmjdlc_bot_jobs WHERE status='downloading'
                     )
-                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='uploading') < %s
+                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status IN ('ready','uploading')) < %s
                   ORDER BY priority ASC, created_at ASC, id ASC
                   LIMIT 1
                 )
@@ -198,6 +207,29 @@ class JobQueue:
                   started_at=COALESCE(j.started_at,now()),updated_at=now()
                 FROM candidate c WHERE j.id=c.id RETURNING j.*
             """, (max(0, int(max_pending_uploads)) + 1, worker_id, lease_seconds)).fetchone()
+            if row:
+                conn.execute("""
+                    INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
+                    VALUES(%s,'online',now()) ON CONFLICT(worker_id) DO UPDATE
+                    SET status='online',last_heartbeat=now()
+                """, (worker_id,))
+            return dict(row) if row else None
+
+    def claim_upload(self, worker_id: str, lease_seconds: int = 900) -> dict[str, Any] | None:
+        """Claim the oldest ready video for the single upload worker."""
+        with self.connect() as conn:
+            conn.execute("SELECT pg_advisory_xact_lock(734821)")
+            row = conn.execute("""
+                WITH candidate AS (
+                  SELECT id FROM tmjdlc_bot_jobs
+                  WHERE status='ready' AND cancel_requested=FALSE
+                  ORDER BY priority ASC, created_at ASC, id ASC
+                  LIMIT 1 FOR UPDATE SKIP LOCKED
+                )
+                UPDATE tmjdlc_bot_jobs j SET status='uploading',worker_id=%s,
+                  lease_until=now()+(%s*interval '1 second'),updated_at=now()
+                FROM candidate c WHERE j.id=c.id RETURNING j.*
+            """, (worker_id, lease_seconds)).fetchone()
             if row:
                 conn.execute("""
                     INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
@@ -233,7 +265,7 @@ class JobQueue:
                   lease_until=CASE WHEN %s IN ('downloading','uploading')
                     THEN now()+(%s*interval '1 second') ELSE NULL END,
                   completed_at=CASE WHEN %s='completed' THEN now() ELSE completed_at END,
-                  worker_id=CASE WHEN %s IN ('completed','failed','cancelled','queued')
+                  worker_id=CASE WHEN %s IN ('completed','failed','cancelled','queued','ready')
                     THEN NULL ELSE worker_id END
                 WHERE id=%s AND worker_id=%s AND lease_until>now()
                 RETURNING id
@@ -246,12 +278,12 @@ class JobQueue:
         with self.connect() as conn:
             row = conn.execute("""
                 UPDATE tmjdlc_bot_jobs SET
-                  status=CASE WHEN status IN ('queued','failed') THEN 'cancelled' ELSE status END,
+                  status=CASE WHEN status IN ('queued','ready','failed') THEN 'cancelled' ELSE status END,
                   cancel_requested=TRUE,
-                  worker_id=CASE WHEN status IN ('queued','failed') THEN NULL ELSE worker_id END,
-                  lease_until=CASE WHEN status IN ('queued','failed') THEN NULL ELSE lease_until END,
+                  worker_id=CASE WHEN status IN ('queued','ready','failed') THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status IN ('queued','ready','failed') THEN NULL ELSE lease_until END,
                   updated_at=now()
-                WHERE id=%s AND status IN ('queued','failed','downloading','uploading')
+                WHERE id=%s AND status IN ('queued','ready','failed','downloading','uploading')
                 RETURNING status
             """, (job_id,)).fetchone()
             return row["status"] if row else None
@@ -261,12 +293,12 @@ class JobQueue:
         with self.connect() as conn:
             rows = conn.execute("""
                 UPDATE tmjdlc_bot_jobs SET
-                  status=CASE WHEN status='queued' THEN 'cancelled' ELSE status END,
+                  status=CASE WHEN status IN ('queued','ready') THEN 'cancelled' ELSE status END,
                   cancel_requested=TRUE,
-                  worker_id=CASE WHEN status='queued' THEN NULL ELSE worker_id END,
-                  lease_until=CASE WHEN status='queued' THEN NULL ELSE lease_until END,
+                  worker_id=CASE WHEN status IN ('queued','ready') THEN NULL ELSE worker_id END,
+                  lease_until=CASE WHEN status IN ('queued','ready') THEN NULL ELSE lease_until END,
                   updated_at=now()
-                WHERE batch_id=%s AND status IN ('queued','downloading','uploading')
+                WHERE batch_id=%s AND status IN ('queued','ready','downloading','uploading')
                 RETURNING status
             """, (batch_id,)).fetchall()
             counts = {"cancelled": 0, "stopping": 0}
@@ -392,7 +424,7 @@ class JobQueue:
             rows = conn.execute("""
                 UPDATE tmjdlc_bot_jobs SET status='cancelled',cancel_requested=TRUE,
                     worker_id=NULL,lease_until=NULL,updated_at=now()
-                WHERE status='queued' RETURNING id
+                WHERE status IN ('queued','ready') RETURNING id
             """).fetchall()
             return len(rows)
 
@@ -406,7 +438,7 @@ class JobQueue:
                   worker_id=CASE WHEN status='queued' THEN NULL ELSE worker_id END,
                   lease_until=CASE WHEN status='queued' THEN NULL ELSE lease_until END,
                   updated_at=now()
-                WHERE status IN ('queued','downloading','uploading')
+                WHERE status IN ('queued','ready','downloading','uploading')
                 RETURNING status
             """).fetchall()
             counts = {"cancelled": 0, "stopping": 0}
