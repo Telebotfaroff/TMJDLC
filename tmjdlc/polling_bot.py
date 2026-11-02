@@ -280,6 +280,7 @@ async def warm_upload_destinations(job: dict) -> None:
         except Exception as exc:
             log.info("Screenshot destination prewarm deferred for job=%s: %s",
                      job.get("id"), exc)
+    return video_value or "", image_value or ""
 
 
 async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
@@ -565,12 +566,14 @@ async def process_job(job: dict, identity: str):
 
     try:
         warm_task = _destination_warm_tasks.pop(jid, None)
-        if warm_task:
-            await warm_task
-        # Resolve destinations and warm the dedicated upload session before downloading.
-        # This removes Telegram peer lookups from the download-complete -> upload path.
-        video_chat_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
-        image_chat_value = await asyncio.to_thread(queue.get_setting, "image_channel")
+        warm_settings = await warm_task if warm_task else None
+        if warm_settings:
+            video_chat_value, image_chat_value = warm_settings
+        else:
+            video_chat_value, image_chat_value = await asyncio.gather(
+                asyncio.to_thread(queue.get_setting, "upload_channel"),
+                asyncio.to_thread(queue.get_setting, "image_channel"),
+            )
 
         # A missing/unresolvable channel must not discard a successfully downloaded
         # video. Prefer the configured channel, but fall back directly to the
