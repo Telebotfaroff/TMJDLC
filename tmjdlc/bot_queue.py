@@ -183,10 +183,9 @@ class JobQueue:
               max_pending_uploads: int = 1) -> dict[str, Any] | None:
         """Claim a download only while the upload pipeline has capacity.
 
-        The uploading status includes the active upload and jobs waiting for
-        the single upload semaphore. A limit of 1 permits one waiting upload
-        in addition to the active transfer. Claims are serialized across
-        workers/instances with a transaction advisory lock.
+        Ready and uploading rows share the bounded upload backlog. With the
+        default limit of 1, one active upload plus one ready video may exist.
+        Claims are serialized across workers/instances with an advisory lock.
         """
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
