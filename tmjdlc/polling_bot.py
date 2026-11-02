@@ -344,6 +344,134 @@ async def cleanup_completed_job(path: Path, video_id: str) -> bool:
         return False
 
 
+async def download_job(job: dict, identity: str):
+    """Download and prepare one video, then hand it to the durable upload queue."""
+    jid, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
+    chat_id, message_id = job.get("status_chat_id"), job.get("status_message_id")
+    out = WORK / "downloads"
+    out.mkdir(parents=True, exist_ok=True)
+    lost, stop = asyncio.Event(), asyncio.Event()
+    heartbeat_task = asyncio.create_task(_heartbeat(jid, identity, lost, stop))
+    title = video_title_from_url(url, vid)
+
+    def check_stop() -> None:
+        if lost.is_set():
+            raise RuntimeError("Download worker lease was lost.")
+        if queue.is_cancel_requested(jid, identity):
+            raise asyncio.CancelledError("Cancellation requested.")
+
+    if chat_id is None:
+        chat_id = job.get("requested_by")
+    if chat_id and not message_id:
+        try:
+            notice = await app.send_message(int(chat_id), f"🆕 Job #{jid} · {vid} queued for download.")
+            chat_id, message_id = notice.chat.id, notice.id
+        except Exception:
+            log.exception("Could not create status message for job=%s", jid)
+
+    try:
+        check_stop()
+        download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
+        path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
+        if not path or not path.is_file() or path.stat().st_size == 0:
+            await status_edit(chat_id, message_id, f"⬇️ Downloading {vid} (attempt {job['attempts']})…")
+            last_notice = {"percent": -PROGRESS_STEP, "time": 0.0}
+            loop = asyncio.get_running_loop()
+
+            def progress_hook(data):
+                if queue.is_cancel_requested(jid, identity):
+                    raise RuntimeError("Cancellation requested.")
+                if data.get("status") != "downloading":
+                    return
+                total = data.get("total_bytes") or data.get("total_bytes_estimate")
+                done = data.get("downloaded_bytes", 0)
+                if not total:
+                    return
+                percent = min(100, int(done * 100 / total))
+                queue.update_progress(jid, identity, "downloading", percent)
+                now = time.monotonic()
+                if (percent >= last_notice["percent"] + PROGRESS_STEP
+                        or now - last_notice["time"] >= 2 or percent >= 100):
+                    last_notice.update(percent=percent, time=now)
+                    if chat_id and message_id:
+                        notice = _progress_text(
+                            "Download", vid, title, percent, done, total,
+                            data.get("speed"), data.get("eta"), int(job["attempts"])
+                        )
+                        asyncio.run_coroutine_threadsafe(
+                            status_edit(chat_id, message_id, notice), loop
+                        )
+
+            path = await asyncio.to_thread(
+                lambda: JavtifulProvider(max_attempts=2).download(
+                    url, out, f"javtiful-{vid}", quality=job.get("quality"),
+                    progress_hook=progress_hook,
+                    concurrent_fragments=DOWNLOAD_FRAGMENTS,
+                )[0]
+            )
+            if not path.is_file() or path.stat().st_size == 0:
+                raise RuntimeError("Downloader returned an empty file.")
+            if not await asyncio.to_thread(queue.complete_stage, jid, identity, "download",
+                                           {"path": str(path), "size": path.stat().st_size}):
+                raise RuntimeError("Could not persist download stage; worker ownership was lost.")
+
+        check_stop()
+        media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
+        if not media_stage or not all(media_stage.get(k) for k in ("duration", "width", "height")):
+            media_info = await asyncio.to_thread(probe_video, path)
+            if not await asyncio.to_thread(
+                queue.complete_stage, jid, identity, "media_probe",
+                {**media_info, "size": path.stat().st_size}
+            ):
+                raise RuntimeError("Could not persist media metadata; worker ownership was lost.")
+        else:
+            media_info = {
+                "duration": int(media_stage.get("duration") or 0),
+                "width": int(media_stage.get("width") or 0),
+                "height": int(media_stage.get("height") or 0),
+            }
+        await asyncio.to_thread(
+            queue.save_media, vid, jid, str(path), path.stat().st_size,
+            float(media_info["duration"]), media_info["width"] or None,
+            media_info["height"] or None,
+        )
+        check_stop()
+        if not await asyncio.to_thread(
+            queue.set_status, jid, identity, "ready",
+            output_path=str(path), lease_seconds=LEASE,
+        ):
+            raise RuntimeError("Could not hand the downloaded video to the upload queue.")
+        await status_edit(
+            chat_id, message_id,
+            f"📦 <b>Ready for upload</b> · <code>{html.escape(vid)}</code>\n"
+            f"Size: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
+            "Waiting for the Telegram upload worker…",
+        )
+        log.info("Video ready for upload | job_id=%s video_id=%s", jid, vid)
+    except asyncio.CancelledError:
+        await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
+                                error="Cancelled by administrator.", lease_seconds=LEASE)
+        await status_edit(chat_id, message_id, f"🛑 Cancelled {vid}.")
+    except Exception as exc:
+        error = f"{type(exc).__name__}: {str(exc)[:650]}"
+        log.exception("Download stage failed id=%s video_id=%s", jid, vid)
+        current = await asyncio.to_thread(queue.get, jid)
+        if current and current.get("worker_id") == identity:
+            state = "cancelled" if current.get("cancel_requested") else (
+                "queued" if int(current["attempts"]) < int(current["max_attempts"]) else "failed"
+            )
+            await asyncio.to_thread(queue.set_status, jid, identity, state,
+                                    error=error, lease_seconds=LEASE)
+            await status_edit(
+                chat_id, message_id,
+                f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} download {vid}: {html.escape(error)}",
+            )
+    finally:
+        stop.set()
+        heartbeat_task.cancel()
+        await asyncio.gather(heartbeat_task, return_exceptions=True)
+
+
 async def process_job(job: dict, identity: str):
     jid, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
     chat_id, message_id = job.get("status_chat_id"), job.get("status_message_id")
@@ -652,55 +780,55 @@ async def process_job(job: dict, identity: str):
         await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
-async def worker_loop(index: int):
-    global active
-    identity = f"{worker_id}-{index}"
+async def download_worker_loop():
+    """Keep one download in flight while the durable upload backlog has room."""
+    identity = f"{worker_id}-download-1"
     while True:
         try:
-            async with condition:
-                await condition.wait_for(lambda: active < parallel)
-                active += 1
-            try:
-                if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
-                    await asyncio.sleep(POLL_SECONDS)
-                    continue
-                disk_free = shutil.disk_usage(WORK).free / (1024 ** 3)
-                if disk_free < MIN_FREE_DISK_GB:
-                    await asyncio.sleep(max(POLL_SECONDS, 15))
-                    continue
-                job = await asyncio.to_thread(
-                    queue.claim, identity, LEASE,
-                    max_pending_uploads=MAX_PENDING_UPLOADS,
-                )
-                if job:
-                    await process_job(job, identity)
-                else:
-                    # Reclaim expired leases while the worker is alive as well as
-                    # during startup. This also repairs orphaned batch rows left
-                    # by older claim logic after their lease expires.
-                    recovered = await asyncio.to_thread(queue.recover_expired)
-                    if recovered:
-                        log.warning("Recovered expired queue jobs=%s", recovered)
-                        job = await asyncio.to_thread(
-                            queue.claim, identity, LEASE,
-                            max_pending_uploads=MAX_PENDING_UPLOADS,
-                        )
-                        if job:
-                            await process_job(job, identity)
-                        else:
-                            await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
-                    else:
-                        await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
-            finally:
-                async with condition:
-                    active = max(0, active - 1)
-                    condition.notify_all()
+            if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
+                await asyncio.sleep(POLL_SECONDS)
+                continue
+            free_gb = shutil.disk_usage(WORK).free / (1024 ** 3)
+            if free_gb < MIN_FREE_DISK_GB:
+                log.warning("Download paused: free disk %.2f GiB is below %.2f GiB", free_gb, MIN_FREE_DISK_GB)
+                await asyncio.sleep(max(POLL_SECONDS, 15))
+                continue
+            job = await asyncio.to_thread(
+                queue.claim, identity, LEASE, max_pending_uploads=MAX_PENDING_UPLOADS
+            )
+            if job:
+                await download_job(job, identity)
+                continue
+            recovered = await asyncio.to_thread(queue.recover_expired)
+            if recovered:
+                log.warning("Recovered expired queue jobs=%s", recovered)
+                continue
+            await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
         except asyncio.CancelledError:
             raise
         except Exception:
-            log.exception("Worker %s loop error", index)
+            log.exception("Download worker loop error")
             await asyncio.sleep(POLL_SECONDS)
 
+
+async def upload_worker_loop():
+    """Continuously drain ready videos; one active Telegram video upload at a time."""
+    identity = f"{worker_id}-upload-1"
+    while True:
+        try:
+            if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
+                await asyncio.sleep(POLL_SECONDS)
+                continue
+            job = await asyncio.to_thread(queue.claim_upload, identity, LEASE)
+            if job:
+                await process_job(job, identity)
+                continue
+            await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            log.exception("Upload worker loop error")
+            await asyncio.sleep(POLL_SECONDS)
 
 async def start_cmd(client, message):
     if await deny(message): return
@@ -847,7 +975,7 @@ async def panel_cmd(client, message):
     if await deny(message): return
     counts = await asyncio.to_thread(queue.counts)
     free = shutil.disk_usage(WORK).free / (1024 ** 3)
-    running = counts.get("downloading", 0) + counts.get("uploading", 0)
+    running = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
     body = (
         "🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
         f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
@@ -1013,7 +1141,7 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
     for job in jobs:
         jid, status = int(job["id"]), str(job["status"])
         label = f"#{jid} · {str(job['video_id'])[:18]} · {status}"
-        if status in {"queued", "downloading", "uploading"}:
+        if status in {"queued", "downloading", "ready", "uploading"}:
             rows.append([InlineKeyboardButton("🛑 " + label, callback_data=f"job:cancel:{jid}")])
         elif status == "failed":
             rows.append([InlineKeyboardButton("🔁 " + label, callback_data=f"job:retry:{jid}")])
@@ -1043,7 +1171,7 @@ async def render_queue(target, offset: int = 0, edit: bool = False):
     )
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     lines = ["📋 <b>Queue Manager</b>", f"Status: <b>{'PAUSED' if paused else 'RUNNING'}</b>", ""]
-    for key in ("queued", "downloading", "uploading", "completed", "failed", "cancelled"):
+    for key in ("queued", "downloading", "ready", "uploading", "completed", "failed", "cancelled"):
         lines.append(f"{key.title()}: <b>{counts.get(key, 0)}</b>")
     lines.append("")
     lines.append(f"<b>Recent jobs · {offset+1}–{offset+len(jobs)}</b>" if jobs else "No jobs on this page.")
@@ -1607,7 +1735,10 @@ async def on_start(client):
     recovered = await asyncio.to_thread(queue.recover_expired)
     log.info("Neon queue ready; recovered expired jobs=%s", recovered)
     global workers
-    workers = [asyncio.create_task(worker_loop(i + 1)) for i in range(MAX_WORKERS)]
+    workers = [
+        asyncio.create_task(download_worker_loop(), name="tmjdlc-download-worker"),
+        asyncio.create_task(upload_worker_loop(), name="tmjdlc-upload-worker"),
+    ]
     me = await client.get_me()
     log.info("Pyrogram MTProto bot started | bot_id=%s | username=@%s | admins=%s",
              me.id, me.username, sorted(ADMINS))
