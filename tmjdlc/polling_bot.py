@@ -85,6 +85,70 @@ def probe_video(path: Path) -> dict:
     }
 
 
+
+TELEGRAM_MAX_FILE_BYTES = max(
+    256 * 1024 * 1024,
+    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(1_800_000_000))),
+)
+
+
+def prepare_telegram_parts(path: Path, video_id: str) -> list[Path]:
+    """Split oversized videos into independently playable MP4 segments below Telegram's limit."""
+    if path.stat().st_size <= TELEGRAM_MAX_FILE_BYTES:
+        return [path]
+
+    probe = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    duration = float((probe.stdout or "0").strip() or 0)
+    if duration <= 0:
+        raise RuntimeError("Cannot split oversized video: ffprobe could not read its duration.")
+
+    pattern = path.parent / f"javtiful-{video_id}-part-%03d.mp4"
+    target = TELEGRAM_MAX_FILE_BYTES
+    segment_seconds = max(10.0, duration * (target / path.stat().st_size) * 0.78)
+
+    for attempt in range(1, 7):
+        for old_part in path.parent.glob(f"javtiful-{video_id}-part-*.mp4"):
+            old_part.unlink(missing_ok=True)
+        subprocess.run(
+            [
+                "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                "-i", str(path), "-map", "0", "-c", "copy",
+                "-f", "segment", "-segment_time", f"{segment_seconds:.3f}",
+                "-reset_timestamps", "1", "-segment_format", "mp4",
+                str(pattern),
+            ],
+            capture_output=True, check=True,
+        )
+        parts = sorted(path.parent.glob(f"javtiful-{video_id}-part-*.mp4"))
+        if len(parts) < 2:
+            raise RuntimeError(
+                "FFmpeg could not split this video into multiple parts. "
+                "The source may not contain suitable keyframes for stream-copy splitting."
+            )
+        oversized = [part for part in parts if part.stat().st_size > target]
+        if not oversized:
+            log.info(
+                "Oversized video split | video_id=%s original_size=%s parts=%s max_part_size=%s",
+                video_id, _fmt_bytes(path.stat().st_size), len(parts),
+                _fmt_bytes(max(part.stat().st_size for part in parts)),
+            )
+            return parts
+        segment_seconds *= 0.65
+        log.warning(
+            "Split attempt %s produced %s oversized part(s); retrying with shorter segments",
+            attempt, len(oversized),
+        )
+
+    raise RuntimeError(
+        "Could not create Telegram-safe video parts below "
+        f"{_fmt_bytes(TELEGRAM_MAX_FILE_BYTES)}. Try a lower split-size setting."
+    )
+
+
 def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -> Path | None:
     """Create a compact JPEG thumbnail suitable for Telegram video uploads."""
     target = path.parent / f"javtiful-{video_id}-thumb.jpg"
@@ -686,117 +750,152 @@ async def process_job(job: dict, identity: str):
         )
         if not default_upload_chat_id:
             raise DestinationError("No usable video destination or requesting-user chat is available.")
-        upload_chat_id = (
-            int(video_stage.get("chat_id") or default_upload_chat_id)
-            if video_stage else default_upload_chat_id
-        )
-        fallback_used = (
-            bool(video_stage.get("fallback"))
-            if video_stage else video_destination is None
-        )
+
         if not video_stage:
             check_stop()
-            size_mb = path.stat().st_size / 1048576
-            await status_edit(chat_id, message_id, f"📤 Uploading {vid} ({size_mb:.1f} MiB) via Pyrogram MTProto…")
-            upload_started_at = time.monotonic()
-            last_upload_notice = {"percent": -PROGRESS_STEP, "time": upload_started_at,
-                                  "bytes": 0, "speed": 0.0}
-
-            log.info(
-                "Telegram upload started | job_id=%s video_id=%s size=%s destination=%s",
-                jid, vid, _fmt_bytes(path.stat().st_size), upload_chat_id,
-            )
-
-            async def upload_progress(current, total, *_):
-                if not total:
-                    return
-                now = time.monotonic()
-                elapsed = max(now - last_upload_notice["time"], 0.001)
-                instant_speed = max(0, current - last_upload_notice["bytes"]) / elapsed
-                last_upload_notice["speed"] = (
-                    instant_speed if not last_upload_notice["speed"]
-                    else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
-                )
-                percent = min(100, int(current * 100 / total))
-                if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
-                        or elapsed >= 2 or percent >= 100):
-                    speed = last_upload_notice["speed"]
-                    eta = (total - current) / speed if speed else None
-                    log.info(
-                        "Telegram upload progress | job_id=%s video_id=%s "
-                        "progress=%s%% sent=%s/%s speed=%s/s elapsed=%ss",
-                        jid, vid, percent, _fmt_bytes(current), _fmt_bytes(total),
-                        _fmt_bytes(speed), int(now - upload_started_at),
-                    )
-                    await status_edit(chat_id, message_id, _progress_text(
-                        "Upload", vid, title, percent, current, total, speed, eta, int(job["attempts"])
-                    ))
-                    last_upload_notice.update(percent=percent, time=now, bytes=current)
-
-            thumbnail = await asyncio.to_thread(
-                create_video_thumbnail, path, vid, media_info["width"], media_info["height"]
-            )
-            try:
-                if video_destination is None:
-                    await status_edit(
-                        chat_id, message_id,
-                        f"⚠️ Channel destination unavailable for <code>{vid}</code>. "
-                        "Sending directly to your private bot chat…",
-                    )
-                await sync_upload_peer(upload_chat_id)
-                sent = await send_video_with_slot(
-                    chat_id, message_id,
-                    chat_id=upload_chat_id, video=str(path), caption=title,
-                    duration=media_info["duration"], width=media_info["width"],
-                    height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
-                    supports_streaming=True, parse_mode=ParseMode.DISABLED,
-                    progress=upload_progress,
-                )
-                upload_elapsed = max(time.monotonic() - upload_started_at, 0.001)
-                upload_size = path.stat().st_size
-                log.info(
-                    "Telegram upload completed | job_id=%s video_id=%s size=%s "
-                    "elapsed=%ss average_speed=%s/s telegram_message_id=%s",
-                    jid, vid, _fmt_bytes(upload_size), int(upload_elapsed),
-                    _fmt_bytes(upload_size / upload_elapsed), sent.id,
-                )
-            except Exception as channel_error:
-                fallback_chat_id = int(job.get("requested_by") or 0)
-                if not fallback_chat_id or fallback_chat_id == upload_chat_id:
-                    raise
-                log.exception(
-                    "Channel upload failed for job=%s; trying private bot chat user_id=%s",
-                    jid, fallback_chat_id,
-                )
+            parts = await asyncio.to_thread(prepare_telegram_parts, path, vid)
+            part_count = len(parts)
+            if part_count > 1:
                 await status_edit(
                     chat_id, message_id,
-                    f"⚠️ Channel upload failed for <code>{vid}</code>. "
-                    "Trying fallback delivery to your private bot chat…",
+                    f"✂️ Video exceeds Telegram's file limit. Split into {part_count} parts; "
+                    f"uploading sequentially…",
                 )
+            upload_chat_id = default_upload_chat_id
+            fallback_used = video_destination is None
+            part_receipts = []
+            total_bytes = sum(part.stat().st_size for part in parts)
+            uploaded_bytes_before = 0
+
+            for part_index, part_path in enumerate(parts, start=1):
+                check_stop()
+                part_stage_name = f"video_upload_part_{part_index:03d}"
+                part_stage = await asyncio.to_thread(queue.stage_done, jid, part_stage_name)
+                if part_stage:
+                    part_receipts.append(part_stage)
+                    upload_chat_id = int(part_stage.get("chat_id") or upload_chat_id)
+                    fallback_used = bool(part_stage.get("fallback", fallback_used))
+                    uploaded_bytes_before += part_path.stat().st_size
+                    continue
+
+                part_info = await asyncio.to_thread(probe_video, part_path)
+                part_title = title if part_count == 1 else f"{title} (Part {part_index}/{part_count})"
+                thumbnail = await asyncio.to_thread(
+                    create_video_thumbnail, part_path, f"{vid}-part-{part_index:03d}",
+                    part_info["width"], part_info["height"],
+                )
+                part_started_at = time.monotonic()
+                last_upload_notice = {
+                    "percent": -PROGRESS_STEP, "time": part_started_at,
+                    "bytes": 0, "speed": 0.0,
+                }
+                part_size = part_path.stat().st_size
+                log.info(
+                    "Telegram upload started | job_id=%s video_id=%s part=%s/%s "
+                    "size=%s destination=%s",
+                    jid, vid, part_index, part_count, _fmt_bytes(part_size), upload_chat_id,
+                )
+
+                async def upload_progress(current, total, *_):
+                    if not total:
+                        return
+                    now = time.monotonic()
+                    elapsed = max(now - last_upload_notice["time"], 0.001)
+                    instant_speed = max(0, current - last_upload_notice["bytes"]) / elapsed
+                    last_upload_notice["speed"] = (
+                        instant_speed if not last_upload_notice["speed"]
+                        else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
+                    )
+                    percent = min(100, int(current * 100 / total))
+                    if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
+                            or elapsed >= 2 or percent >= 100):
+                        speed = last_upload_notice["speed"]
+                        eta = (total - current) / speed if speed else None
+                        overall_done = uploaded_bytes_before + current
+                        overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
+                        log.info(
+                            "Telegram upload progress | job_id=%s video_id=%s part=%s/%s "
+                            "part_progress=%s%% overall=%s%% speed=%s/s sent=%s/%s",
+                            jid, vid, part_index, part_count, percent, overall_percent,
+                            _fmt_bytes(speed), _fmt_bytes(current), _fmt_bytes(total),
+                        )
+                        progress_label = (
+                            f"{title} · Part {part_index}/{part_count}"
+                            if part_count > 1 else title
+                        )
+                        await status_edit(chat_id, message_id, _progress_text(
+                            "Upload", vid, progress_label, overall_percent,
+                            overall_done, total_bytes, speed, eta, int(job["attempts"])
+                        ))
+                        last_upload_notice.update(percent=percent, time=now, bytes=current)
+
                 try:
+                    await sync_upload_peer(upload_chat_id)
+                    sent = await send_video_with_slot(
+                        chat_id, message_id,
+                        chat_id=upload_chat_id, video=str(part_path), caption=part_title,
+                        duration=part_info["duration"], width=part_info["width"],
+                        height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                        supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                        progress=upload_progress,
+                    )
+                except Exception as channel_error:
+                    fallback_chat_id = int(job.get("requested_by") or 0)
+                    if not fallback_chat_id or fallback_chat_id == upload_chat_id:
+                        raise
+                    log.exception(
+                        "Telegram channel upload failed for part %s/%s of job=%s; "
+                        "trying private-chat fallback user_id=%s",
+                        part_index, part_count, jid, fallback_chat_id,
+                    )
                     await sync_upload_peer(fallback_chat_id)
                     sent = await send_video_with_slot(
                         chat_id, message_id,
-                        chat_id=fallback_chat_id, video=str(path), caption=title,
-                        duration=media_info["duration"], width=media_info["width"],
-                        height=media_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                        chat_id=fallback_chat_id, video=str(part_path), caption=part_title,
+                        duration=part_info["duration"], width=part_info["width"],
+                        height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
                         supports_streaming=True, parse_mode=ParseMode.DISABLED,
                         progress=upload_progress,
                     )
                     upload_chat_id = fallback_chat_id
                     fallback_used = True
-                except Exception as fallback_error:
+
+                receipt = {
+                    "chat_id": sent.chat.id, "message_id": sent.id,
+                    "part": part_index, "parts": part_count, "fallback": fallback_used,
+                }
+                if not await asyncio.to_thread(
+                    queue.complete_stage, jid, identity, part_stage_name, receipt
+                ):
                     raise RuntimeError(
-                        "Channel upload failed and private-chat fallback also failed: "
-                        f"{type(fallback_error).__name__}: {str(fallback_error)[:350]}"
-                    ) from fallback_error
-            if not await asyncio.to_thread(queue.complete_stage, jid, identity, "video_upload",
-                                           {"chat_id": sent.chat.id, "message_id": sent.id,
-                                            "fallback": fallback_used}):
-                raise RuntimeError("Video sent, but its receipt could not be saved in Neon.")
+                        f"Part {part_index}/{part_count} was sent but its receipt could not be saved."
+                    )
+                part_receipts.append(receipt)
+                uploaded_bytes_before += part_size
+                elapsed = max(time.monotonic() - part_started_at, 0.001)
+                log.info(
+                    "Telegram upload completed | job_id=%s video_id=%s part=%s/%s "
+                    "size=%s elapsed=%ss average_speed=%s/s message_id=%s",
+                    jid, vid, part_index, part_count, _fmt_bytes(part_size), int(elapsed),
+                    _fmt_bytes(part_size / elapsed), sent.id,
+                )
+
+            summary = {
+                "chat_id": upload_chat_id,
+                "message_id": part_receipts[-1]["message_id"],
+                "parts": part_receipts,
+                "part_count": part_count,
+                "fallback": fallback_used,
+            }
+            if not await asyncio.to_thread(
+                queue.complete_stage, jid, identity, "video_upload", summary
+            ):
+                raise RuntimeError("All parts were sent, but the final upload receipt could not be saved.")
         else:
-            log.info("Skipping completed video upload for job=%s message_id=%s", jid,
-                     video_stage.get("message_id"))
+            log.info(
+                "Skipping completed video upload for job=%s parts=%s",
+                jid, video_stage.get("part_count", 1),
+            )
 
         sent_shots = 0
         if image_destination and job.get("upload_screenshots", True):
