@@ -1,4 +1,4 @@
-"""TMJDLC admin bot: one Pyrogram client handles updates, another handles media uploads."""
+"""TMJDLC admin bot using WZGram MTProto clients for high-throughput uploads."""
 from __future__ import annotations
 
 import asyncio
@@ -14,9 +14,11 @@ import time
 import uuid
 from pathlib import Path
 from urllib.parse import urlparse
+from inspect import signature
 
 from dotenv import load_dotenv
 from pyrogram import Client, filters, idle
+from pyrogram.errors import FloodWait
 from pyrogram.enums import ParseMode, ChatMemberStatus, ChatType
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
@@ -27,9 +29,9 @@ from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-PYROGRAM_LOG_LEVEL = os.getenv("TMJDLC_PYROGRAM_LOG_LEVEL", "INFO").strip().upper()
-logging.getLogger("pyrogram").setLevel(getattr(logging, PYROGRAM_LOG_LEVEL, logging.INFO))
-log = logging.getLogger("tmjdlc.pyrogram")
+TELEGRAM_LOG_LEVEL = os.getenv("TMJDLC_TELEGRAM_LOG_LEVEL", "INFO").strip().upper()
+logging.getLogger("pyrogram").setLevel(getattr(logging, TELEGRAM_LOG_LEVEL, logging.INFO))
+log = logging.getLogger("tmjdlc.telegram")
 
 TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
 SCREENSHOT_TOKEN = os.getenv("TG_SCREENSHOT_BOT_TOKEN", "").strip()
@@ -37,7 +39,9 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(2, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(16, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
+UPLOAD_WORKERS = max(1, min(100, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "100"))))
+HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
+UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
 SCREENSHOT_UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_SCREENSHOT_UPLOAD_WORKERS", "2"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
@@ -197,6 +201,9 @@ download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
 _synced_upload_peers: set[int] = set()
+_helper_upload_clients: list[Client] = []
+_upload_client_loads: dict[int, int] = {}
+_helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
 _synced_screenshot_peers: set[int] = set()
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
 _destination_warm_tasks: dict[int, asyncio.Task] = {}
@@ -222,7 +229,7 @@ upload_client = Client(
     no_updates=True,
     workers=4,
     max_concurrent_transmissions=UPLOAD_WORKERS,
-    sleep_threshold=300,
+    sleep_threshold=60,
 )
 
 # Separate Telegram identity/session dedicated to screenshot delivery.
@@ -238,10 +245,8 @@ screenshot_client = Client(
 
 
 async def sync_upload_peer(peer_id: int) -> None:
-    """Copy a peer's access-hash record once into the upload session."""
+    """Seed the destination peer into the primary and helper upload clients."""
     peer_id = int(peer_id)
-    if peer_id in _synced_upload_peers:
-        return
     peer = await app.resolve_peer(peer_id)
     peer_name = type(peer).__name__
     if peer_name == "InputPeerChannel":
@@ -252,10 +257,68 @@ async def sync_upload_peer(peer_id: int) -> None:
         access_hash, peer_type = 0, "group"
     else:
         raise RuntimeError(f"Unsupported Telegram peer type for upload: {peer_name}")
-    await upload_client.storage.update_peers([
-        (int(peer_id), access_hash, peer_type, None, None)
-    ])
-    _synced_upload_peers.add(peer_id)
+    peer_record = [(peer_id, access_hash, peer_type, None, None)]
+    clients = [upload_client, *_helper_upload_clients]
+    for client in clients:
+        key = (id(client), peer_id)
+        if key in _synced_upload_peers:
+            continue
+        await client.storage.update_peers(peer_record)
+        _synced_upload_peers.add(key)
+
+
+async def start_helper_upload_clients() -> None:
+    """Start optional WZML-X-style helper bot clients for channel upload routing."""
+    for index, token in enumerate(HELPER_BOT_TOKENS, start=1):
+        if token in {TOKEN, SCREENSHOT_TOKEN}:
+            log.warning("Skipping helper bot %s because its token duplicates a configured bot", index)
+            continue
+        client = Client(
+            f"tmjdlc_helper_{index}", api_id=API_ID, api_hash=API_HASH,
+            bot_token=token, no_updates=True, workers=4,
+            max_concurrent_transmissions=UPLOAD_WORKERS, sleep_threshold=60,
+        )
+        try:
+            await client.start()
+            _helper_upload_clients.append(client)
+            _upload_client_loads[id(client)] = 0
+            log.info("WZML-X helper uploader started | helper=%s | bot_id=%s", index, client.me.id)
+        except Exception:
+            log.exception("Could not start helper uploader %s; continuing without it", index)
+            try:
+                if client.is_connected:
+                    await client.stop()
+            except Exception:
+                log.debug("Helper client cleanup failed", exc_info=True)
+
+
+async def stop_helper_upload_clients() -> None:
+    clients = list(_helper_upload_clients)
+    _helper_upload_clients.clear()
+    if clients:
+        await asyncio.gather(*(client.stop() for client in clients), return_exceptions=True)
+
+
+async def _helper_can_post(client: Client, chat_id: int) -> bool:
+    """Cache helper-bot channel permissions; private-chat fallback stays on primary bot."""
+    if int(chat_id) > 0:
+        return False
+    key = (id(client), int(chat_id))
+    cached = _helper_permission_cache.get(key)
+    now = time.monotonic()
+    if cached and now - cached[0] < DESTINATION_CACHE_SECONDS:
+        return cached[1]
+    try:
+        me = await client.get_me()
+        member = await client.get_chat_member(chat_id, me.id)
+        allowed = member.status in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER}
+        if getattr(member, "can_post_messages", True) is False:
+            allowed = False
+    except Exception as exc:
+        allowed = False
+        log.info("Helper bot cannot post to destination=%s bot_id=%s: %s", chat_id, client.me.id, exc)
+    _helper_permission_cache[key] = (now, allowed)
+    return allowed
 
 async def sync_screenshot_peer(peer_id: int) -> None:
     """Seed the screenshot bot's peer cache once from a forwarded channel peer."""
@@ -349,13 +412,38 @@ async def warm_upload_destinations(job: dict) -> None:
 
 
 async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
-    """Serialize video uploads and expose the waiting state to Telegram."""
+    """Upload with WZGram and route channel sends through the least-loaded eligible client."""
     await status_edit(
         status_chat_id, status_message_id,
         "⏳ Waiting for the video-upload slot. Download queue is applying backpressure…",
     )
     async with video_upload_semaphore:
-        return await upload_client.send_video(**kwargs)
+        chat_id = int(kwargs["chat_id"])
+        candidates = [upload_client]
+        if chat_id < 0 and _helper_upload_clients:
+            eligible = []
+            for helper in _helper_upload_clients:
+                if await _helper_can_post(helper, chat_id):
+                    eligible.append(helper)
+            candidates.extend(eligible)
+        client = min(candidates, key=lambda item: _upload_client_loads.get(id(item), 0))
+        _upload_client_loads[id(client)] = _upload_client_loads.get(id(client), 0) + 1
+        try:
+            for attempt in range(1, UPLOAD_FLOOD_RETRY_LIMIT + 1):
+                try:
+                    log.info("WZGram upload selected | client=%s | destination=%s | attempt=%s",
+                             getattr(getattr(client, "me", None), "username", "primary"), chat_id, attempt)
+                    return await client.send_video(**kwargs)
+                except FloodWait as exc:
+                    delay = max(1, int(getattr(exc, "value", 1)))
+                    log.warning("Telegram FloodWait | client=%s | wait=%ss | upload retry=%s/%s",
+                                getattr(getattr(client, "me", None), "username", "uploader"),
+                                delay, attempt, UPLOAD_FLOOD_RETRY_LIMIT)
+                    if attempt >= UPLOAD_FLOOD_RETRY_LIMIT:
+                        raise
+                    await asyncio.sleep(delay + 1)
+        finally:
+            _upload_client_loads[id(client)] = max(0, _upload_client_loads.get(id(client), 1) - 1)
 
 
 class DestinationError(RuntimeError):
@@ -1957,7 +2045,7 @@ async def on_start(client):
         asyncio.create_task(upload_worker_loop(), name="tmjdlc-upload-worker"),
     ]
     me = await client.get_me()
-    log.info("Pyrogram MTProto bot started | bot_id=%s | username=@%s | admins=%s",
+    log.info("WZGram MTProto bot started | bot_id=%s | username=@%s | admins=%s",
              me.id, me.username, sorted(ADMINS))
 
 
@@ -1999,23 +2087,28 @@ async def run_bot():
     await app.start()
     try:
         await upload_client.start()
+        _upload_client_loads[id(upload_client)] = 0
+        await start_helper_upload_clients()
         await screenshot_client.start()
     except Exception:
+        await stop_helper_upload_clients()
         if upload_client.is_connected:
             await upload_client.stop()
         await app.stop()
         raise
     await on_start(app)
     log.info(
-        "TMJDLC started | update=tmjdlc_bot | video_upload=tmjdlc_upload "
-        "| screenshot_upload=tmjdlc_screenshots | video transmissions=%s | screenshot transmissions=%s",
-        UPLOAD_WORKERS, SCREENSHOT_UPLOAD_WORKERS,
+        "TMJDLC started | update=tmjdlc_bot | WZGram primary uploader=tmjdlc_upload "
+        "| helper_uploaders=%s | screenshot_upload=tmjdlc_screenshots "
+        "| max_concurrent_transmissions=%s",
+        len(_helper_upload_clients), UPLOAD_WORKERS,
     )
     try:
         await idle()
     finally:
         await on_stop(app)
         await screenshot_client.stop()
+        await stop_helper_upload_clients()
         await upload_client.stop()
         await app.stop()
 
