@@ -2,7 +2,7 @@
 
 [![Open TMJDLC in Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
 
-TMJDLC is a private, Javtiful-only Telegram downloader built with Python, Pyrogram MTProto, yt-dlp, and Neon PostgreSQL. It downloads videos at **720p automatically**; there is no quality selector or provider selector.
+TMJDLC is a private, Javtiful-only Telegram downloader built with Python, WZGram MTProto, yt-dlp, and Neon PostgreSQL. It downloads videos at **720p automatically**; there is no quality selector or provider selector.
 
 ## Telegram interface
 
@@ -20,7 +20,7 @@ The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/se
 
 Open the [TMJDLC notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_BOT_TOKEN`, `TG_API_ID`, `TG_API_HASH`, `TG_ADMIN_IDS`, and Neon `DATABASE_URL` to Colab Secrets, then run the notebook cells.
 
-The bot uses Pyrogram for Telegram updates and large media uploads. Neon stores durable jobs, job stages, and settings. Keep the Colab runtime running while jobs are processing.
+The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates and large media uploads. The upload client uses WZGram's concurrent-transmission setting. Optional WZML-X-style helper bot tokens can distribute channel uploads across eligible bot clients; each helper bot must be an administrator in the configured video channel. The main bot remains responsible for private-chat fallback. Neon stores durable jobs, job stages, and settings. Keep the Colab runtime running while jobs are processing.
 
 ## Worker behavior
 
@@ -34,14 +34,14 @@ The bot uses Pyrogram for Telegram updates and large media uploads. Neon stores 
 
 ## Configuration
 
-Copy `.env.example` and provide the required Telegram and Neon credentials. FFmpeg and FFprobe are required for media validation and screenshots.
+Copy `.env.example` and provide the required Telegram and Neon credentials. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and screenshots.
 
 The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK_GB` (default 3 GiB). Set `TMJDLC_AUTO_CLEAN=false` to disable local-file cleanup.
 
 ## Project architecture
 
 - Provider: Javtiful only
-- Bot/runtime: Python + Pyrogram MTProto
+- Bot/runtime: Python + WZGram MTProto
 - Queue/database: Neon PostgreSQL
 - Downloader: yt-dlp
 - Browser-based stream detection: Playwright
