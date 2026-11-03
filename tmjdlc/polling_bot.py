@@ -92,7 +92,7 @@ def probe_video(path: Path) -> dict:
 
 TELEGRAM_MAX_FILE_BYTES = max(
     256 * 1024 * 1024,
-    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(1_800_000_000))),
+    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(1_950_000_000))),
 )
 
 
