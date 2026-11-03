@@ -200,7 +200,8 @@ channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
-_synced_upload_peers: set[int] = set()
+_synced_upload_peers: set[tuple[int, int]] = set()
+_upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
 _upload_client_loads: dict[int, int] = {}
 _helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
@@ -426,7 +427,12 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
                 if await _helper_can_post(helper, chat_id):
                     eligible.append(helper)
             candidates.extend(eligible)
-        client = min(candidates, key=lambda item: _upload_client_loads.get(id(item), 0))
+        global _upload_client_cursor
+        lowest_load = min(_upload_client_loads.get(id(item), 0) for item in candidates)
+        least_loaded = [item for item in candidates
+                        if _upload_client_loads.get(id(item), 0) == lowest_load]
+        client = least_loaded[_upload_client_cursor % len(least_loaded)]
+        _upload_client_cursor += 1
         _upload_client_loads[id(client)] = _upload_client_loads.get(id(client), 0) + 1
         try:
             for attempt in range(1, UPLOAD_FLOOD_RETRY_LIMIT + 1):
