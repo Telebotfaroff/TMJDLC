@@ -258,7 +258,7 @@ async def sync_upload_peer(peer_id: int) -> None:
         access_hash, peer_type = 0, "group"
     else:
         raise RuntimeError(f"Unsupported Telegram peer type for upload: {peer_name}")
-    peer_record = [(peer_id, access_hash, peer_type, None, None)]
+    peer_record = [(peer_id, access_hash, peer_type, None)]
     clients = [upload_client, *_helper_upload_clients]
     for client in clients:
         key = (id(client), peer_id)
@@ -335,7 +335,7 @@ async def sync_screenshot_peer(peer_id: int) -> None:
     else:
         raise RuntimeError(f"Unsupported Telegram screenshot destination peer: {peer_name}")
     await screenshot_client.storage.update_peers([
-        (int(peer_id), access_hash, peer_type, None, None)
+        (int(peer_id), access_hash, peer_type, None)
     ])
     _synced_screenshot_peers.add(peer_id)
 
@@ -1581,11 +1581,12 @@ async def setimages_cmd(client, message): await set_channel(message, "image_chan
 
 
 def forwarded_source_chat(message):
-    source = getattr(message, "forward_from_chat", None)
+    origin = getattr(message, "forward_origin", None)
+    source = getattr(origin, "chat", None) if origin is not None else None
     if source is not None:
         return source
-    origin = getattr(message, "forward_origin", None)
-    return getattr(origin, "chat", None) if origin is not None else None
+    # Compatibility fallback for older Pyrogram/WZGram message objects.
+    return getattr(message, "forward_from_chat", None)
 
 
 async def forwarded_destination_handler(client, message):
