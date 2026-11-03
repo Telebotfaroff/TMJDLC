@@ -610,9 +610,15 @@ async def download_job(job: dict, identity: str):
                     return
                 total = data.get("total_bytes") or data.get("total_bytes_estimate")
                 done = data.get("downloaded_bytes", 0)
-                if not total:
+                if total:
+                    percent = min(100, int(done * 100 / total))
+                elif data.get("fragment_count"):
+                    total = data.get("fragment_count")
+                    done = data.get("fragment_index", 0)
+                    percent = min(100, int(done * 100 / total))
+                    total = None # to trigger unknown size string representation
+                else:
                     return
-                percent = min(100, int(done * 100 / total))
                 queue.update_progress(jid, identity, "downloading", percent)
                 now = time.monotonic()
                 if (percent >= last_notice["percent"] + PROGRESS_STEP
@@ -787,19 +793,26 @@ async def process_job(job: dict, identity: str):
                     done = data.get("downloaded_bytes", 0)
                     if total:
                         percent = min(100, int(done * 100 / total))
-                        queue.update_progress(jid, identity, "downloading", percent)
-                        now = time.monotonic()
-                        if (percent >= last_download_notice["percent"] + PROGRESS_STEP
-                                or now - last_download_notice["time"] >= 2 or percent >= 100):
-                            last_download_notice.update(percent=percent, time=now)
-                            if chat_id and message_id:
-                                notice = _progress_text(
-                                    "Download", vid, title, percent, done, total,
-                                    data.get("speed"), data.get("eta"), int(job["attempts"])
-                                )
-                                asyncio.run_coroutine_threadsafe(
-                                    status_edit(chat_id, message_id, notice), loop
-                                )
+                    elif data.get("fragment_count"):
+                        total = data.get("fragment_count")
+                        done = data.get("fragment_index", 0)
+                        percent = min(100, int(done * 100 / total))
+                        total = None # to trigger unknown size string representation
+                    else:
+                        return
+                    queue.update_progress(jid, identity, "downloading", percent)
+                    now = time.monotonic()
+                    if (percent >= last_download_notice["percent"] + PROGRESS_STEP
+                            or now - last_download_notice["time"] >= 2 or percent >= 100):
+                        last_download_notice.update(percent=percent, time=now)
+                        if chat_id and message_id:
+                            notice = _progress_text(
+                                "Download", vid, title, percent, done, total,
+                                data.get("speed"), data.get("eta"), int(job["attempts"])
+                            )
+                            asyncio.run_coroutine_threadsafe(
+                                status_edit(chat_id, message_id, notice), loop
+                            )
 
             path = await asyncio.to_thread(
                 lambda: JavtifulProvider(max_attempts=2).download(
