@@ -971,11 +971,16 @@ async def process_job(job: dict, identity: str):
         await asyncio.gather(heartbeat_task, return_exceptions=True)
 
 
-async def download_worker_loop():
-    """Keep one download in flight while the durable upload backlog has room."""
-    identity = f"{worker_id}-download-1"
+async def download_worker_loop(slot: int = 1):
+    """Keep multiple downloads in flight so both upload slots stay supplied."""
+    identity = f"{worker_id}-download-{slot}"
     while True:
         try:
+            # Settings controls the active download count; pre-created workers
+            # allow the setting to change without restarting the bot.
+            if slot > parallel:
+                await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+                continue
             if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
                 await asyncio.sleep(POLL_SECONDS)
                 continue
@@ -984,10 +989,20 @@ async def download_worker_loop():
                 log.warning("Download paused: free disk %.2f GiB is below %.2f GiB", free_gb, MIN_FREE_DISK_GB)
                 await asyncio.sleep(max(POLL_SECONDS, 15))
                 continue
+            upload_concurrency = max(1, min(2, int(await asyncio.to_thread(
+                queue.get_setting, "upload_concurrency", "1"
+            ) or 1)))
             job = await asyncio.to_thread(
-                queue.claim, identity, LEASE, max_pending_uploads=MAX_PENDING_UPLOADS
+                queue.claim, identity, LEASE,
+                max_downloading=parallel,
+                max_uploads=upload_concurrency,
+                max_pending_uploads=MAX_PENDING_UPLOADS,
             )
             if job:
+                log.info(
+                    "Download slot claimed | slot=%s/%s | upload_capacity=%s | job_id=%s",
+                    slot, parallel, upload_concurrency, job["id"],
+                )
                 await download_job(job, identity)
                 continue
             recovered = await asyncio.to_thread(queue.recover_expired)
@@ -998,7 +1013,7 @@ async def download_worker_loop():
         except asyncio.CancelledError:
             raise
         except Exception:
-            log.exception("Download worker loop error")
+            log.exception("Download worker loop error | slot=%s", slot)
             await asyncio.sleep(POLL_SECONDS)
 
 
@@ -1819,7 +1834,10 @@ async def on_start(client):
     log.info("Neon queue ready; recovered expired jobs=%s", recovered)
     global workers
     workers = [
-        asyncio.create_task(download_worker_loop(), name="tmjdlc-download-worker"),
+        *[
+            asyncio.create_task(download_worker_loop(slot), name=f"tmjdlc-download-worker-{slot}")
+            for slot in range(1, MAX_WORKERS + 1)
+        ],
         asyncio.create_task(upload_worker_loop(1), name="tmjdlc-upload-worker-1"),
         asyncio.create_task(upload_worker_loop(2), name="tmjdlc-upload-worker-2"),
     ]
