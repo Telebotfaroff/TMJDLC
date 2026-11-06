@@ -208,22 +208,24 @@ class JobQueue:
         return added, skipped
 
     def claim(self, worker_id: str, lease_seconds: int = 900, *,
+              max_downloading: int = 1, max_uploads: int = 1,
               max_pending_uploads: int = 1) -> dict[str, Any] | None:
-        """Claim a download only while the upload pipeline has capacity.
+        """Claim a download while both download and upload backlogs have capacity.
 
-        Ready and uploading rows share the bounded upload backlog. With the
-        default limit of 1, one active upload plus one ready video may exist.
+        Multiple download workers may run concurrently, bounded by max_downloading.
+        Ready/uploading jobs are bounded by active upload capacity plus a small
+        prefetch buffer, preventing both uploader starvation and disk overfill.
         Claims are serialized across workers/instances with an advisory lock.
         """
+        download_limit = max(1, int(max_downloading))
+        upload_backlog_limit = max(1, int(max_uploads)) + max(0, int(max_pending_uploads))
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
                 WITH candidate AS (
                   SELECT id FROM tmjdlc_bot_jobs
                   WHERE status='queued' AND attempts < max_attempts AND cancel_requested=FALSE
-                    AND NOT EXISTS (
-                      SELECT 1 FROM tmjdlc_bot_jobs WHERE status='downloading'
-                    )
+                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='downloading') < %s
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status IN ('ready','uploading')) < %s
                   ORDER BY priority ASC, created_at ASC, id ASC
                   LIMIT 1
@@ -233,7 +235,7 @@ class JobQueue:
                   lease_until=now()+(%s*interval '1 second'),
                   started_at=COALESCE(j.started_at,now()),updated_at=now()
                 FROM candidate c WHERE j.id=c.id RETURNING j.*
-            """, (max(0, int(max_pending_uploads)) + 1, worker_id, lease_seconds)).fetchone()
+            """, (download_limit, upload_backlog_limit, worker_id, lease_seconds)).fetchone()
             if row:
                 conn.execute("""
                     INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
