@@ -1622,7 +1622,7 @@ async def callback_handler(client, callback):
             return await callback.answer("Choose 1 or 2 uploads.", show_alert=True)
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
         await callback.answer(f"Simultaneous uploads set to {value}.")
-        return await settings_cmd(client, callback.message)
+        return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
         if direction == "up":
@@ -1632,7 +1632,7 @@ async def callback_handler(client, callback):
         async with condition:
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
-        return await settings_cmd(client, callback.message)
+        return await settings_cmd(client, callback.message, check_access=False)
     if data == "queue:pause":
         await asyncio.to_thread(queue.set_setting, "queue_paused", "true")
         await callback.answer("Queue paused. Active jobs will finish.")
