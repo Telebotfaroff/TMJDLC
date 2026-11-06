@@ -994,7 +994,7 @@ async def download_worker_loop(slot: int = 1):
             ) or 1)))
             job = await asyncio.to_thread(
                 queue.claim, identity, LEASE,
-                max_downloading=parallel,
+                max_downloading=min(parallel, upload_concurrency),
                 max_uploads=upload_concurrency,
                 max_pending_uploads=MAX_PENDING_UPLOADS,
             )
