@@ -11,10 +11,10 @@ Use `/start` to open the persistent menu:
 - **Download Video** — send a Javtiful video URL; it is queued automatically at 720p.
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
-- **Settings** — configure video and screenshot destination channels.
+- **Settings** — configure the video destination and worker settings.
 - **Storage** and **Worker Status** — inspect runtime health.
 
-The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/setimages`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
+The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
 
 ## Run in Google Colab
 
@@ -28,13 +28,12 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 - Durable Neon queue with retry and restart recovery.
 - Separate download and upload progress reporting.
 - Batch-scoped cancellation.
-- Optional screenshot delivery.
 - Disk-space guard and automatic cleanup after successful upload.
 - Javtiful stream resolution is refreshed before retrying a failed download.
 
 ## Configuration
 
-Copy `.env.example` and provide the required Telegram and Neon credentials. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and screenshots.
+Copy `.env.example` and provide the required Telegram and Neon credentials. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and video thumbnail generation.
 
 The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK_GB` (default 3 GiB). Set `TMJDLC_AUTO_CLEAN=false` to disable local-file cleanup.
 
