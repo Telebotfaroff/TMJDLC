@@ -245,7 +245,7 @@ class JobQueue:
             return dict(row) if row else None
 
     def claim_upload(self, worker_id: str, lease_seconds: int = 900) -> dict[str, Any] | None:
-        """Claim the oldest ready video for the single upload worker."""
+        """Claim the oldest ready video for one of the concurrent upload workers."""
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
