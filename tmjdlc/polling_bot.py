@@ -186,9 +186,9 @@ workers: list[asyncio.Task] = []
 parallel = MAX_WORKERS
 active = 0
 condition = asyncio.Condition()
-# One active MTProto video upload at a time. Jobs waiting for this slot count
-# against the durable upload-backlog limit enforced by JobQueue.claim().
-video_upload_semaphore = asyncio.Semaphore(1)
+# Two MTProto uploads are supported. The Settings menu controls whether one or
+# both upload workers may claim jobs; the semaphore is the hard in-process cap.
+video_upload_semaphore = asyncio.Semaphore(2)
 setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
@@ -1000,11 +1000,17 @@ async def download_worker_loop():
             await asyncio.sleep(POLL_SECONDS)
 
 
-async def upload_worker_loop():
-    """Continuously drain ready videos; one active Telegram video upload at a time."""
-    identity = f"{worker_id}-upload-1"
+async def upload_worker_loop(slot: int = 1):
+    """Drain ready videos; slot 2 stays idle unless two-upload mode is enabled."""
+    identity = f"{worker_id}-upload-{slot}"
     while True:
         try:
+            max_uploads = max(1, min(2, int(await asyncio.to_thread(
+                queue.get_setting, "upload_concurrency", "1"
+            ) or 1)))
+            if slot > max_uploads:
+                await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
+                continue
             if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
                 await asyncio.sleep(POLL_SECONDS)
                 continue
@@ -1073,7 +1079,7 @@ async def panel_cmd(client, message):
         "🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
         f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
         f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
-        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>1 download + 1 upload</b>"
+        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>1 download + up to 2 uploads</b>"
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
@@ -1297,16 +1303,19 @@ async def queue_cmd(client, message):
 
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, paused = await asyncio.gather(
+    video, paused, upload_concurrency = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
+        asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
     )
+    upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     body = (
         "⚙️ <b>Settings</b>\\n\\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
         "🎥 Quality: <b>720p automatic</b>\\n"
-        f"⚡ Worker concurrency: <b>{parallel}/{MAX_WORKERS}</b>\\n"
+        f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
+        f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
@@ -1315,6 +1324,8 @@ async def settings_cmd(client, message, check_access=True):
         [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
          InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
          InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
+        [InlineKeyboardButton("1 upload" + (" ✓" if upload_concurrency == 1 else ""), callback_data="settings:uploads:1"),
+         InlineKeyboardButton("2 uploads" + (" ✓" if upload_concurrency == 2 else ""), callback_data="settings:uploads:2")],
         [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
                               callback_data="queue:pause" if not paused else "queue:resume")],
         [InlineKeyboardButton("🏠 Home", callback_data="home:show"),
@@ -1605,6 +1616,13 @@ async def callback_handler(client, callback):
             "Forward any recent post from the private video channel here. "
             "The bot will resolve and verify the channel before saving it in Neon. Send CANCEL to stop."
         )
+    if data.startswith("settings:uploads:"):
+        value = int(data.rsplit(":", 1)[-1])
+        if value not in {1, 2}:
+            return await callback.answer("Choose 1 or 2 uploads.", show_alert=True)
+        await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
+        await callback.answer(f"Simultaneous uploads set to {value}.")
+        return await settings_cmd(client, callback.message)
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
         if direction == "up":
@@ -1799,7 +1817,8 @@ async def on_start(client):
     global workers
     workers = [
         asyncio.create_task(download_worker_loop(), name="tmjdlc-download-worker"),
-        asyncio.create_task(upload_worker_loop(), name="tmjdlc-upload-worker"),
+        asyncio.create_task(upload_worker_loop(1), name="tmjdlc-upload-worker-1"),
+        asyncio.create_task(upload_worker_loop(2), name="tmjdlc-upload-worker-2"),
     ]
     me = await client.get_me()
     log.info("WZGram MTProto bot started | bot_id=%s | username=@%s | admins=%s",
