@@ -1,6 +1,6 @@
 # TMJDLC Telegram Bot
 
-The bot uses **Pyrogram (MTProto) for every Telegram operation**: receiving updates, commands, callbacks, sending messages, and uploading large videos/photos. It does not use Bot API long polling or webhooks. A Neon PostgreSQL database stores the durable queue and channel settings.
+The bot uses **Pyrogram (MTProto) for every Telegram operation**: receiving updates, commands, callbacks, sending messages, and uploading large videos. It does not use Bot API long polling or webhooks. A Neon PostgreSQL database stores the durable queue and channel settings.
 
 ## Environment
 
@@ -40,9 +40,8 @@ The bot initializes `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additi
 - `/queue` — show queue counts and recent jobs.
 - `/cancel JOB_ID` — cancel a queued or failed job.
 - `/retry JOB_ID` — requeue a failed job.
-- `/setup` — guided setup for video and screenshot destination channels; send `SKIP` to disable screenshots.
+- `/setup` — guided setup for the video destination channel.
 - `/setupload CHANNEL_ID` — configure the video destination manually.
-- `/setimages CHANNEL_ID` — configure the screenshot destination manually.
 - `/settings` — show saved destinations and worker settings.
 
 ## Queue behavior
@@ -53,11 +52,11 @@ The bot initializes `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additi
 - Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue failed jobs.
 - Worker leases recover abandoned jobs after a runtime restart.
 - `TMJDLC_MAX_PARALLEL` controls concurrent jobs (1–4).
-- Media and generated screenshots remain on local worker disk; Colab resets remove local files, but Neon retains job history.
+- Downloaded media and generated video thumbnails remain on local worker disk; Colab resets remove local files, but Neon retains job history.
 
 ## Telegram permissions
 
-Add the bot as an administrator to both destination channels with permission to post. Only IDs listed in `TG_ADMIN_IDS` can use the private bot.
+Add the bot as an administrator to the video destination channel with permission to post. Only IDs listed in `TG_ADMIN_IDS` can use the private bot.
 
 ## Operational note
 
