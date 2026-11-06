@@ -117,17 +117,16 @@ class JobQueue:
 
     def enqueue(self, video_id: str, post_url: str, quality: int | None = None, *,
                 requested_by: int | None = None, status_chat_id: int | None = None,
-                status_message_id: int | None = None, priority: int = 100,
-                upload_screenshots: bool = True) -> tuple[dict[str, Any], bool]:
+                status_message_id: int | None = None, priority: int = 100) -> tuple[dict[str, Any], bool]:
         with self.connect() as conn:
             row = conn.execute("""
                 INSERT INTO tmjdlc_bot_jobs
                   (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,
                    priority,max_attempts,upload_screenshots)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,FALSE)
                 ON CONFLICT(video_id) DO NOTHING RETURNING *
             """, (video_id, post_url, quality, requested_by, status_chat_id,
-                  status_message_id, priority, self.max_attempts, upload_screenshots)).fetchone()
+                  status_message_id, priority, self.max_attempts)).fetchone()
             if row:
                 return dict(row), True
             existing = conn.execute(
@@ -139,29 +138,29 @@ class JobQueue:
                       attempts=0,last_error=NULL,worker_id=NULL,lease_until=NULL,
                       cancel_requested=FALSE,current_stage=NULL,progress_percent=0,
                       requested_by=%s,status_chat_id=%s,status_message_id=%s,
-                      priority=%s,upload_screenshots=%s,updated_at=now()
+                      priority=%s,upload_screenshots=FALSE,updated_at=now()
                     WHERE video_id=%s RETURNING *
                 """, (post_url, quality, requested_by, status_chat_id, status_message_id,
-                      priority, upload_screenshots, video_id)).fetchone()
+                      priority, video_id)).fetchone()
                 conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (row["id"],))
                 return dict(row), True
             return dict(existing), False
 
-    def enqueue_many(self, items: list[tuple[str, str, int | None, int | None, bool]], *,
+    def enqueue_many(self, items: list[tuple[str, str, int | None, int | None]], *,
                      skip_existing: bool = True, batch_id: str | None = None,
                      status_chat_id: int | None = None,
                      status_message_id: int | None = None) -> tuple[int, int]:
         added = skipped = 0
         with self.connect() as conn:
-            for video_id, post_url, quality, requested_by, screenshots in items:
+            for video_id, post_url, quality, requested_by in items:
                 row = conn.execute("""
                     INSERT INTO tmjdlc_bot_jobs
                       (video_id,post_url,quality,requested_by,priority,max_attempts,
                        upload_screenshots,batch_id,status_chat_id,status_message_id)
-                    VALUES (%s,%s,%s,%s,100,%s,%s,%s,%s,%s)
+                    VALUES (%s,%s,%s,%s,100,%s,FALSE,%s,%s,%s)
                     ON CONFLICT(video_id) DO NOTHING RETURNING id
                 """, (video_id, post_url, quality, requested_by,
-                      self.max_attempts, screenshots, batch_id,
+                      self.max_attempts, batch_id,
                       status_chat_id, status_message_id)).fetchone()
                 if row:
                     added += 1
@@ -174,10 +173,10 @@ class JobQueue:
                         UPDATE tmjdlc_bot_jobs SET status='queued',attempts=0,last_error=NULL,
                           worker_id=NULL,lease_until=NULL,cancel_requested=FALSE,
                           current_stage=NULL,progress_percent=0,post_url=%s,quality=%s,
-                          requested_by=%s,upload_screenshots=%s,batch_id=%s,
+                          requested_by=%s,upload_screenshots=FALSE,batch_id=%s,
                           status_chat_id=%s,status_message_id=%s,updated_at=now()
                         WHERE id=%s
-                    """, (post_url, quality, requested_by, screenshots, batch_id,
+                    """, (post_url, quality, requested_by, batch_id,
                           status_chat_id, status_message_id, old["id"]))
                     conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (old["id"],))
                     added += 1
@@ -418,7 +417,7 @@ class JobQueue:
         with self.connect() as conn:
             rows = conn.execute("""
                 SELECT id,video_id,post_url,quality,status,attempts,max_attempts,
-                       upload_screenshots,last_error,created_at,current_stage,progress_percent
+                       last_error,created_at,current_stage,progress_percent
                 FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s OFFSET %s
             """, (max(1, min(50, limit)), max(0, offset))).fetchall()
             return [dict(row) for row in rows]
