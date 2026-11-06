@@ -11,7 +11,7 @@ Use `/start` to open the persistent menu:
 - **Download Video** — send a Javtiful video URL; it is queued automatically at 720p.
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
-- **Settings** — configure the video destination and worker settings.
+- **Settings** — configure the video destination, download workers, and 1- or 2-video simultaneous uploads.
 - **Storage** and **Worker Status** — inspect runtime health.
 
 The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
@@ -27,6 +27,7 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 - Automatic 720p selection for single and batch downloads.
 - Durable Neon queue with retry and restart recovery.
 - Separate download and upload progress reporting.
+- Optional two-video concurrent uploads, controlled from Settings (default: one).
 - Batch-scoped cancellation.
 - Disk-space guard and automatic cleanup after successful upload.
 - Javtiful stream resolution is refreshed before retrying a failed download.
