@@ -51,7 +51,8 @@ The bot initializes `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additi
 - Unique `video_id` prevents duplicate queue entries.
 - Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue failed jobs.
 - Worker leases recover abandoned jobs after a runtime restart.
-- `TMJDLC_MAX_PARALLEL` controls concurrent jobs (1–4).
+- `TMJDLC_MAX_PARALLEL` controls concurrent download jobs (1–4).
+- Settings lets an admin choose one or two simultaneous Telegram video uploads. It defaults to one; the second upload worker stays idle until two-upload mode is selected.
 - Downloaded media and generated video thumbnails remain on local worker disk; Colab resets remove local files, but Neon retains job history.
 
 ## Telegram permissions
