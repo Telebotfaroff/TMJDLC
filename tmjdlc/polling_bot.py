@@ -193,6 +193,8 @@ setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
+# Worker progress/completion messages can be paused independently of queue processing.
+progress_notifications_enabled = True
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
 _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
@@ -317,7 +319,7 @@ async def deny(message) -> bool:
 
 
 async def status_edit(chat_id, message_id, text):
-    if not chat_id or not message_id:
+    if not progress_notifications_enabled or not chat_id or not message_id:
         return
     key = (int(chat_id), int(message_id))
     lock = _status_edit_locks.setdefault(key, asyncio.Lock())
@@ -538,7 +540,7 @@ async def download_job(job: dict, identity: str):
 
     if chat_id is None:
         chat_id = job.get("requested_by")
-    if chat_id and not message_id:
+    if progress_notifications_enabled and chat_id and not message_id:
         try:
             notice = await app.send_message(int(chat_id), f"🆕 Job #{jid} · {vid} queued for download.")
             chat_id, message_id = notice.chat.id, notice.id
@@ -668,7 +670,7 @@ async def process_job(job: dict, identity: str):
 
     title = video_title_from_url(url, vid)
     notify_chat = chat_id or job.get("requested_by")
-    if notify_chat and not message_id:
+    if progress_notifications_enabled and notify_chat and not message_id:
         try:
             notice = await app.send_message(int(notify_chat), f"🆕 Job #{jid} · {vid} queued for processing.")
             chat_id, message_id = notice.chat.id, notice.id
@@ -1321,13 +1323,15 @@ async def queue_cmd(client, message):
 
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, paused, upload_concurrency = await asyncio.gather(
+    video, paused, upload_concurrency, notifications = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
+        asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
     )
     upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
+    notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     body = (
         "⚙️ <b>Settings</b>\\n\\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
@@ -1335,6 +1339,7 @@ async def settings_cmd(client, message, check_access=True):
         f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
         f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
+        f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
     markup = InlineKeyboardMarkup([
@@ -1346,6 +1351,8 @@ async def settings_cmd(client, message, check_access=True):
          InlineKeyboardButton("2 uploads" + (" ✓" if upload_concurrency == 2 else ""), callback_data="settings:uploads:2")],
         [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
                               callback_data="queue:pause" if not paused else "queue:resume")],
+        [InlineKeyboardButton("🔕 Pause notifications" if notifications else "🔔 Resume notifications",
+                              callback_data="settings:notifications:off" if notifications else "settings:notifications:on")],
         [InlineKeyboardButton("🏠 Home", callback_data="home:show"),
          InlineKeyboardButton("📋 Queue manager", callback_data="home:queue")],
     ])
@@ -1634,6 +1641,13 @@ async def callback_handler(client, callback):
             "Forward any recent post from the private video channel here. "
             "The bot will resolve and verify the channel before saving it in Neon. Send CANCEL to stop."
         )
+    if data.startswith("settings:notifications:"):
+        enabled = data.rsplit(":", 1)[-1] == "on"
+        global progress_notifications_enabled
+        progress_notifications_enabled = enabled
+        await asyncio.to_thread(queue.set_setting, "progress_notifications", "true" if enabled else "false")
+        await callback.answer("Download/upload notifications resumed." if enabled else "Download/upload notifications paused.")
+        return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:uploads:"):
         value = int(data.rsplit(":", 1)[-1])
         if value not in {1, 2}:
@@ -1830,6 +1844,11 @@ async def log_update(client, message):
 
 async def on_start(client):
     await asyncio.to_thread(queue.initialize)
+    global progress_notifications_enabled
+    notification_setting = await asyncio.to_thread(
+        queue.get_setting, "progress_notifications", "true"
+    )
+    progress_notifications_enabled = str(notification_setting).lower() in {"1", "true", "yes", "on"}
     recovered = await asyncio.to_thread(queue.recover_expired)
     log.info("Neon queue ready; recovered expired jobs=%s", recovered)
     global workers
