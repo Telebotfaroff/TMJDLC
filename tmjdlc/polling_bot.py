@@ -1329,7 +1329,7 @@ async def set_channel(message, key):
     if len(parts) < 2:
         setup_state[message.from_user.id] = key
         return await message.reply_text(
-            f"Send @channelusername for a public channel, or forward a recent post from your private {label} channel here. "
+            f"Send @channelusername for a public channel, or forward a recent post from your private video upload channel here. "
             "The bot will resolve the channel, verify posting rights, and save it in Neon. Send CANCEL to stop."
         )
     value = parts[1].strip()
