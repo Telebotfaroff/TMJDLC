@@ -703,6 +703,10 @@ async def process_job(job: dict, identity: str):
         # Reuse a previously completed upload receipt without introducing a
         # post-download peer lookup when recovering a job after a retry.
         video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+        # A retry may resume after the upload stage was already completed.
+        # Restore the delivery route from its persisted receipt so the final
+        # notification does not reference an uninitialized local variable.
+        fallback_used = bool(video_stage.get("fallback", False)) if video_stage else False
         if video_stage and video_stage.get("chat_id"):
             await sync_upload_peer(int(video_stage["chat_id"]))
 
