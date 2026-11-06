@@ -542,6 +542,7 @@ async def download_job(job: dict, identity: str):
         try:
             notice = await app.send_message(int(chat_id), f"🆕 Job #{jid} · {vid} queued for download.")
             chat_id, message_id = notice.chat.id, notice.id
+            await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
         except Exception:
             log.exception("Could not create status message for job=%s", jid)
 
@@ -671,6 +672,7 @@ async def process_job(job: dict, identity: str):
         try:
             notice = await app.send_message(int(notify_chat), f"🆕 Job #{jid} · {vid} queued for processing.")
             chat_id, message_id = notice.chat.id, notice.id
+            await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
         except Exception:
             log.exception("Could not create Telegram status message for job=%s", jid)
 
@@ -1210,13 +1212,14 @@ async def queue_channel_batch(message, uid: int):
         batch_id = uuid.uuid4().hex[:12]
         live_status = await message.reply_text(
             f"⏳ <b>Batch pipeline</b> · <code>{batch_id}</code>\n"
-            f"Queued jobs will share this live status message.",
+            f"Each video will receive its own live progress notification.",
             parse_mode=ParseMode.HTML,
         )
+        # Never share one Telegram message ID across batch jobs. Each job gets
+        # a dedicated notification, persisted by its download/upload worker.
         added, skipped = await asyncio.to_thread(
             queue.enqueue_many, items, skip_existing=state.get("skip_existing", True),
-            batch_id=batch_id, status_chat_id=live_status.chat.id,
-            status_message_id=live_status.id,
+            batch_id=batch_id,
         )
         if not added:
             await live_status.edit_text(
