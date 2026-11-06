@@ -46,6 +46,16 @@ class JobQueue:
                 )
             """)
             conn.execute("ALTER TABLE tmjdlc_bot_jobs DROP COLUMN IF EXISTS upload_screenshots")
+            # Apply additive columns before any migration query references them.
+            # This is important for databases created by older bot versions.
+            for definition in (
+                "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
+                "current_stage TEXT",
+                "progress_percent INTEGER NOT NULL DEFAULT 0",
+                "batch_id TEXT",
+            ):
+                conn.execute(f"ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS {definition}")
+
             # Older batch jobs shared one Telegram status message. Clear only
             # duplicated IDs on unfinished batch jobs so workers recreate
             # one dedicated notification per video after restart.
@@ -69,13 +79,6 @@ class JobQueue:
                 ADD CONSTRAINT tmjdlc_bot_jobs_status_check
                 CHECK (status IN ('queued','downloading','ready','uploading','completed','failed','cancelled'))
             """)
-            for definition in (
-                "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
-                "current_stage TEXT",
-                "progress_percent INTEGER NOT NULL DEFAULT 0",
-                "batch_id TEXT",
-            ):
-                conn.execute(f"ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS {definition}")
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
                 ON tmjdlc_bot_jobs(priority, created_at) WHERE status='queued'
