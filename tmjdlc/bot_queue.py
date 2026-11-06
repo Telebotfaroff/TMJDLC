@@ -145,6 +145,16 @@ class JobQueue:
                 return dict(row), True
             return dict(existing), False
 
+    def set_status_message(self, job_id: int, chat_id: int, message_id: int) -> bool:
+        """Persist the dedicated Telegram progress message for one job."""
+        with self.connect() as conn:
+            row = conn.execute("""
+                UPDATE tmjdlc_bot_jobs
+                SET status_chat_id=%s,status_message_id=%s,updated_at=now()
+                WHERE id=%s RETURNING id
+            """, (chat_id, message_id, job_id)).fetchone()
+            return row is not None
+
     def enqueue_many(self, items: list[tuple[str, str, int | None, int | None]], *,
                      skip_existing: bool = True, batch_id: str | None = None,
                      status_chat_id: int | None = None,
