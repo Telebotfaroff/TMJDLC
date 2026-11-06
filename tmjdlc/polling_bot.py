@@ -34,7 +34,6 @@ logging.getLogger("pyrogram").setLevel(getattr(logging, TELEGRAM_LOG_LEVEL, logg
 log = logging.getLogger("tmjdlc.telegram")
 
 TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
-SCREENSHOT_TOKEN = os.getenv("TG_SCREENSHOT_BOT_TOKEN", "").strip()
 API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
@@ -42,14 +41,12 @@ MAX_WORKERS = max(2, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 UPLOAD_WORKERS = max(1, min(100, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "100"))))
 HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
 UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
-SCREENSHOT_UPLOAD_WORKERS = max(1, min(8, int(os.getenv("TMJDLC_SCREENSHOT_UPLOAD_WORKERS", "2"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
 MAX_PENDING_UPLOADS = max(0, min(4, int(os.getenv("TMJDLC_MAX_PENDING_UPLOADS", "1"))))
 UPLOAD_QUEUE_POLL_SECONDS = max(1, int(os.getenv("TMJDLC_UPLOAD_QUEUE_POLL_SECONDS", "2")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
-SHOT_COUNT = 10
 MIN_FREE_DISK_GB = float(os.getenv("TMJDLC_MIN_FREE_DISK_GB", "3"))
 AUTO_CLEAN = os.getenv("TMJDLC_AUTO_CLEAN", "true").strip().lower() in {"1", "true", "yes", "on"}
 PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "2")))
@@ -179,10 +176,8 @@ def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -
     return None
 
 
-if not TOKEN or not SCREENSHOT_TOKEN or not API_ID or not API_HASH or not ADMINS:
-    raise RuntimeError("Set TG_BOT_TOKEN, TG_SCREENSHOT_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
-if SCREENSHOT_TOKEN == TOKEN:
-    raise RuntimeError("TG_SCREENSHOT_BOT_TOKEN must belong to a separate Telegram bot.")
+if not TOKEN or not API_ID or not API_HASH or not ADMINS:
+    raise RuntimeError("Set TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
 
 queue = JobQueue(max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK.mkdir(parents=True, exist_ok=True)
@@ -195,7 +190,6 @@ condition = asyncio.Condition()
 # against the durable upload-backlog limit enforced by JobQueue.claim().
 video_upload_semaphore = asyncio.Semaphore(1)
 setup_state: dict[int, str] = {}
-screenshot_setup_state: set[int] = set()
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
@@ -205,7 +199,6 @@ _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
 _upload_client_loads: dict[int, int] = {}
 _helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
-_synced_screenshot_peers: set[int] = set()
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
 _destination_warm_tasks: dict[int, asyncio.Task] = {}
 DESTINATION_CACHE_SECONDS = 600
@@ -231,17 +224,6 @@ upload_client = Client(
     workers=4,
     max_concurrent_transmissions=UPLOAD_WORKERS,
     sleep_threshold=60,
-)
-
-# Separate Telegram identity/session dedicated to screenshot delivery.
-screenshot_client = Client(
-    "tmjdlc_screenshots",
-    api_id=API_ID,
-    api_hash=API_HASH,
-    bot_token=SCREENSHOT_TOKEN,
-    workers=4,
-    max_concurrent_transmissions=SCREENSHOT_UPLOAD_WORKERS,
-    sleep_threshold=300,
 )
 
 
@@ -271,7 +253,7 @@ async def sync_upload_peer(peer_id: int) -> None:
 async def start_helper_upload_clients() -> None:
     """Start optional WZML-X-style helper bot clients for channel upload routing."""
     for index, token in enumerate(HELPER_BOT_TOKENS, start=1):
-        if token in {TOKEN, SCREENSHOT_TOKEN}:
+        if token == TOKEN:
             log.warning("Skipping helper bot %s because its token duplicates a configured bot", index)
             continue
         client = Client(
@@ -321,24 +303,6 @@ async def _helper_can_post(client: Client, chat_id: int) -> bool:
     _helper_permission_cache[key] = (now, allowed)
     return allowed
 
-async def sync_screenshot_peer(peer_id: int) -> None:
-    """Seed the screenshot bot's peer cache once from a forwarded channel peer."""
-    peer_id = int(peer_id)
-    if peer_id in _synced_screenshot_peers:
-        return
-    peer = await app.resolve_peer(peer_id)
-    peer_name = type(peer).__name__
-    if peer_name == "InputPeerChannel":
-        access_hash, peer_type = int(peer.access_hash), "channel"
-    elif peer_name == "InputPeerChat":
-        access_hash, peer_type = 0, "group"
-    else:
-        raise RuntimeError(f"Unsupported Telegram screenshot destination peer: {peer_name}")
-    await screenshot_client.storage.update_peers([
-        (int(peer_id), access_hash, peer_type, None)
-    ])
-    _synced_screenshot_peers.add(peer_id)
-
 
 def is_admin(message) -> bool:
     return bool(message.from_user and message.from_user.id in ADMINS)
@@ -381,12 +345,9 @@ async def resolve_destination_cached(value: str, client: Client = app):
     return chat
 
 
-async def warm_upload_destinations(job: dict) -> None:
-    """Resolve destinations and seed upload peers while the video is downloading."""
-    video_value, image_value = await asyncio.gather(
-        asyncio.to_thread(queue.get_setting, "upload_channel"),
-        asyncio.to_thread(queue.get_setting, "image_channel"),
-    )
+async def warm_upload_destinations(job: dict) -> str:
+    """Resolve the video destination and seed upload peers while the video downloads."""
+    video_value = await asyncio.to_thread(queue.get_setting, "upload_channel")
     fallback_user = int(job.get("requested_by") or 0)
     try:
         if video_value:
@@ -395,21 +356,14 @@ async def warm_upload_destinations(job: dict) -> None:
         elif fallback_user:
             await sync_upload_peer(fallback_user)
     except Exception as exc:
-        log.info("Destination prewarm deferred for job=%s: %s", job.get("id"), exc)
+        log.info("Video destination prewarm deferred for job=%s: %s", job.get("id"), exc)
         if fallback_user:
             try:
                 await sync_upload_peer(fallback_user)
             except Exception:
                 log.debug("Private-chat peer prewarm deferred for job=%s", job.get("id"),
                           exc_info=True)
-    if image_value and job.get("upload_screenshots", True):
-        try:
-            chat = await resolve_destination_cached(image_value, screenshot_client)
-            await screenshot_client.resolve_peer(chat.id)
-        except Exception as exc:
-            log.info("Screenshot destination prewarm deferred for job=%s: %s",
-                     job.get("id"), exc)
-    return video_value or "", image_value or ""
+    return video_value or ""
 
 
 async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
@@ -550,18 +504,15 @@ async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyn
 
 
 async def cleanup_completed_job(path: Path, video_id: str) -> bool:
-    """Delete only this completed job's local media and screenshot artifacts."""
+    """Delete this completed job's local media artifacts."""
     try:
         if path.exists() and path.is_file():
             path.unlink()
         for candidate in path.parent.glob(f"javtiful-{video_id}*"):
             if candidate.is_file():
                 candidate.unlink(missing_ok=True)
-        shots_dir = WORK / "screenshots" / video_id
-        if shots_dir.exists():
-            shutil.rmtree(shots_dir, ignore_errors=True)
         log.info("Auto-cleaned completed job media video_id=%s", video_id)
-        return not path.exists() and not shots_dir.exists()
+        return not path.exists()
     except OSError:
         log.exception("Auto-clean failed for video_id=%s", video_id)
         return False
@@ -726,13 +677,7 @@ async def process_job(job: dict, identity: str):
     try:
         warm_task = _destination_warm_tasks.pop(jid, None)
         warm_settings = await warm_task if warm_task else None
-        if warm_settings:
-            video_chat_value, image_chat_value = warm_settings
-        else:
-            video_chat_value, image_chat_value = await asyncio.gather(
-                asyncio.to_thread(queue.get_setting, "upload_channel"),
-                asyncio.to_thread(queue.get_setting, "image_channel"),
-            )
+        video_chat_value = warm_settings or await asyncio.to_thread(queue.get_setting, "upload_channel")
 
         # A missing/unresolvable channel must not discard a successfully downloaded
         # video. Prefer the configured channel, but fall back directly to the
@@ -750,19 +695,6 @@ async def process_job(job: dict, identity: str):
                 jid, fallback_chat_id, exc,
             )
             await sync_upload_peer(fallback_chat_id)
-
-        # Screenshot delivery is optional; a bad screenshot destination must
-        # not block the primary video upload.
-        image_destination = None
-        if image_chat_value and job.get("upload_screenshots", True):
-            try:
-                image_destination = await resolve_destination_cached(image_chat_value, screenshot_client)
-                await screenshot_client.resolve_peer(image_destination.id)
-            except DestinationError as exc:
-                log.warning(
-                    "Screenshot destination unavailable for job=%s; skipping screenshots: %s",
-                    jid, exc,
-                )
 
         # Reuse a previously completed upload receipt without introducing a
         # post-download peer lookup when recovering a job after a retry.
@@ -991,36 +923,6 @@ async def process_job(job: dict, identity: str):
                 jid, video_stage.get("part_count", 1),
             )
 
-        sent_shots = 0
-        if image_destination and job.get("upload_screenshots", True):
-            shots_dir = WORK / "screenshots" / vid
-            shots_dir.mkdir(parents=True, exist_ok=True)
-            for i in range(SHOT_COUNT):
-                check_stop()
-                stage_name = f"screenshot_{i+1:02d}"
-                if await asyncio.to_thread(queue.stage_done, jid, stage_name):
-                    sent_shots += 1
-                    continue
-                target = shots_dir / f"{vid}-{i+1:02d}.jpg"
-                if not target.is_file():
-                    stamp = duration * (i + 1) / (SHOT_COUNT + 1)
-                    await asyncio.to_thread(subprocess.run, [
-                        "ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", str(stamp),
-                        "-i", str(path), "-frames:v", "1", "-q:v", "3", "-y", str(target)
-                    ], capture_output=True, check=True)
-                check_stop()
-                sent = await screenshot_client.send_photo(chat_id=image_destination.id, photo=str(target),
-                                                          caption=f"{title} | Screenshot {i+1}/{SHOT_COUNT}")
-                await asyncio.to_thread(queue.complete_stage, jid, identity, stage_name,
-                                        {"chat_id": sent.chat.id, "message_id": sent.id})
-                sent_shots += 1
-                if chat_id and message_id and (sent_shots % 2 == 0 or sent_shots == SHOT_COUNT):
-                    percent = int(sent_shots * 100 / SHOT_COUNT)
-                    await status_edit(chat_id, message_id,
-                        f"🖼️ <b>Screenshot delivery</b> · <code>{vid}</code>\n"
-                        f"<code>{_progress_bar(percent)}</code> <b>{sent_shots}/{SHOT_COUNT}</b>")
-        else:
-            await asyncio.to_thread(queue.complete_stage, jid, identity, "screenshots_skipped", {})
         check_stop()
         if not await asyncio.to_thread(queue.set_status, jid, identity, "completed",
                                        output_path=str(path), lease_seconds=LEASE):
@@ -1028,7 +930,6 @@ async def process_job(job: dict, identity: str):
         await status_edit(chat_id, message_id,
             f"✅ <b>Job completed</b> · <code>#{jid}</code>\n"
             f"🎬 Video: <code>{vid}</code>\n"
-            f"🖼️ Screenshots delivered: <b>{sent_shots}</b>\n"
             f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
             f"🔁 Attempts used: <b>{job['attempts']}</b>\n"
             f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}")
@@ -1037,11 +938,11 @@ async def process_job(job: dict, identity: str):
             if cleaned:
                 await asyncio.to_thread(queue.clear_media_path, vid)
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
-                                  "🧹 Local video and screenshot files cleaned.")
+                                  f"✅ Completed {vid}.\n"
+                                  "🧹 Local video files cleaned.")
             else:
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}. Screenshots sent: {sent_shots}\n"
+                                  f"✅ Completed {vid}.\n"
                                   "⚠️ Upload finished, but some local files could not be cleaned.")
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
@@ -1161,113 +1062,6 @@ async def start_cmd(client, message):
     await panel_cmd(client, message)
 
 
-async def screenshot_start_cmd(client, message):
-    if await deny(message):
-        return
-    configured = await asyncio.to_thread(queue.get_setting, "image_channel")
-    if configured:
-        await message.reply_text(
-            f"✅ Screenshot channel is configured: <code>{html.escape(configured)}</code>\\n"
-            "Use /setchannel to change it.",
-            parse_mode=ParseMode.HTML,
-        )
-        return
-    screenshot_setup_state.add(message.from_user.id)
-    await message.reply_text(
-        "🖼 <b>Screenshot bot setup</b>\\n"
-        "Send <code>@channelusername</code> for a public channel, or forward a recent post "
-        "from your private screenshot channel directly to this bot.\\n"
-        "Make sure <b>this screenshot bot</b> is an administrator with permission to post photos. "
-        "I will verify access and save the channel in Neon.\\n"
-        "Use /cancelsetup to stop.",
-        parse_mode=ParseMode.HTML,
-    )
-
-
-async def screenshot_setchannel_cmd(client, message):
-    if await deny(message):
-        return
-    screenshot_setup_state.add(message.from_user.id)
-    await message.reply_text(
-        "Send <code>@channelusername</code> for a public channel, or forward a recent post "
-        "from the private channel to this screenshot bot. "
-        "This screenshot bot must be an administrator with permission to post photos.",
-        parse_mode=ParseMode.HTML,
-    )
-
-
-async def screenshot_cancelsetup_cmd(client, message):
-    if await deny(message):
-        return
-    screenshot_setup_state.discard(message.from_user.id)
-    await message.reply_text("Screenshot channel setup cancelled.")
-
-
-async def screenshot_forwarded_destination_handler(client, message):
-    if not message.from_user or message.from_user.id not in ADMINS:
-        return
-    uid = message.from_user.id
-    if uid not in screenshot_setup_state:
-        return
-    source = forwarded_source_chat(message)
-    if source is None or getattr(source, "type", None) != ChatType.CHANNEL:
-        return await message.reply_text(
-            "I couldn't read the channel origin. Use Telegram Forward to send a normal post "
-            "from the private screenshot channel (not copy/paste), or send CANCEL."
-        )
-    try:
-        # The screenshot bot receives the forwarded post itself, resolves the
-        # private channel peer, and checks its own posting permissions.
-        chat = await screenshot_client.get_chat(source.id)
-        await screenshot_client.resolve_peer(chat.id)
-        verified = await resolve_destination(str(chat.id), screenshot_client)
-    except Exception as exc:
-        return await message.reply_text(
-            f"❌ Could not verify forwarded screenshot channel: {html.escape(str(exc)[:450])}\\n"
-            "Confirm this screenshot bot is an administrator with permission to post photos, "
-            "then forward a fresh post from that channel."
-        )
-    await asyncio.to_thread(queue.set_setting, "image_channel", str(verified.id))
-    screenshot_setup_state.discard(uid)
-    await message.reply_text(
-        f"✅ Screenshot channel verified and saved: <code>{verified.id}</code>\\n"
-        f"Title: {html.escape(verified.title or 'Private channel')}",
-        parse_mode=ParseMode.HTML,
-    )
-
-
-async def screenshot_text_handler(client, message):
-    if not message.from_user or message.from_user.id not in ADMINS:
-        return
-    uid = message.from_user.id
-    if uid not in screenshot_setup_state:
-        return
-    value = (message.text or "").strip()
-    if value.upper() == "CANCEL":
-        screenshot_setup_state.discard(uid)
-        return await message.reply_text("Screenshot channel setup cancelled.")
-    if not re.fullmatch(r"@[A-Za-z0-9_]{5,}", value):
-        return await message.reply_text(
-            "Please send a public channel @username, or forward a recent post from the private channel.",
-            parse_mode=ParseMode.HTML,
-        )
-    try:
-        chat = await resolve_destination(value, screenshot_client)
-        await screenshot_client.resolve_peer(chat.id)
-    except Exception as exc:
-        return await message.reply_text(
-            f"❌ Could not verify this screenshot channel: {html.escape(str(exc)[:500])}\\n"
-            "Add this screenshot bot as an administrator with permission to post photos, then try again.",
-            parse_mode=ParseMode.HTML,
-        )
-    await asyncio.to_thread(queue.set_setting, "image_channel", str(chat.id))
-    screenshot_setup_state.discard(uid)
-    await message.reply_text(
-        f"✅ <b>Screenshot channel saved in Neon.</b>\\n"
-        f"Channel: {html.escape(chat.title or value)}\\n"
-        f"ID: <code>{chat.id}</code>",
-        parse_mode=ParseMode.HTML,
-    )
 
 
 async def panel_cmd(client, message):
@@ -1307,7 +1101,6 @@ def batch_keyboard(uid: int) -> InlineKeyboardMarkup:
     selection = state.get("selection", "new")
     quality = state.get("quality", 720)
     quality_label = "Best" if quality is None else f"{quality}p"
-    screenshots = "ON" if state.get("screenshots", True) else "OFF"
     skip = "ON" if state.get("skip_existing", True) else "OFF"
     return InlineKeyboardMarkup([
         [
@@ -1320,10 +1113,7 @@ def batch_keyboard(uid: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("Latest 50" + (" ✓" if selection == "latest:50" else ""), callback_data="channel:select:latest:50"),
         ],
         [InlineKeyboardButton("✍️ Custom pages", callback_data="channel:custom_pages")],
-        [
-            InlineKeyboardButton(f"🖼 Screenshots: {screenshots}", callback_data="channel:toggle:screenshots"),
-            InlineKeyboardButton(f"⏭ Skip existing: {skip}", callback_data="channel:toggle:skip"),
-        ],
+        [InlineKeyboardButton(f"⏭ Skip existing: {skip}", callback_data="channel:toggle:skip")],
         [
             InlineKeyboardButton("✅ Review & queue", callback_data="channel:review"),
             InlineKeyboardButton("✖ Cancel", callback_data="channel:cancel"),
@@ -1345,7 +1135,6 @@ def batch_summary(info, state: dict) -> str:
         f"📚 <b>{html.escape(info.name)}</b>\n"
         f"Videos: <b>{info.total_videos}</b> · Pages: <b>{info.total_pages}</b>\n\n"
         f"Selection: <b>{html.escape(selection_label)}</b>\n"
-        f"Screenshots: <b>{'Enabled' if state.get('screenshots', True) else 'Disabled'}</b>\n"
         f"Skip existing: <b>{'Yes' if state.get('skip_existing', True) else 'No'}</b>\n\n"
         "Choose every option below, then press Review & queue."
     )
@@ -1372,7 +1161,7 @@ async def batch_cmd(client, message):
         info = await asyncio.to_thread(JavtifulChannelScraper().inspect, url)
         channel_state[message.from_user.id] = {
             "info": info, "selection": "new", "quality": 720,
-            "screenshots": True, "skip_existing": True,
+            "skip_existing": True,
             "status_chat_id": status.chat.id,
         }
         await status.edit_text(
@@ -1409,7 +1198,6 @@ async def queue_channel_batch(message, uid: int):
             if match:
                 items.append((
                     match.group(1), url, 720, uid,
-                    state.get("screenshots", True),
                 ))
         if not items:
             raise RuntimeError("No video links were found in the selected pages.")
@@ -1509,28 +1297,21 @@ async def queue_cmd(client, message):
 
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, images, shots, paused = await asyncio.gather(
+    video, paused = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
-        asyncio.to_thread(queue.get_setting, "image_channel", "Not set"),
-        asyncio.to_thread(queue.get_setting, "upload_screenshots", "true"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
     )
-    enabled = str(shots).lower() in {"1", "true", "yes", "on"}
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     body = (
         "⚙️ <b>Settings</b>\\n\\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
-        f"🖼 Screenshot destination: <code>{html.escape(str(images))}</code>\\n"
-        f"📸 Screenshot delivery: <b>{'ON' if enabled else 'OFF'}</b>\\n"
         "🎥 Quality: <b>720p automatic</b>\\n"
         f"⚡ Worker concurrency: <b>{parallel}/{MAX_WORKERS}</b>\\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
     markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton(f"📸 Screenshots: {'ON' if enabled else 'OFF'}", callback_data="settings:shots")],
-        [InlineKeyboardButton("🎞 Set video destination", callback_data="settings:video"),
-         InlineKeyboardButton("🖼 Set screenshot destination", callback_data="settings:images")],
+        [InlineKeyboardButton("🎞 Set video destination", callback_data="settings:video")],
         [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
          InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
          InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
@@ -1547,15 +1328,13 @@ async def set_channel(message, key):
     parts = (message.text or "").split(maxsplit=1)
     if len(parts) < 2:
         setup_state[message.from_user.id] = key
-        label = "video upload" if key == "upload_channel" else "screenshot"
         return await message.reply_text(
             f"Send @channelusername for a public channel, or forward a recent post from your private {label} channel here. "
             "The bot will resolve the channel, verify posting rights, and save it in Neon. Send CANCEL to stop."
         )
     value = parts[1].strip()
     try:
-        target_client = screenshot_client if key == "image_channel" else app
-        chat = await resolve_destination(value, target_client)
+        chat = await resolve_destination(value)
     except DestinationError as exc:
         return await message.reply_text(
             f"❌ {html.escape(str(exc))}\n\n"
@@ -1577,7 +1356,6 @@ async def cancelsetup_cmd(client, message):
 
 
 async def setupload_cmd(client, message): await set_channel(message, "upload_channel")
-async def setimages_cmd(client, message): await set_channel(message, "image_channel")
 
 
 def forwarded_source_chat(message):
@@ -1593,7 +1371,7 @@ async def forwarded_destination_handler(client, message):
     if not message.from_user or message.from_user.id not in ADMINS:
         return
     key = setup_state.get(message.from_user.id)
-    if key not in {"upload_channel", "image_channel"}:
+    if key != "upload_channel":
         return
     source = forwarded_source_chat(message)
     if source is None or getattr(source, "type", None) != ChatType.CHANNEL:
@@ -1602,27 +1380,18 @@ async def forwarded_destination_handler(client, message):
             "(use Telegram Forward, not copy/paste), or send CANCEL."
         )
     try:
-        # The forwarded post exposes the channel peer to the main bot. Copy its
-        # access hash into the screenshot bot session before validating that bot.
         chat = await app.get_chat(source.id)
-        target_client = screenshot_client if key == "image_channel" else app
-        if key == "image_channel":
-            await sync_screenshot_peer(chat.id)
-        verified = await resolve_destination(str(chat.id), target_client)
+        verified = await resolve_destination(str(chat.id))
     except Exception as exc:
         return await message.reply_text(
             f"❌ Could not verify forwarded channel: {html.escape(str(exc)[:450])}\n"
             "Confirm the bot is an administrator with permission to post, then forward a fresh post."
         )
-    if key == "image_channel":
-        await screenshot_client.resolve_peer(verified.id)
-    else:
-        await sync_upload_peer(verified.id)
+    await sync_upload_peer(verified.id)
     await asyncio.to_thread(queue.set_setting, key, str(verified.id))
     setup_state.pop(message.from_user.id, None)
-    label = "Video" if key == "upload_channel" else "Screenshot"
     await message.reply_text(
-        f"✅ {label} channel verified and saved: <code>{verified.id}</code>\n"
+        f"✅ Video channel verified and saved: <code>{verified.id}</code>\\n"
         f"Title: {html.escape(verified.title or 'Private channel')}",
         parse_mode=ParseMode.HTML,
     )
@@ -1643,7 +1412,7 @@ async def setup_cmd(client, message):
     if await deny(message): return
     setup_state[message.from_user.id] = "upload_channel"
     await message.reply_text(
-        "Step 1/2: forward any recent post from your private video channel here. "
+        "Forward a recent post from your private video channel here. "
         "The bot must be an administrator with permission to post."
     )
 
@@ -1653,11 +1422,10 @@ async def queue_single_url(message, url: str):
     if not match:
         return await message.reply_text("Expected a Javtiful /video/ URL.")
     status = await message.reply_text("⏳ Adding Javtiful video to the queue…")
-    shots = str(await asyncio.to_thread(queue.get_setting, "upload_screenshots", "true")).lower() in {"1", "true", "yes", "on"}
     job, created = await asyncio.to_thread(
         queue.enqueue, match.group(1), url, 720,
         requested_by=message.from_user.id, status_chat_id=status.chat.id,
-        status_message_id=status.id, upload_screenshots=shots,
+        status_message_id=status.id,
     )
     await status.edit_text(
         f"{'🕒 Added to queue' if created else '⏭ Already exists'} · <code>{match.group(1)}</code>\\n"
@@ -1735,10 +1503,6 @@ async def text_handler(client, message):
         if text.upper() == "CANCEL":
             setup_state.pop(uid, None)
             return await message.reply_text("Setup cancelled.")
-        if stage == "image_channel" and text.upper() == "SKIP":
-            await asyncio.to_thread(queue.set_setting, "image_channel", "")
-            setup_state.pop(uid, None)
-            return await message.reply_text("✅ Setup complete. Screenshot channel disabled.")
         value = text
         if value.startswith("@"):
             try:
@@ -1756,20 +1520,17 @@ async def text_handler(client, message):
         except DestinationError as exc:
             return await message.reply_text(f"❌ {html.escape(str(exc))}", parse_mode=ParseMode.HTML)
         value = str(chat.id)
-        key = "upload_channel" if stage == "upload_channel" else "image_channel"
-        await asyncio.to_thread(queue.set_setting, key, value)
-        if stage == "upload_channel":
-            setup_state[uid] = "image_channel"
-            return await message.reply_text("✅ Video channel saved. Step 2/2: send screenshot channel ID/@username, or SKIP.")
+        await asyncio.to_thread(queue.set_setting, "upload_channel", value)
+        await sync_upload_peer(chat.id)
         setup_state.pop(uid, None)
-        return await message.reply_text("✅ Setup complete. Both channel IDs are saved in Neon.")
+        return await message.reply_text("✅ Video upload channel saved and verified in Neon.")
     if CHANNEL_URL.fullmatch(text):
         status = await message.reply_text("🔎 Inspecting Javtiful channel…")
         try:
             info = await asyncio.to_thread(JavtifulChannelScraper().inspect, text)
             channel_state[uid] = {
                 "info": info, "selection": "new", "quality": 720,
-                "screenshots": True, "skip_existing": True,
+                "skip_existing": True,
             }
             await status.edit_text(
                 batch_summary(info, channel_state[uid]),
@@ -1837,18 +1598,12 @@ async def callback_handler(client, callback):
             f"Queue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
-    if data == "settings:shots":
-        current = str(await asyncio.to_thread(queue.get_setting, "upload_screenshots", "true")).lower() in {"1", "true", "yes", "on"}
-        await asyncio.to_thread(queue.set_setting, "upload_screenshots", "false" if current else "true")
-        await callback.answer(f"Screenshots {'disabled' if current else 'enabled'}.")
-        return await settings_cmd(client, callback.message)
-    if data in {"settings:video", "settings:images"}:
-        setup_state[uid] = "upload_channel" if data == "settings:video" else "image_channel"
+    if data == "settings:video":
+        setup_state[uid] = "upload_channel"
         await callback.answer()
-        label = "video destination" if data == "settings:video" else "screenshot destination"
         return await callback.message.reply_text(
-            f"Forward any recent post from the private {label} channel here. "
-            "The bot will resolve and verify the channel peer before saving it. Send CANCEL to stop."
+            "Forward any recent post from the private video channel here. "
+            "The bot will resolve and verify the channel before saving it in Neon. Send CANCEL to stop."
         )
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
@@ -1931,8 +1686,7 @@ async def callback_handler(client, callback):
         status = await callback.message.reply_text("🔁 Requeueing failed job…")
         job, created = await asyncio.to_thread(
             queue.enqueue, old["video_id"], old["post_url"], 720,
-            requested_by=uid, status_chat_id=status.chat.id, status_message_id=status.id,
-            upload_screenshots=old.get("upload_screenshots", True))
+            requested_by=uid, status_chat_id=status.chat.id, status_message_id=status.id)
         await callback.answer("Retry queued." if created else "Job already queued.")
         await status.edit_text(f"🔁 Job #{job['id']} · {html.escape(str(job['status']))}")
         return await render_queue(callback.message, edit=True)
@@ -1971,10 +1725,6 @@ async def callback_handler(client, callback):
         else:
             return await callback.answer("Unknown selection.", show_alert=True)
         await callback.answer("Selection updated.")
-        return await show_batch_menu(callback.message, uid)
-    if data == "channel:toggle:screenshots":
-        state["screenshots"] = not state.get("screenshots", True)
-        await callback.answer("Screenshot setting updated.")
         return await show_batch_menu(callback.message, uid)
     if data == "channel:toggle:skip":
         state["skip_existing"] = not state.get("skip_existing", True)
@@ -2029,7 +1779,7 @@ async def retry_cmd(client, message):
     job, _ = await asyncio.to_thread(
         queue.enqueue, old["video_id"], old["post_url"], old["quality"],
         requested_by=message.from_user.id, status_chat_id=status.chat.id,
-        status_message_id=status.id, upload_screenshots=old.get("upload_screenshots", True),
+        status_message_id=status.id,
     )
     await status.edit_text(f"🕒 Requeued {old['video_id']} (job #{job['id']}).")
 
@@ -2064,11 +1814,6 @@ async def on_stop(client):
     log.info("TMJDLC workers stopped.")
 
 
-screenshot_client.add_handler(MessageHandler(screenshot_start_cmd, filters.command(["start", "help"]) & filters.private))
-screenshot_client.add_handler(MessageHandler(screenshot_setchannel_cmd, filters.command("setchannel") & filters.private))
-screenshot_client.add_handler(MessageHandler(screenshot_cancelsetup_cmd, filters.command("cancelsetup") & filters.private))
-screenshot_client.add_handler(MessageHandler(screenshot_forwarded_destination_handler, filters.private & filters.forwarded))
-screenshot_client.add_handler(MessageHandler(screenshot_text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
@@ -2081,7 +1826,6 @@ app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filte
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
 app.add_handler(MessageHandler(setup_cmd, filters.command("setup") & filters.private))
 app.add_handler(MessageHandler(setupload_cmd, filters.command("setupload") & filters.private))
-app.add_handler(MessageHandler(setimages_cmd, filters.command("setimages") & filters.private))
 app.add_handler(MessageHandler(cancelsetup_cmd, filters.command("cancelsetup") & filters.private))
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
@@ -2096,7 +1840,6 @@ async def run_bot():
         await upload_client.start()
         _upload_client_loads[id(upload_client)] = 0
         await start_helper_upload_clients()
-        await screenshot_client.start()
     except Exception:
         await stop_helper_upload_clients()
         if upload_client.is_connected:
@@ -2106,7 +1849,7 @@ async def run_bot():
     await on_start(app)
     log.info(
         "TMJDLC started | update=tmjdlc_bot | WZGram primary uploader=tmjdlc_upload "
-        "| helper_uploaders=%s | screenshot_upload=tmjdlc_screenshots "
+        "| helper_uploaders=%s "
         "| max_concurrent_transmissions=%s",
         len(_helper_upload_clients), UPLOAD_WORKERS,
     )
@@ -2114,7 +1857,6 @@ async def run_bot():
         await idle()
     finally:
         await on_stop(app)
-        await screenshot_client.stop()
         await stop_helper_upload_clients()
         await upload_client.stop()
         await app.stop()
