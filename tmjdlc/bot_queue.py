@@ -32,7 +32,6 @@ class JobQueue:
                 CREATE TABLE IF NOT EXISTS tmjdlc_bot_jobs (
                     id BIGSERIAL PRIMARY KEY, video_id TEXT NOT NULL UNIQUE,
                     post_url TEXT NOT NULL, quality INTEGER,
-                    upload_screenshots BOOLEAN NOT NULL DEFAULT FALSE,
                     status TEXT NOT NULL DEFAULT 'queued'
                       CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
                     attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
@@ -46,6 +45,7 @@ class JobQueue:
                     started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ
                 )
             """)
+            conn.execute("ALTER TABLE tmjdlc_bot_jobs DROP COLUMN IF EXISTS upload_screenshots")
             conn.execute("""
                 ALTER TABLE tmjdlc_bot_jobs
                 DROP CONSTRAINT IF EXISTS tmjdlc_bot_jobs_status_check
@@ -56,7 +56,6 @@ class JobQueue:
                 CHECK (status IN ('queued','downloading','ready','uploading','completed','failed','cancelled'))
             """)
             for definition in (
-                "upload_screenshots BOOLEAN NOT NULL DEFAULT FALSE",
                 "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
                 "current_stage TEXT",
                 "progress_percent INTEGER NOT NULL DEFAULT 0",
@@ -122,8 +121,8 @@ class JobQueue:
             row = conn.execute("""
                 INSERT INTO tmjdlc_bot_jobs
                   (video_id,post_url,quality,requested_by,status_chat_id,status_message_id,
-                   priority,max_attempts,upload_screenshots)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,FALSE)
+                   priority,max_attempts)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                 ON CONFLICT(video_id) DO NOTHING RETURNING *
             """, (video_id, post_url, quality, requested_by, status_chat_id,
                   status_message_id, priority, self.max_attempts)).fetchone()
@@ -138,7 +137,7 @@ class JobQueue:
                       attempts=0,last_error=NULL,worker_id=NULL,lease_until=NULL,
                       cancel_requested=FALSE,current_stage=NULL,progress_percent=0,
                       requested_by=%s,status_chat_id=%s,status_message_id=%s,
-                      priority=%s,upload_screenshots=FALSE,updated_at=now()
+                      priority=%s,updated_at=now()
                     WHERE video_id=%s RETURNING *
                 """, (post_url, quality, requested_by, status_chat_id, status_message_id,
                       priority, video_id)).fetchone()
@@ -156,8 +155,8 @@ class JobQueue:
                 row = conn.execute("""
                     INSERT INTO tmjdlc_bot_jobs
                       (video_id,post_url,quality,requested_by,priority,max_attempts,
-                       upload_screenshots,batch_id,status_chat_id,status_message_id)
-                    VALUES (%s,%s,%s,%s,100,%s,FALSE,%s,%s,%s)
+                       batch_id,status_chat_id,status_message_id)
+                    VALUES (%s,%s,%s,%s,100,%s,%s,%s,%s)
                     ON CONFLICT(video_id) DO NOTHING RETURNING id
                 """, (video_id, post_url, quality, requested_by,
                       self.max_attempts, batch_id,
@@ -173,7 +172,7 @@ class JobQueue:
                         UPDATE tmjdlc_bot_jobs SET status='queued',attempts=0,last_error=NULL,
                           worker_id=NULL,lease_until=NULL,cancel_requested=FALSE,
                           current_stage=NULL,progress_percent=0,post_url=%s,quality=%s,
-                          requested_by=%s,upload_screenshots=FALSE,batch_id=%s,
+                          requested_by=%s,batch_id=%s,
                           status_chat_id=%s,status_message_id=%s,updated_at=now()
                         WHERE id=%s
                     """, (post_url, quality, requested_by, batch_id,
