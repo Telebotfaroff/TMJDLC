@@ -46,6 +46,20 @@ class JobQueue:
                 )
             """)
             conn.execute("ALTER TABLE tmjdlc_bot_jobs DROP COLUMN IF EXISTS upload_screenshots")
+            # Older batch jobs shared one Telegram status message. Clear only
+            # duplicated IDs on unfinished batch jobs so workers recreate
+            # one dedicated notification per video after restart.
+            conn.execute("""
+                UPDATE tmjdlc_bot_jobs
+                SET status_chat_id=NULL,status_message_id=NULL
+                WHERE batch_id IS NOT NULL
+                  AND status IN ('queued','downloading','ready','uploading')
+                  AND status_message_id IN (
+                    SELECT status_message_id FROM tmjdlc_bot_jobs
+                    WHERE batch_id IS NOT NULL AND status_message_id IS NOT NULL
+                    GROUP BY status_message_id HAVING count(*) > 1
+                  )
+            """)
             conn.execute("""
                 ALTER TABLE tmjdlc_bot_jobs
                 DROP CONSTRAINT IF EXISTS tmjdlc_bot_jobs_status_check
