@@ -1,6 +1,7 @@
 """Persistent GoFile account uploader with 20-video public folder rotation."""
 from __future__ import annotations
 
+import logging
 import os
 import threading
 from pathlib import Path
@@ -12,6 +13,7 @@ from requests_toolbelt.multipart.encoder import MultipartEncoder
 API_BASE = "https://api.gofile.io"
 UPLOAD_URL = os.getenv("GOFILE_UPLOAD_URL", "https://upload.gofile.io/uploadfile").strip()
 TIMEOUT = (30, 3600)
+log = logging.getLogger(__name__)
 VIDEOS_PER_FOLDER = 20
 _upload_lock = threading.RLock()
 
@@ -196,9 +198,14 @@ def upload_file(queue, path: str | Path) -> dict[str, Any]:
             # Create the next public folder immediately. If this fails, the count
             # remains at 20 and the next upload retries folder creation safely.
             token, root_folder = _ensure_account(queue)
-            _create_public_folder(
-                queue, token, root_folder, int(destination["folder_number"]) + 1
-            )
+            try:
+                _create_public_folder(
+                    queue, token, root_folder, int(destination["folder_number"]) + 1
+                )
+            except Exception:
+                # The 20th video is already uploaded. Preserve its receipt so a
+                # folder-creation outage cannot cause the video to be uploaded twice.
+                log.exception("Could not pre-create the next GoFile batch folder")
 
         return {
             "file_id": str(data.get("id") or ""),
