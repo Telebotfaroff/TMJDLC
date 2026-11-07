@@ -1421,18 +1421,23 @@ async def destination_cmd(client, message, *, edit=False):
     ) or "telegram").lower()
     if mode not in {"telegram", "gofile", "both"}:
         mode = "telegram"
-    folder_url = await asyncio.to_thread(queue.get_setting, "gofile_folder_url", "")
-    folder_code = await asyncio.to_thread(queue.get_setting, "gofile_folder_code", "")
+    folder_url, folder_code, folder_number, folder_count = await asyncio.gather(
+        asyncio.to_thread(queue.get_setting, "gofile_folder_url", ""),
+        asyncio.to_thread(queue.get_setting, "gofile_folder_code", ""),
+        asyncio.to_thread(queue.get_setting, "gofile_folder_number", "1"),
+        asyncio.to_thread(queue.get_setting, "gofile_folder_count", "0"),
+    )
     folder_label = (
-        f'<a href="{html.escape(folder_url, quote=True)}">Open shared GoFile folder</a>'
+        f'<a href="{html.escape(folder_url, quote=True)}">Open current public folder</a>'
         if folder_url else ("Created; link unavailable" if folder_code else "Not initialized yet")
     )
     body = (
         "☁️ <b>Upload Destination</b>\n\n"
         f"Current mode: <b>{html.escape(mode.upper())}</b>\n"
         "Choose where completed downloads should be delivered.\n\n"
-        f"GoFile shared folder: {folder_label}\n"
-        "The same guest account and folder are reused for every upload."
+        f"Current GoFile folder: {folder_label}\n"
+        f"Batch: <b>#{html.escape(str(folder_number))}</b> · Videos: <b>{int(folder_count or 0)}/20</b>\n"
+        "Each public folder holds up to 20 videos. Completed folder links are sent to admins."
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("📨 Telegram" + (" ✓" if mode == "telegram" else ""),
