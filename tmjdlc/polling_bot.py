@@ -26,6 +26,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardB
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
 from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
+from tmjdlc.gofile import ensure_guest_folder, upload_file as gofile_upload_file
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
@@ -203,6 +204,7 @@ _upload_client_loads: dict[int, int] = {}
 _helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
 _destination_warm_tasks: dict[int, asyncio.Task] = {}
+_gofile_setup_lock = asyncio.Lock()
 DESTINATION_CACHE_SECONDS = 600
 
 app = Client(
@@ -679,36 +681,13 @@ async def process_job(job: dict, identity: str):
             log.exception("Could not create Telegram status message for job=%s", jid)
 
     try:
-        warm_task = _destination_warm_tasks.pop(jid, None)
-        warm_settings = await warm_task if warm_task else None
-        video_chat_value = warm_settings or await asyncio.to_thread(queue.get_setting, "upload_channel")
-
-        # A missing/unresolvable channel must not discard a successfully downloaded
-        # video. Prefer the configured channel, but fall back directly to the
-        # requesting user's private bot chat when peer resolution fails.
-        video_destination = None
-        try:
-            video_destination = await resolve_destination_cached(video_chat_value)
-            await sync_upload_peer(video_destination.id)
-        except DestinationError as exc:
-            fallback_chat_id = int(job.get("requested_by") or 0)
-            if not fallback_chat_id:
-                raise
-            log.warning(
-                "Video destination unavailable for job=%s; using private-chat fallback user_id=%s: %s",
-                jid, fallback_chat_id, exc,
-            )
-            await sync_upload_peer(fallback_chat_id)
-
-        # Reuse a previously completed upload receipt without introducing a
-        # post-download peer lookup when recovering a job after a retry.
-        video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
-        # A retry may resume after the upload stage was already completed.
-        # Restore the delivery route from its persisted receipt so the final
-        # notification does not reference an uninitialized local variable.
-        fallback_used = bool(video_stage.get("fallback", False)) if video_stage else False
-        if video_stage and video_stage.get("chat_id"):
-            await sync_upload_peer(int(video_stage["chat_id"]))
+        upload_mode = str(await asyncio.to_thread(
+            queue.get_setting, "upload_destination", "telegram"
+        ) or "telegram").lower()
+        if upload_mode not in {"telegram", "gofile", "both"}:
+            upload_mode = "telegram"
+        fallback_used = False
+        delivery_links = []
 
         download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
         path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
@@ -756,7 +735,7 @@ async def process_job(job: dict, identity: str):
         check_stop()
         await status_edit(chat_id, message_id,
                           f"✅ Download complete · <code>{html.escape(title)}</code>\n"
-                          "⚡ Upload session ready. Preparing Telegram media…")
+                          "⚡ Upload session ready. Preparing selected destination(s)…")
 
         # Probe the actual file so Telegram receives duration and frame dimensions.
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
@@ -778,169 +757,221 @@ async def process_job(job: dict, identity: str):
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Job lease was lost before upload.")
 
-        default_upload_chat_id = (
-            video_destination.id if video_destination is not None
-            else int(job.get("requested_by") or 0)
-        )
-        if not default_upload_chat_id:
-            raise DestinationError("No usable video destination or requesting-user chat is available.")
-
-        if not video_stage:
-            check_stop()
-            parts = await asyncio.to_thread(prepare_telegram_parts, path, vid)
-            part_count = len(parts)
-            if part_count > 1:
-                await status_edit(
-                    chat_id, message_id,
-                    f"✂️ Video exceeds Telegram's file limit. Split into {part_count} parts; "
-                    f"uploading sequentially…",
+        if upload_mode in {"telegram", "both"}:
+            warm_task = _destination_warm_tasks.pop(jid, None)
+            warm_settings = await warm_task if warm_task else None
+            video_chat_value = warm_settings or await asyncio.to_thread(
+                queue.get_setting, "upload_channel"
+            )
+            video_destination = None
+            try:
+                video_destination = await resolve_destination_cached(video_chat_value)
+                await sync_upload_peer(video_destination.id)
+            except DestinationError as exc:
+                fallback_chat_id = int(job.get("requested_by") or 0)
+                if not fallback_chat_id:
+                    raise
+                log.warning(
+                    "Video destination unavailable for job=%s; using private-chat fallback user_id=%s: %s",
+                    jid, fallback_chat_id, exc,
                 )
-            upload_chat_id = default_upload_chat_id
-            fallback_used = video_destination is None
-            part_receipts = []
-            total_bytes = sum(part.stat().st_size for part in parts)
-            uploaded_bytes_before = 0
+                await sync_upload_peer(fallback_chat_id)
+            video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+            fallback_used = bool(video_stage.get("fallback", False)) if video_stage else False
+            if video_stage and video_stage.get("chat_id"):
+                await sync_upload_peer(int(video_stage["chat_id"]))
+            default_upload_chat_id = (
+                video_destination.id if video_destination is not None
+                else int(job.get("requested_by") or 0)
+            )
+            if not default_upload_chat_id:
+                raise DestinationError("No usable video destination or requesting-user chat is available.")
 
-            for part_index, part_path in enumerate(parts, start=1):
+            if not video_stage:
                 check_stop()
-                part_stage_name = f"video_upload_part_{part_index:03d}"
-                part_stage = await asyncio.to_thread(queue.stage_done, jid, part_stage_name)
-                if part_stage:
-                    part_receipts.append(part_stage)
-                    upload_chat_id = int(part_stage.get("chat_id") or upload_chat_id)
-                    fallback_used = bool(part_stage.get("fallback", fallback_used))
-                    uploaded_bytes_before += part_path.stat().st_size
-                    continue
-
-                part_info = await asyncio.to_thread(probe_video, part_path)
-                part_title = title if part_count == 1 else f"{title} (Part {part_index}/{part_count})"
-                thumbnail = await asyncio.to_thread(
-                    create_video_thumbnail, part_path, f"{vid}-part-{part_index:03d}",
-                    part_info["width"], part_info["height"],
-                )
-                part_started_at = time.monotonic()
-                last_upload_notice = {
-                    "percent": -PROGRESS_STEP, "time": part_started_at,
-                    "bytes": 0, "speed": 0.0,
-                }
-                part_size = part_path.stat().st_size
-                log.info(
-                    "Telegram upload started | job_id=%s video_id=%s part=%s/%s "
-                    "size=%s destination=%s",
-                    jid, vid, part_index, part_count, _fmt_bytes(part_size), upload_chat_id,
-                )
-
-                async def upload_progress(current, total, *_):
-                    if not total:
-                        return
-                    now = time.monotonic()
-                    elapsed = max(now - last_upload_notice["time"], 0.001)
-                    instant_speed = max(0, current - last_upload_notice["bytes"]) / elapsed
-                    last_upload_notice["speed"] = (
-                        instant_speed if not last_upload_notice["speed"]
-                        else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
-                    )
-                    percent = min(100, int(current * 100 / total))
-                    if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
-                            or elapsed >= 2 or percent >= 100):
-                        speed = last_upload_notice["speed"]
-                        eta = (total - current) / speed if speed else None
-                        overall_done = uploaded_bytes_before + current
-                        overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
-                        log.info(
-                            "Telegram upload progress | job_id=%s video_id=%s part=%s/%s "
-                            "part_progress=%s%% overall=%s%% speed=%s/s sent=%s/%s",
-                            jid, vid, part_index, part_count, percent, overall_percent,
-                            _fmt_bytes(speed), _fmt_bytes(current), _fmt_bytes(total),
-                        )
-                        progress_label = (
-                            f"{title} · Part {part_index}/{part_count}"
-                            if part_count > 1 else title
-                        )
-                        await status_edit(chat_id, message_id, _progress_text(
-                            "Upload", vid, progress_label, overall_percent,
-                            overall_done, total_bytes, speed, eta, int(job["attempts"])
-                        ))
-                        last_upload_notice.update(percent=percent, time=now, bytes=current)
-
-                try:
-                    await sync_upload_peer(upload_chat_id)
-                    sent = await send_video_with_slot(
+                parts = await asyncio.to_thread(prepare_telegram_parts, path, vid)
+                part_count = len(parts)
+                if part_count > 1:
+                    await status_edit(
                         chat_id, message_id,
-                        chat_id=upload_chat_id, video=str(part_path), caption=part_title,
-                        duration=part_info["duration"], width=part_info["width"],
-                        height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
-                        supports_streaming=True, parse_mode=ParseMode.DISABLED,
-                        progress=upload_progress,
+                        f"✂️ Video exceeds Telegram's file limit. Split into {part_count} parts; "
+                        f"uploading sequentially…",
                     )
-                except Exception as channel_error:
-                    fallback_chat_id = int(job.get("requested_by") or 0)
-                    if not fallback_chat_id or fallback_chat_id == upload_chat_id:
-                        raise
-                    log.exception(
-                        "Telegram channel upload failed for part %s/%s of job=%s; "
-                        "trying private-chat fallback user_id=%s",
-                        part_index, part_count, jid, fallback_chat_id,
-                    )
-                    await sync_upload_peer(fallback_chat_id)
-                    sent = await send_video_with_slot(
-                        chat_id, message_id,
-                        chat_id=fallback_chat_id, video=str(part_path), caption=part_title,
-                        duration=part_info["duration"], width=part_info["width"],
-                        height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
-                        supports_streaming=True, parse_mode=ParseMode.DISABLED,
-                        progress=upload_progress,
-                    )
-                    upload_chat_id = fallback_chat_id
-                    fallback_used = True
+                upload_chat_id = default_upload_chat_id
+                fallback_used = video_destination is None
+                part_receipts = []
+                total_bytes = sum(part.stat().st_size for part in parts)
+                uploaded_bytes_before = 0
 
-                receipt = {
-                    "chat_id": sent.chat.id, "message_id": sent.id,
-                    "part": part_index, "parts": part_count, "fallback": fallback_used,
+                for part_index, part_path in enumerate(parts, start=1):
+                    check_stop()
+                    part_stage_name = f"video_upload_part_{part_index:03d}"
+                    part_stage = await asyncio.to_thread(queue.stage_done, jid, part_stage_name)
+                    if part_stage:
+                        part_receipts.append(part_stage)
+                        upload_chat_id = int(part_stage.get("chat_id") or upload_chat_id)
+                        fallback_used = bool(part_stage.get("fallback", fallback_used))
+                        uploaded_bytes_before += part_path.stat().st_size
+                        continue
+
+                    part_info = await asyncio.to_thread(probe_video, part_path)
+                    part_title = title if part_count == 1 else f"{title} (Part {part_index}/{part_count})"
+                    thumbnail = await asyncio.to_thread(
+                        create_video_thumbnail, part_path, f"{vid}-part-{part_index:03d}",
+                        part_info["width"], part_info["height"],
+                    )
+                    part_started_at = time.monotonic()
+                    last_upload_notice = {
+                        "percent": -PROGRESS_STEP, "time": part_started_at,
+                        "bytes": 0, "speed": 0.0,
+                    }
+                    part_size = part_path.stat().st_size
+                    log.info(
+                        "Telegram upload started | job_id=%s video_id=%s part=%s/%s "
+                        "size=%s destination=%s",
+                        jid, vid, part_index, part_count, _fmt_bytes(part_size), upload_chat_id,
+                    )
+
+                    async def upload_progress(current, total, *_):
+                        if not total:
+                            return
+                        now = time.monotonic()
+                        elapsed = max(now - last_upload_notice["time"], 0.001)
+                        instant_speed = max(0, current - last_upload_notice["bytes"]) / elapsed
+                        last_upload_notice["speed"] = (
+                            instant_speed if not last_upload_notice["speed"]
+                            else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
+                        )
+                        percent = min(100, int(current * 100 / total))
+                        if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
+                                or elapsed >= 2 or percent >= 100):
+                            speed = last_upload_notice["speed"]
+                            eta = (total - current) / speed if speed else None
+                            overall_done = uploaded_bytes_before + current
+                            overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
+                            log.info(
+                                "Telegram upload progress | job_id=%s video_id=%s part=%s/%s "
+                                "part_progress=%s%% overall=%s%% speed=%s/s sent=%s/%s",
+                                jid, vid, part_index, part_count, percent, overall_percent,
+                                _fmt_bytes(speed), _fmt_bytes(current), _fmt_bytes(total),
+                            )
+                            progress_label = (
+                                f"{title} · Part {part_index}/{part_count}"
+                                if part_count > 1 else title
+                            )
+                            await status_edit(chat_id, message_id, _progress_text(
+                                "Upload", vid, progress_label, overall_percent,
+                                overall_done, total_bytes, speed, eta, int(job["attempts"])
+                            ))
+                            last_upload_notice.update(percent=percent, time=now, bytes=current)
+
+                    try:
+                        await sync_upload_peer(upload_chat_id)
+                        sent = await send_video_with_slot(
+                            chat_id, message_id,
+                            chat_id=upload_chat_id, video=str(part_path), caption=part_title,
+                            duration=part_info["duration"], width=part_info["width"],
+                            height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                            supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                            progress=upload_progress,
+                        )
+                    except Exception as channel_error:
+                        fallback_chat_id = int(job.get("requested_by") or 0)
+                        if not fallback_chat_id or fallback_chat_id == upload_chat_id:
+                            raise
+                        log.exception(
+                            "Telegram channel upload failed for part %s/%s of job=%s; "
+                            "trying private-chat fallback user_id=%s",
+                            part_index, part_count, jid, fallback_chat_id,
+                        )
+                        await sync_upload_peer(fallback_chat_id)
+                        sent = await send_video_with_slot(
+                            chat_id, message_id,
+                            chat_id=fallback_chat_id, video=str(part_path), caption=part_title,
+                            duration=part_info["duration"], width=part_info["width"],
+                            height=part_info["height"], thumb=str(thumbnail) if thumbnail else None,
+                            supports_streaming=True, parse_mode=ParseMode.DISABLED,
+                            progress=upload_progress,
+                        )
+                        upload_chat_id = fallback_chat_id
+                        fallback_used = True
+
+                    receipt = {
+                        "chat_id": sent.chat.id, "message_id": sent.id,
+                        "part": part_index, "parts": part_count, "fallback": fallback_used,
+                    }
+                    if not await asyncio.to_thread(
+                        queue.complete_stage, jid, identity, part_stage_name, receipt
+                    ):
+                        raise RuntimeError(
+                            f"Part {part_index}/{part_count} was sent but its receipt could not be saved."
+                        )
+                    part_receipts.append(receipt)
+                    uploaded_bytes_before += part_size
+                    elapsed = max(time.monotonic() - part_started_at, 0.001)
+                    log.info(
+                        "Telegram upload completed | job_id=%s video_id=%s part=%s/%s "
+                        "size=%s elapsed=%ss average_speed=%s/s message_id=%s",
+                        jid, vid, part_index, part_count, _fmt_bytes(part_size), int(elapsed),
+                        _fmt_bytes(part_size / elapsed), sent.id,
+                    )
+
+                summary = {
+                    "chat_id": upload_chat_id,
+                    "message_id": part_receipts[-1]["message_id"],
+                    "parts": part_receipts,
+                    "part_count": part_count,
+                    "fallback": fallback_used,
                 }
                 if not await asyncio.to_thread(
-                    queue.complete_stage, jid, identity, part_stage_name, receipt
+                    queue.complete_stage, jid, identity, "video_upload", summary
                 ):
-                    raise RuntimeError(
-                        f"Part {part_index}/{part_count} was sent but its receipt could not be saved."
-                    )
-                part_receipts.append(receipt)
-                uploaded_bytes_before += part_size
-                elapsed = max(time.monotonic() - part_started_at, 0.001)
+                    raise RuntimeError("All parts were sent, but the final upload receipt could not be saved.")
+            else:
                 log.info(
-                    "Telegram upload completed | job_id=%s video_id=%s part=%s/%s "
-                    "size=%s elapsed=%ss average_speed=%s/s message_id=%s",
-                    jid, vid, part_index, part_count, _fmt_bytes(part_size), int(elapsed),
-                    _fmt_bytes(part_size / elapsed), sent.id,
+                    "Skipping completed video upload for job=%s parts=%s",
+                    jid, video_stage.get("part_count", 1),
                 )
 
-            summary = {
-                "chat_id": upload_chat_id,
-                "message_id": part_receipts[-1]["message_id"],
-                "parts": part_receipts,
-                "part_count": part_count,
-                "fallback": fallback_used,
-            }
-            if not await asyncio.to_thread(
-                queue.complete_stage, jid, identity, "video_upload", summary
-            ):
-                raise RuntimeError("All parts were sent, but the final upload receipt could not be saved.")
-        else:
-            log.info(
-                "Skipping completed video upload for job=%s parts=%s",
-                jid, video_stage.get("part_count", 1),
-            )
+        if upload_mode in {"gofile", "both"}:
+            gofile_stage = await asyncio.to_thread(queue.stage_done, jid, "gofile_upload")
+            if gofile_stage and gofile_stage.get("download_url"):
+                gofile_receipt = gofile_stage
+                log.info("Skipping completed GoFile upload | job_id=%s video_id=%s", jid, vid)
+            else:
+                check_stop()
+                await status_edit(
+                    chat_id, message_id,
+                    f"☁️ Uploading <b>{html.escape(title)}</b> to the shared GoFile guest folder…",
+                )
+                gofile_receipt = await asyncio.to_thread(gofile_upload_file, queue, path)
+                if not await asyncio.to_thread(
+                    queue.complete_stage, jid, identity, "gofile_upload", gofile_receipt
+                ):
+                    raise RuntimeError("GoFile upload finished but its receipt could not be saved.")
+            gofile_link = str(gofile_receipt.get("download_url") or "")
+            if gofile_link:
+                delivery_links.append(
+                    f'☁️ GoFile: <a href="{html.escape(gofile_link, quote=True)}">Open file</a>'
+                )
+            folder_link = str(gofile_receipt.get("folder_url") or "")
+            if folder_link:
+                delivery_links.append(
+                    f'📁 Shared folder: <a href="{html.escape(folder_link, quote=True)}">Open folder</a>'
+                )
 
         check_stop()
         if not await asyncio.to_thread(queue.set_status, jid, identity, "completed",
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
+        links_text = "\n".join(delivery_links)
         await status_edit(chat_id, message_id,
             f"✅ <b>Job completed</b> · <code>#{jid}</code>\n"
-            f"🎬 Video: <code>{vid}</code>\n"
+            f"🎬 Video: <code>{html.escape(vid)}</code>\n"
             f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
             f"🔁 Attempts used: <b>{job['attempts']}</b>\n"
-            f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}")
+            f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}"
+            f"{chr(10) + links_text if links_text else ''}")
         if AUTO_CLEAN:
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
@@ -1064,6 +1095,7 @@ async def start_cmd(client, message):
     keyboard = ReplyKeyboardMarkup(
         [[KeyboardButton("⬇️ Download Video"), KeyboardButton("📚 Batch Download")],
          [KeyboardButton("📋 Queue"), KeyboardButton("⚙️ Settings")],
+         [KeyboardButton("☁️ Upload Destination")],
          [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")]],
         resize_keyboard=True, is_persistent=True,
     )
@@ -1109,6 +1141,7 @@ async def panel_cmd(client, message):
          InlineKeyboardButton("📚 Batch", callback_data="home:batch")],
         [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
          InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
+        [InlineKeyboardButton("☁️ Upload destination", callback_data="home:destination")],
         [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
          InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
     ])
@@ -1325,13 +1358,54 @@ async def queue_cmd(client, message):
     return await render_queue(message)
 
 
+async def ensure_gofile_ready() -> dict[str, str]:
+    """Initialize the one persistent GoFile guest account/folder exactly once per process."""
+    async with _gofile_setup_lock:
+        return await asyncio.to_thread(ensure_guest_folder, queue)
+
+
+async def destination_cmd(client, message, *, edit=False):
+    mode = str(await asyncio.to_thread(
+        queue.get_setting, "upload_destination", "telegram"
+    ) or "telegram").lower()
+    if mode not in {"telegram", "gofile", "both"}:
+        mode = "telegram"
+    folder_url = await asyncio.to_thread(queue.get_setting, "gofile_folder_url", "")
+    folder_code = await asyncio.to_thread(queue.get_setting, "gofile_folder_code", "")
+    folder_label = (
+        f'<a href="{html.escape(folder_url, quote=True)}">Open shared GoFile folder</a>'
+        if folder_url else ("Created; link unavailable" if folder_code else "Not initialized yet")
+    )
+    body = (
+        "☁️ <b>Upload Destination</b>\\n\\n"
+        f"Current mode: <b>{html.escape(mode.upper())}</b>\\n"
+        "Choose where completed downloads should be delivered.\\n\\n"
+        f"GoFile shared folder: {folder_label}\\n"
+        "The same guest account and folder are reused for every upload."
+    )
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📨 Telegram" + (" ✓" if mode == "telegram" else ""),
+                              callback_data="settings:destination:telegram")],
+        [InlineKeyboardButton("☁️ GoFile" + (" ✓" if mode == "gofile" else ""),
+                              callback_data="settings:destination:gofile")],
+        [InlineKeyboardButton("📨 + ☁️ Both" + (" ✓" if mode == "both" else ""),
+                              callback_data="settings:destination:both")],
+        [InlineKeyboardButton("⚙️ Settings", callback_data="home:settings"),
+         InlineKeyboardButton("🏠 Home", callback_data="home:show")],
+    ])
+    if edit:
+        return await message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, paused, upload_concurrency, notifications = await asyncio.gather(
+    video, paused, upload_concurrency, notifications, upload_destination = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
+        asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
     )
     upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
@@ -1339,6 +1413,7 @@ async def settings_cmd(client, message, check_access=True):
     body = (
         "⚙️ <b>Settings</b>\\n\\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
+        f"☁️ Delivery mode: <b>{html.escape(str(upload_destination).upper())}</b>\\n"
         "🎥 Quality: <b>720p automatic</b>\\n"
         f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
         f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
@@ -1348,6 +1423,7 @@ async def settings_cmd(client, message, check_access=True):
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🎞 Set video destination", callback_data="settings:video")],
+        [InlineKeyboardButton("☁️ Choose upload destination", callback_data="home:destination")],
         [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
          InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
          InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
@@ -1485,6 +1561,7 @@ async def text_handler(client, message):
         "⚙️ Settings": "settings",
         "💽 Storage": "storage",
         "🖥 Worker Status": "worker",
+        "☁️ Upload Destination": "destination",
     }
     if text in menu:
         action = menu[text]
@@ -1499,6 +1576,8 @@ async def text_handler(client, message):
             return await settings_cmd(client, message)
         if action == "storage":
             return await storage_cmd(client, message)
+        if action == "destination":
+            return await destination_cmd(client, message)
         return await message.reply_text(
             f"🖥 Worker Status\\nWorkers: {parallel}/{MAX_WORKERS}\\nActive: {active}\\n"
             f"Queue polling: {POLL_SECONDS}s\\nFree disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
@@ -1615,6 +1694,9 @@ async def callback_handler(client, callback):
     if data == "home:settings":
         await callback.answer()
         return await settings_cmd(client, callback.message, check_access=False)
+    if data == "home:destination":
+        await callback.answer()
+        return await destination_cmd(client, callback.message, edit=True)
     if data == "home:download":
         download_state.add(uid)
         await callback.answer("Send a Javtiful video URL.")
@@ -1638,6 +1720,21 @@ async def callback_handler(client, callback):
             f"Queue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
+    if data.startswith("settings:destination:"):
+        mode = data.rsplit(":", 1)[-1]
+        if mode not in {"telegram", "gofile", "both"}:
+            return await callback.answer("Unknown upload destination.", show_alert=True)
+        if mode in {"gofile", "both"}:
+            try:
+                await ensure_gofile_ready()
+            except Exception as exc:
+                log.exception("GoFile guest setup failed")
+                return await callback.answer(
+                    f"GoFile setup failed: {str(exc)[:180]}", show_alert=True
+                )
+        await asyncio.to_thread(queue.set_setting, "upload_destination", mode)
+        await callback.answer(f"Upload destination set to {mode.upper()}.")
+        return await destination_cmd(client, callback.message, edit=True)
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
         await callback.answer()
