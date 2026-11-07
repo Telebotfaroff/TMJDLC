@@ -26,7 +26,7 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardB
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
 from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
-from tmjdlc.gofile import ensure_guest_folder, upload_file as gofile_upload_file
+from tmjdlc.gofile import (\n    ensure_guest_folder, finalize_current_folder, upload_file as gofile_upload_file,\n)
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
@@ -953,6 +953,9 @@ async def process_job(job: dict, identity: str):
                     queue.complete_stage, jid, identity, "gofile_upload", gofile_receipt
                 ):
                     raise RuntimeError("GoFile upload finished but its receipt could not be saved.")
+            completed_folder = gofile_receipt.get("folder_completed")
+            if completed_folder:
+                await notify_gofile_folder(completed_folder, "completed")
             gofile_link = str(gofile_receipt.get("download_url") or "")
             if gofile_link:
                 delivery_links.append(
@@ -1078,6 +1081,19 @@ async def upload_worker_loop(slot: int = 1):
             if job:
                 await process_job(job, identity)
                 continue
+            # When every queued/download/upload state is empty, publish the final
+            # partial GoFile folder and start a fresh public folder for the next run.
+            upload_mode = str(await asyncio.to_thread(
+                queue.get_setting, "upload_destination", "telegram"
+            ) or "telegram").lower()
+            if upload_mode in {"gofile", "both"}:
+                counts = await asyncio.to_thread(queue.counts)
+                unfinished = sum(int(counts.get(key, 0) or 0)
+                                 for key in ("queued", "downloading", "ready", "uploading"))
+                if unfinished == 0:
+                    partial_folder = await asyncio.to_thread(finalize_current_folder, queue)
+                    if partial_folder:
+                        await notify_gofile_folder(partial_folder, "partial")
             upload_ready_event.clear()
             # Recheck after clearing so a ready event cannot be lost between
             # the empty claim and the wait.
@@ -1368,6 +1384,35 @@ async def ensure_gofile_ready() -> dict[str, str]:
     """Initialize the one persistent GoFile guest account/folder exactly once per process."""
     async with _gofile_setup_lock:
         return await asyncio.to_thread(ensure_guest_folder, queue)
+
+async def notify_gofile_folder(folder: dict, reason: str = "completed") -> None:
+    """Send each finished GoFile batch-folder link to configured admin chats once."""
+    folder_id = str(folder.get("folder_id") or "").strip()
+    folder_url = str(folder.get("folder_url") or "").strip()
+    if not folder_id or not folder_url:
+        return
+    setting_key = f"gofile_notified_{folder_id}"
+    already_sent = await asyncio.to_thread(queue.get_setting, setting_key, "false")
+    if str(already_sent).lower() in {"1", "true", "yes", "on"}:
+        return
+    number = html.escape(str(folder.get("folder_number") or "?"))
+    count = int(folder.get("video_count") or 0)
+    label = "Folder completed" if reason == "completed" else "Queue finished · partial folder"
+    notice = (
+        f"📁 <b>GoFile {label}</b>\n"
+        f"Folder: <b>#{number}</b>\n"
+        f"Videos: <b>{count}/{20}</b>\n"
+        f'<a href="{html.escape(folder_url, quote=True)}">Open public folder</a>'
+    )
+    delivered = False
+    for admin_id in ADMINS:
+        try:
+            await app.send_message(admin_id, notice, parse_mode=ParseMode.HTML)
+            delivered = True
+        except Exception:
+            log.exception("Could not send GoFile folder notice to admin=%s folder=%s", admin_id, folder_id)
+    if delivered:
+        await asyncio.to_thread(queue.set_setting, setting_key, "true")
 
 
 async def destination_cmd(client, message, *, edit=False):
