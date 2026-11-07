@@ -11,7 +11,8 @@ Use `/start` to open the persistent menu:
 - **Download Video** — send a Javtiful video URL; it is queued automatically at 720p.
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
-- **Settings** — configure the video destination, download workers, and 1- or 2-video simultaneous uploads.
+- **Settings / Upload Destination** — choose Telegram, GoFile, or both; GoFile reuses one persistent guest account and shared folder.
+- **Settings** — configure the Telegram video destination, download workers, and 1- or 2-video simultaneous uploads.
 - **Storage** and **Worker Status** — inspect runtime health.
 
 The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
@@ -46,3 +47,14 @@ The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK
 - Downloader: yt-dlp
 - Browser-based stream detection: Playwright
 - Runtime target: Google Colab
+
+
+## GoFile uploads
+
+Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. Set `GOFILE_API_TOKEN` in Colab Secrets or the runtime environment to use your own GoFile account token. If it is not supplied, TMJDLC creates one persistent guest account automatically. The token and account root folder are stored in Neon and reused after runtime restarts.
+
+TMJDLC creates public folders named **TMJDLC Batch 001**, **TMJDLC Batch 002**, and so on. Each folder receives up to **20 successfully uploaded videos**. After video 20, the bot creates the next public folder and sends the completed folder link to every configured admin in Telegram. When the queue becomes fully idle, a final folder containing 1–19 videos is also sent and a fresh folder is prepared for the next queue run. Empty folders are not announced.
+
+Uploads use streaming multipart requests. Folder IDs, share codes, counts, and notification receipts are persisted in Neon so worker restarts do not reset the batch counter. Every folder is created with `public: true`.
+
+Keep `GOFILE_API_TOKEN` private: anyone holding it has full access to the GoFile account. Do not commit it to GitHub or include it in logs.
