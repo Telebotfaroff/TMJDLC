@@ -686,6 +686,10 @@ async def process_job(job: dict, identity: str):
         ) or "telegram").lower()
         if upload_mode not in {"telegram", "gofile", "both"}:
             upload_mode = "telegram"
+        if upload_mode == "gofile":
+            unused_warm_task = _destination_warm_tasks.pop(jid, None)
+            if unused_warm_task and not unused_warm_task.done():
+                unused_warm_task.cancel()
         fallback_used = False
         delivery_links = []
 
@@ -977,12 +981,14 @@ async def process_job(job: dict, identity: str):
             if cleaned:
                 await asyncio.to_thread(queue.clear_media_path, vid)
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\n"
-                                  "🧹 Local video files cleaned.")
+                                  f"✅ Completed {vid}.\\n"
+                                  "🧹 Local video files cleaned."
+                                  f"{chr(10) + links_text if links_text else ''}")
             else:
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\n"
-                                  "⚠️ Upload finished, but some local files could not be cleaned.")
+                                  f"✅ Completed {vid}.\\n"
+                                  "⚠️ Upload finished, but some local files could not be cleaned."
+                                  f"{chr(10) + links_text if links_text else ''}")
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
                                 error="Cancelled by administrator.", lease_seconds=LEASE)
