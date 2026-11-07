@@ -1731,15 +1731,18 @@ async def callback_handler(client, callback):
         if mode not in {"telegram", "gofile", "both"}:
             return await callback.answer("Unknown upload destination.", show_alert=True)
         if mode in {"gofile", "both"}:
+            await callback.answer("Preparing the persistent GoFile guest folder…")
             try:
                 await ensure_gofile_ready()
             except Exception as exc:
                 log.exception("GoFile guest setup failed")
-                return await callback.answer(
-                    f"GoFile setup failed: {str(exc)[:180]}", show_alert=True
+                await callback.message.reply_text(
+                    f"❌ GoFile setup failed: {html.escape(str(exc)[:300])}"
                 )
+                return
+        else:
+            await callback.answer()
         await asyncio.to_thread(queue.set_setting, "upload_destination", mode)
-        await callback.answer(f"Upload destination set to {mode.upper()}.")
         return await destination_cmd(client, callback.message, edit=True)
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
