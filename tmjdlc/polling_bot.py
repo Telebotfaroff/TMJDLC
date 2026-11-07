@@ -26,7 +26,9 @@ from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardB
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
 from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
-from tmjdlc.gofile import (\n    ensure_guest_folder, finalize_current_folder, upload_file as gofile_upload_file,\n)
+from tmjdlc.gofile import (
+    ensure_guest_folder, finalize_current_folder, upload_file as gofile_upload_file,
+)
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
