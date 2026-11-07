@@ -49,8 +49,12 @@ The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK
 - Runtime target: Google Colab
 
 
-## GoFile guest uploads
+## GoFile uploads
 
-Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. The first GoFile selection creates one guest account and a public folder named **TMJDLC Uploads**. Its guest token, root folder, folder ID, and share code are stored in the Neon settings table, so Colab restarts and later jobs reuse the same account and folder. GoFile uploads use streaming multipart requests and their file/folder links are included in the completed-job notification.
+Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. Set `GOFILE_API_TOKEN` in Colab Secrets or the runtime environment to use your own GoFile account token. If it is not supplied, TMJDLC creates one persistent guest account automatically. The token and account root folder are stored in Neon and reused after runtime restarts.
 
-The GoFile guest token is a credential: keep Neon access restricted and never publish database settings or logs containing secrets. GoFile guest storage and file-size limits apply to the guest account.
+TMJDLC creates public folders named **TMJDLC Batch 001**, **TMJDLC Batch 002**, and so on. Each folder receives up to **20 successfully uploaded videos**. After video 20, the bot creates the next public folder and sends the completed folder link to every configured admin in Telegram. When the queue becomes fully idle, a final folder containing 1–19 videos is also sent and a fresh folder is prepared for the next queue run. Empty folders are not announced.
+
+Uploads use streaming multipart requests. Folder IDs, share codes, counts, and notification receipts are persisted in Neon so worker restarts do not reset the batch counter. Every folder is created with `public: true`.
+
+Keep `GOFILE_API_TOKEN` private: anyone holding it has full access to the GoFile account. Do not commit it to GitHub or include it in logs.
