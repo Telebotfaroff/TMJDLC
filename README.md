@@ -11,7 +11,8 @@ Use `/start` to open the persistent menu:
 - **Download Video** — send a Javtiful video URL; it is queued automatically at 720p.
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
-- **Settings** — configure the video destination, download workers, and 1- or 2-video simultaneous uploads.
+- **Settings / Upload Destination** — choose Telegram, GoFile, or both; GoFile reuses one persistent guest account and shared folder.
+- **Settings** — configure the Telegram video destination, download workers, and 1- or 2-video simultaneous uploads.
 - **Storage** and **Worker Status** — inspect runtime health.
 
 The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
@@ -46,3 +47,10 @@ The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK
 - Downloader: yt-dlp
 - Browser-based stream detection: Playwright
 - Runtime target: Google Colab
+
+
+## GoFile guest uploads
+
+Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. The first GoFile selection creates one guest account and a public folder named **TMJDLC Uploads**. Its guest token, root folder, folder ID, and share code are stored in the Neon settings table, so Colab restarts and later jobs reuse the same account and folder. GoFile uploads use streaming multipart requests and their file/folder links are included in the completed-job notification.
+
+The GoFile guest token is a credential: keep Neon access restricted and never publish database settings or logs containing secrets. GoFile guest storage and file-size limits apply to the guest account.
