@@ -981,12 +981,12 @@ async def process_job(job: dict, identity: str):
             if cleaned:
                 await asyncio.to_thread(queue.clear_media_path, vid)
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\\n"
+                                  f"✅ Completed {vid}.\n"
                                   "🧹 Local video files cleaned."
                                   f"{chr(10) + links_text if links_text else ''}")
             else:
                 await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\\n"
+                                  f"✅ Completed {vid}.\n"
                                   "⚠️ Upload finished, but some local files could not be cleaned."
                                   f"{chr(10) + links_text if links_text else ''}")
     except asyncio.CancelledError:
@@ -1383,10 +1383,10 @@ async def destination_cmd(client, message, *, edit=False):
         if folder_url else ("Created; link unavailable" if folder_code else "Not initialized yet")
     )
     body = (
-        "☁️ <b>Upload Destination</b>\\n\\n"
-        f"Current mode: <b>{html.escape(mode.upper())}</b>\\n"
-        "Choose where completed downloads should be delivered.\\n\\n"
-        f"GoFile shared folder: {folder_label}\\n"
+        "☁️ <b>Upload Destination</b>\n\n"
+        f"Current mode: <b>{html.escape(mode.upper())}</b>\n"
+        "Choose where completed downloads should be delivered.\n\n"
+        f"GoFile shared folder: {folder_label}\n"
         "The same guest account and folder are reused for every upload."
     )
     markup = InlineKeyboardMarkup([
@@ -1419,7 +1419,7 @@ async def settings_cmd(client, message, check_access=True):
     body = (
         "⚙️ <b>Settings</b>\\n\\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
-        f"☁️ Delivery mode: <b>{html.escape(str(upload_destination).upper())}</b>\\n"
+        f"☁️ Delivery mode: <b>{html.escape(str(upload_destination).upper())}</b>\n"
         "🎥 Quality: <b>720p automatic</b>\\n"
         f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
         f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
