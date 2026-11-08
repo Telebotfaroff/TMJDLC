@@ -191,8 +191,12 @@ def run() -> None:
         for i, job in enumerate(sorted(uploading, key=lambda x: x["order"])[:2], 1):
             lines.append(f"{i}. {job['title']}")
             lines.append(
-                f"Speed - {job['speed']} | Estimate time - {job['eta']} | "
-                f"Time taken - {_duration(now - job['phase_started'])}"
+                f"{_progress_bar(job.get('done', 0), job.get('total', 0))}  "
+                f"{_format_size(job.get('done', 0))} / {_format_size(job.get('total', 0))}"
+            )
+            lines.append(
+                f"Speed - {job['speed']} | ETA - {job['eta']} | "
+                f"Elapsed - {_duration(now - job['phase_started'])}"
             )
         return "\n".join(lines)[:3900]
 
@@ -262,7 +266,7 @@ def run() -> None:
                     except (ValueError, IndexError):
                         pass
                 elif detail.startswith("DOWNLOAD|"):
-                    bits = detail.split("|", 3)
+                    bits = detail.split("|")
                     if len(bits) > 1 and bits[1]:
                         job["speed"] = bits[1]
                     if len(bits) > 2 and bits[2]:
