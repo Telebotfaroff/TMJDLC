@@ -100,18 +100,19 @@ def run() -> None:
         if not api_key or api_key.startswith("/"):
             bot.send("No API key was saved. Send /setgofilekey and then send the key.")
             return
-        if int(state.get("video_count", 0)) > 0:
-            bot.send("Finish the current folder with /finish before changing GoFile accounts.")
+        if int(state.get("video_count", 0)) > 0 or int(state.get("folder_reserved_count", 0)) > 0:
+            bot.send("Finish the current folder with /finish after active downloads/uploads complete before changing GoFile accounts.")
             return
         previous = {
             key: state.get(key)
-            for key in ("gofile_token", "root_folder_id", "folder_id", "folder_code", "video_count")
+            for key in ("gofile_token", "root_folder_id", "folder_id", "folder_code", "video_count", "folder_reserved_count")
         }
         state["gofile_token"] = api_key.strip()
         state["root_folder_id"] = ""
         state["folder_id"] = ""
         state["folder_code"] = ""
         state["video_count"] = 0
+        state["folder_reserved_count"] = 0
         save_state()
         try:
             gofile.ensure_account()
@@ -253,7 +254,7 @@ def run() -> None:
                 if text.startswith("/finish"):
                     count, link, finished = pipeline.finish_current_folder()
                     if not finished:
-                        bot.send("Uploads are still running for this folder. Try /finish again after they complete.")
+                        bot.send("Downloads or uploads are still running. Try /finish again after all active jobs complete.")
                     elif count and link:
                         bot.send(f"GoFile folder completed ({count} videos):\\n{link}")
                     else:
