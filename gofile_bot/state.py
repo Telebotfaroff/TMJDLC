@@ -23,6 +23,7 @@ class StateStore:
                 "folder_code": "",
                 "folder_number": 0,
                 "video_count": 0,
+                "folder_reserved_count": 0,
                 "completed_folders": [],
                 "telegram_offset": 0,
             }
