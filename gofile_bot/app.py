@@ -274,12 +274,12 @@ def run() -> None:
                     dashboard_jobs.pop(job_id, None)
             except Exception as exc:
                 LOG.exception("Video job failed")
+                try:
+                    bot.send(f"❌ {code} failed: {type(exc).__name__}: {str(exc)[:300]}")
+                except Exception:
+                    pass
                 with dashboard_lock:
-                    job = dashboard_jobs.get(job_id)
-                    if job:
-                        job["phase"] = "failed"
-                        job["speed"] = f"Failed: {type(exc).__name__}"
-                        job["eta"] = str(exc)[:80]
+                    dashboard_jobs.pop(job_id, None)
             refresh_dashboard(force=True)
 
         future.add_done_callback(on_done)
