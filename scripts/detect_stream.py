@@ -339,6 +339,10 @@ def main() -> int:
             pass
 
         final_url = page.url
+        try:
+            page_title = page.title().strip()
+        except Exception:
+            page_title = ""
         final_host = (urlsplit(final_url).hostname or "").lower()
         if final_host not in {"javtiful.com", "www.javtiful.com"}:
             # Fail closed: never accept media captured after leaving the target site.
@@ -448,6 +452,7 @@ def main() -> int:
                 None,
             ),
             "post_url": final_url,
+            "title": page_title or None,
             "user_agent": (
                 "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                 "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
