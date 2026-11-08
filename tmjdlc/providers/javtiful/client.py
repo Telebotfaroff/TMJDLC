@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,15 @@ from typing import Any
 from tmjdlc.downloaders.yt_dlp import YtDlpStreamDownloader
 from tmjdlc.models.stream import StreamResult
 from tmjdlc.providers.javtiful.stream_detector import JavtifulStreamDetector
+
+
+def _safe_filename(value: str, fallback: str) -> str:
+    """Convert a page title into a portable, readable output filename stem."""
+    value = unicodedata.normalize("NFKC", value or "")
+    value = re.sub(r"[\\/:*?\"<>|\x00-\x1f]+", " ", value)
+    value = re.sub(r"\s+", " ", value).strip(" .-_")
+    value = value[:120].strip(" .-_")
+    return value or fallback
 
 
 def _safe_error_detail(error: Exception) -> str:
@@ -82,7 +92,9 @@ class JavtifulProvider:
                     f"Resolved {stream.format} source "
                     f"({stream.label or stream.quality or 'quality unknown'}); starting download."
                 )
-                attempt_name = filename if attempt == 1 else f"{filename}.retry{attempt}"
+                timestamp_suffix = filename.rsplit("_", 1)[-1] if "_" in filename else filename
+                titled_name = f"{_safe_filename(stream.title or '', filename)}_{timestamp_suffix}"
+                attempt_name = titled_name if attempt == 1 else f"{titled_name}.retry{attempt}"
                 path = self.downloader.download(
                     stream,
                     output_dir,
