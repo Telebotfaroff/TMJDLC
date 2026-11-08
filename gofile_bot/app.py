@@ -204,7 +204,7 @@ def run() -> None:
         with dashboard_lock:
             dashboard_jobs[job_id] = {
                 "order": dashboard_counter,
-                "title": f"{code} · {label}" if label else code,
+                "title": code,
                 "phase": "downloading",
                 "speed": "Starting…",
                 "eta": "Calculating…",
