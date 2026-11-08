@@ -37,6 +37,9 @@ class TelegramBot:
     def send(self, text: str) -> None:
         self.call("sendMessage", chat_id=self.owner_id, text=text, disable_web_page_preview=False)
 
+    def delete_message(self, message_id: int) -> None:
+        self.call("deleteMessage", chat_id=self.owner_id, message_id=message_id)
+
     def poll(self) -> list[dict[str, Any]]:
         result = self.call(
             "getUpdates",
@@ -103,12 +106,54 @@ def run() -> None:
                 if int(sender.get("id", 0)) != owner_id or int(chat.get("id", 0)) != owner_id:
                     continue
                 text = (message.get("text") or "").strip()
+
+                # API-key setup is a two-step private-chat flow. The key is never
+                # echoed or logged, and its Telegram message is deleted after receipt.
+                if state.get("awaiting_gofile_key"):
+                    state["awaiting_gofile_key"] = False
+                    save_state()
+                    try:
+                        bot.delete_message(int(message.get("message_id", 0)))
+                    except Exception:
+                        LOG.warning("Could not delete the message containing the GoFile API key")
+                    if not text or text.startswith("/"):
+                        bot.send("No API key was saved. Send /setgofilekey to try again.")
+                        continue
+                    if int(state.get("video_count", 0)) > 0:
+                        bot.send("Finish the current folder with /finish before changing GoFile accounts.")
+                        continue
+                    previous_token = state.get("gofile_token", "")
+                    previous_root = state.get("root_folder_id", "")
+                    state["gofile_token"] = text
+                    state["root_folder_id"] = ""
+                    state["folder_id"] = ""
+                    state["folder_code"] = ""
+                    state["video_count"] = 0
+                    save_state()
+                    try:
+                        gofile.ensure_account()
+                        bot.send("GoFile API key verified successfully. This account will be used for future uploads.")
+                    except Exception:
+                        state["gofile_token"] = previous_token
+                        state["root_folder_id"] = previous_root
+                        save_state()
+                        LOG.exception("GoFile API-key verification failed")
+                        bot.send("GoFile could not verify that API key. The previous account settings were restored. Send /setgofilekey to retry.")
+                    continue
+
+                if text.startswith("/setgofilekey"):
+                    state["awaiting_gofile_key"] = True
+                    save_state()
+                    bot.send("Send your GoFile API key as your next private message. I will delete that message after receiving it and will not repeat the key.")
+                    continue
+
                 if text.startswith("/start"):
                     bot.send(
                         "TMJDLC GoFile Controller\n"
                         "Send a Javtiful video URL to process it.\n"
                         "/status — current folder progress\n"
-                        "/finish — publish the current partial folder link"
+                        "/finish — publish the current partial folder link\n"
+                        "/setgofilekey — configure your GoFile API key"
                     )
                     continue
                 if text.startswith("/status"):
