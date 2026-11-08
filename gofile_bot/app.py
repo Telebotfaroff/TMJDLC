@@ -141,72 +141,146 @@ def run() -> None:
     channel_scraper = JavtifulChannelScraper()
     pending_channel = None
 
-    def start_video_job(url: str, label: str = "") -> None:
-        message_id = None
-        last_update = 0.0
-        last_text = ""
+    # One live dashboard message lists up to two downloads and two uploads.
+    dashboard_lock = threading.RLock()
+    dashboard_id = None
+    dashboard_last_edit = 0.0
+    dashboard_jobs: dict[str, dict[str, Any]] = {}
+    dashboard_counter = 0
 
-        def progress(detail: str) -> None:
-            nonlocal last_update, last_text, message_id
-            LOG.info("%s | %s", label or "video", detail)
-            if message_id is None:
-                status = bot.send(
-                    f"⬇️ Starting {label or 'video'}…\\n"
-                    "Pipeline: up to 2 downloads and 2 GoFile uploads simultaneously."
-                )
-                message_id = int(status["message_id"])
+    def _duration(seconds: float) -> str:
+        seconds = max(0, int(seconds))
+        return f"{seconds // 3600:02d}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
+
+    def _dashboard_text() -> str:
+        now = time.monotonic()
+        downloading = [j for j in dashboard_jobs.values() if j["phase"] == "downloading"]
+        uploading = [j for j in dashboard_jobs.values() if j["phase"] == "uploading"]
+        lines = ["📥 Downloading"]
+        if not downloading:
+            lines.append("No active downloads")
+        for i, job in enumerate(sorted(downloading, key=lambda x: x["order"])[:2], 1):
+            lines.append(f"{i}. {job['title']}")
+            lines.append(
+                f"Speed - {job['speed']} | Estimate time - {job['eta']} | "
+                f"Time taken - {_duration(now - job['phase_started'])}"
+            )
+        lines.append("")
+        lines.append("📤 Uploading")
+        if not uploading:
+            lines.append("No active uploads")
+        for i, job in enumerate(sorted(uploading, key=lambda x: x["order"])[:2], 1):
+            lines.append(f"{i}. {job['title']}")
+            lines.append(
+                f"Speed - {job['speed']} | Estimate time - {job['eta']} | "
+                f"Time taken - {_duration(now - job['phase_started'])}"
+            )
+        return "\n".join(lines)[:3900]
+
+    def refresh_dashboard(force: bool = False) -> None:
+        nonlocal dashboard_id, dashboard_last_edit
+        with dashboard_lock:
             now = time.monotonic()
-            if now - last_update < 2.0 or detail == last_text:
+            if dashboard_id is None:
+                result = bot.send(_dashboard_text())
+                dashboard_id = int(result["message_id"])
+                dashboard_last_edit = now
+                return
+            if not force and now - dashboard_last_edit < 1.5:
                 return
             try:
-                prefix = f"{label}\\n" if label else ""
-                bot.edit(message_id, f"{prefix}{detail[:850]}")
-                last_update, last_text = now, detail
+                bot.edit(dashboard_id, _dashboard_text())
+                dashboard_last_edit = now
             except Exception as exc:
                 if "message is not modified" not in str(exc).lower():
-                    LOG.debug("Progress update failed: %s", exc)
+                    LOG.debug("Dashboard update failed: %s", exc)
+
+    def start_video_job(url: str, label: str = "") -> None:
+        nonlocal dashboard_counter
+        dashboard_counter += 1
+        job_id = str(dashboard_counter)
+        match_code = re.search(r"/(?:video|videos|post)/([^/?#]+)", url, re.I)
+        code = match_code.group(1) if match_code else (url.rstrip("/").split("/")[-1] or "Javtiful")
+        with dashboard_lock:
+            dashboard_jobs[job_id] = {
+                "order": dashboard_counter,
+                "title": f"{code} · {label}" if label else code,
+                "phase": "downloading",
+                "speed": "Starting…",
+                "eta": "Calculating…",
+                "phase_started": time.monotonic(),
+                "last_upload_bytes": 0,
+                "last_upload_at": time.monotonic(),
+            }
+        refresh_dashboard(force=True)
+
+        def progress(detail: str) -> None:
+            with dashboard_lock:
+                job = dashboard_jobs.get(job_id)
+                if not job:
+                    return
+                if detail.startswith("TITLE|"):
+                    title = re.sub(r"\s+", " ", detail.split("|", 1)[1]).strip()
+                    title = title[:58] or code
+                    job["title"] = f"{code} · {title}"
+                elif detail.startswith("UPLOAD|"):
+                    try:
+                        sent, total = (int(v) for v in detail.split("|")[1:3])
+                        now = time.monotonic()
+                        elapsed = max(0.001, now - job["last_upload_at"])
+                        rate = max(0, sent - job["last_upload_bytes"]) / elapsed
+                        job["last_upload_bytes"] = sent
+                        job["last_upload_at"] = now
+                        job["speed"] = f"{rate / (1024 * 1024):.2f} MB/s"
+                        job["eta"] = _duration((total - sent) / rate) if rate > 0 and total >= sent else "Calculating…"
+                        if job["phase"] != "uploading":
+                            job["phase"] = "uploading"
+                            job["phase_started"] = now
+                    except (ValueError, IndexError):
+                        pass
+                elif detail.startswith("DOWNLOAD|"):
+                    bits = detail.split("|", 3)
+                    if len(bits) > 1 and bits[1]:
+                        job["speed"] = bits[1]
+                    if len(bits) > 2 and bits[2]:
+                        job["eta"] = bits[2]
+                    job["phase"] = "downloading"
+                elif "Waiting for GoFile upload" in detail:
+                    job["phase"] = "uploading"
+                    job["phase_started"] = time.monotonic()
+                    job["speed"] = "Starting…"
+                    job["eta"] = "Calculating…"
+                elif "Uploading " in detail:
+                    job["phase"] = "uploading"
+                    job["phase_started"] = time.monotonic()
+                    job["speed"] = "Starting…"
+                    job["eta"] = "Calculating…"
+            refresh_dashboard()
 
         def download_hook(data: dict[str, Any]) -> None:
             if data.get("status") == "downloading":
-                percent = str(data.get("_percent_str") or "").strip()
-                speed = str(data.get("_speed_str") or "").strip()
-                eta = str(data.get("_eta_str") or "").strip()
-                downloaded = data.get("downloaded_bytes")
-                total = data.get("total_bytes") or data.get("total_bytes_estimate")
-                detail = percent or "Downloading…"
-                if downloaded is not None and total:
-                    try:
-                        detail = f"{percent} | {float(downloaded)/(1024*1024):.1f}/{float(total)/(1024*1024):.1f} MB"
-                    except (TypeError, ValueError):
-                        pass
-                if speed:
-                    detail += f" | {speed}"
-                if eta:
-                    detail += f" | ETA {eta}"
-                progress(detail)
+                speed = str(data.get("_speed_str") or "").strip() or "Calculating…"
+                eta = str(data.get("_eta_str") or "").strip() or "Calculating…"
+                progress(f"DOWNLOAD|{speed}|{eta}")
             elif data.get("status") == "finished":
                 progress("Download finished. Finalizing video…")
 
         future = pipeline.submit(url, progress, download_hook)
 
         def on_done(done) -> None:
-            nonlocal message_id
             try:
                 done.result()
-                if message_id is None:
-                    status = bot.send(f"✅ {label or 'Video'} completed.")
-                    message_id = int(status["message_id"])
-                else:
-                    bot.edit(message_id, "✅ Download + GoFile upload completed.")
+                with dashboard_lock:
+                    dashboard_jobs.pop(job_id, None)
             except Exception as exc:
                 LOG.exception("Video job failed")
-                try:
-                    if message_id is None:
-                        bot.send(f"❌ {label or 'Video'} failed: {type(exc).__name__}: {str(exc)[:350]}")
-                    else:
-                        bot.edit(message_id, f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
-                except Exception:
-                    bot.send(f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
+                with dashboard_lock:
+                    job = dashboard_jobs.get(job_id)
+                    if job:
+                        job["phase"] = "failed"
+                        job["speed"] = f"Failed: {type(exc).__name__}"
+                        job["eta"] = str(exc)[:80]
+            refresh_dashboard(force=True)
 
         future.add_done_callback(on_done)
 
