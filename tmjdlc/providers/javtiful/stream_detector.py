@@ -225,6 +225,7 @@ class JavtifulStreamDetector:
             duration_seconds=duration_value,
             headers=headers,
             detected_from="actions_workflow",
+            title=page_title or None,
         )
         self._progress(
             f"Shared Actions detector resolved {media_format} "
