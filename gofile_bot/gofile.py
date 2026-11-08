@@ -115,16 +115,21 @@ class GoFileClient:
         path = Path(file_path)
         if not path.is_file():
             raise GoFileError(f"Upload file does not exist: {path}")
+        file_size = path.stat().st_size
         with path.open("rb") as stream:
             encoder = MultipartEncoder(fields={
                 "folderId": target_folder_id,
                 "file": (path.name, stream, "application/octet-stream"),
             })
-            monitor = MultipartEncoderMonitor(
-                encoder,
-                lambda current: progress_callback(current.bytes_read, current.len)
-                if progress_callback else None,
-            )
+            def report_progress(current) -> None:
+                if not progress_callback:
+                    return
+                # Convert multipart request progress into the actual video-file byte range.
+                # This keeps the dashboard's size and percentage tied to the video itself.
+                ratio = min(1.0, current.bytes_read / max(1, current.len))
+                progress_callback(min(file_size, int(file_size * ratio)), file_size)
+
+            monitor = MultipartEncoderMonitor(encoder, report_progress)
             response = requests.post(
                 UPLOAD_URL,
                 headers={**self._headers(), "Content-Type": monitor.content_type},
