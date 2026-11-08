@@ -7,15 +7,19 @@ import time
 from pathlib import Path
 from typing import Any
 
+from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
+
 import requests
 from dotenv import load_dotenv
 
 from gofile_bot.gofile import GoFileClient, GoFileError
 from gofile_bot.state import StateStore
+from gofile_bot.pipeline import DownloadUploadPipeline
 
 
 LOG = logging.getLogger("tmjdlc.gofile")
 URL_RE = re.compile(r"https?://(?:www\.)?javtiful\.com/[^\s<>]+", re.I)
+CHANNEL_URL_RE = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[A-Za-z0-9_-]+/?", re.I)
 VIDEOS_PER_FOLDER = 20
 
 
@@ -122,17 +126,81 @@ def run() -> None:
             LOG.exception("GoFile API-key verification failed")
             bot.send("GoFile could not verify that API key. Check that it is the account API token, then send /setgofilekey to retry.")
 
-    def close_current_folder() -> tuple[int, str]:
-        count = int(state.get("video_count", 0))
-        link = gofile.current_folder_link()
-        if count and link:
-            state["completed_folders"].append({"count": count, "link": link})
-            state.update({"folder_id": "", "folder_code": "", "video_count": 0})
-            save_state()
-        return count, link
+    def folder_completed(count: int, link: str) -> None:
+        bot.send(f"GoFile folder completed ({count} videos):\\n{link}")
+
+    pipeline = DownloadUploadPipeline(
+        gofile, state, save_state, work_dir, folder_completed,
+        download_workers=2, upload_workers=2,
+    )
+    channel_scraper = JavtifulChannelScraper()
+    pending_channel = None
+
+    def start_video_job(url: str, label: str = "") -> None:
+        status = bot.send(
+            f"⏳ Waiting for a download slot ({label or 'video'}).\\n"
+            "Pipeline: up to 2 downloads and 2 GoFile uploads simultaneously."
+        )
+        message_id = int(status["message_id"])
+        last_update = 0.0
+        last_text = ""
+
+        def progress(detail: str) -> None:
+            nonlocal last_update, last_text
+            LOG.info("%s | %s", label or "video", detail)
+            now = time.monotonic()
+            if now - last_update < 2.0 or detail == last_text:
+                return
+            try:
+                prefix = f"{label}\\n" if label else ""
+                bot.edit(message_id, f"{prefix}{detail[:850]}")
+                last_update, last_text = now, detail
+            except Exception as exc:
+                if "message is not modified" not in str(exc).lower():
+                    LOG.debug("Progress update failed: %s", exc)
+
+        def download_hook(data: dict[str, Any]) -> None:
+            if data.get("status") == "downloading":
+                percent = str(data.get("_percent_str") or "").strip()
+                speed = str(data.get("_speed_str") or "").strip()
+                eta = str(data.get("_eta_str") or "").strip()
+                downloaded = data.get("downloaded_bytes")
+                total = data.get("total_bytes") or data.get("total_bytes_estimate")
+                detail = percent or "Downloading…"
+                if downloaded is not None and total:
+                    try:
+                        detail = f"{percent} | {float(downloaded)/(1024*1024):.1f}/{float(total)/(1024*1024):.1f} MB"
+                    except (TypeError, ValueError):
+                        pass
+                if speed:
+                    detail += f" | {speed}"
+                if eta:
+                    detail += f" | ETA {eta}"
+                progress(detail)
+            elif data.get("status") == "finished":
+                progress("Download finished. Finalizing video…")
+
+        future = pipeline.submit(url, progress, download_hook)
+
+        def on_done(done) -> None:
+            try:
+                done.result()
+                bot.edit(message_id, "✅ Download + GoFile upload completed.")
+            except Exception as exc:
+                LOG.exception("Video job failed")
+                try:
+                    bot.edit(message_id, f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
+                except Exception:
+                    bot.send(f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
+
+        future.add_done_callback(on_done)
 
     LOG.info("TMJDLC GoFile controller starting; state=%s", state_path)
-    bot.send("TMJDLC GoFile bot is online. Send a Javtiful video URL to download and upload it.")
+    bot.send(
+        "TMJDLC GoFile bot is online. Send a Javtiful video or channel URL.\\n"
+        "Channel downloads support all videos or selected pages.\\n"
+        "Concurrency: 2 downloads + 2 GoFile uploads."
+    )
 
     while True:
         try:
@@ -147,8 +215,6 @@ def run() -> None:
                     continue
                 text = (message.get("text") or "").strip()
 
-                # API-key setup is a two-step private-chat flow. The key is never
-                # echoed or logged, and its Telegram message is deleted after receipt.
                 if state.get("awaiting_gofile_key"):
                     state["awaiting_gofile_key"] = False
                     save_state()
@@ -167,104 +233,106 @@ def run() -> None:
 
                 if text.startswith("/start"):
                     bot.send(
-                        "TMJDLC GoFile Controller\n"
-                        "Send a Javtiful video URL to process it.\n"
-                        "/status — current folder progress\n"
-                        "/finish — publish the current partial folder link\n"
+                        "TMJDLC GoFile Controller\\n"
+                        "Send a Javtiful video or channel URL.\\n"
+                        "/status — current folder progress\\n"
+                        "/finish — publish the current partial folder\\n"
                         "/setgofilekey — configure your GoFile API key"
                     )
                     continue
+
                 if text.startswith("/status"):
-                    link = gofile.current_folder_link() or "No folder created yet"
                     bot.send(
-                        f"Folder: {state.get('folder_number', 0)}\n"
-                        f"Videos: {state.get('video_count', 0)}/{VIDEOS_PER_FOLDER}\n{link}"
+                        f"Folder: {state.get('folder_number', 0)}\\n"
+                        f"Uploaded: {state.get('video_count', 0)}/{VIDEOS_PER_FOLDER}\\n"
+                        f"Reserved upload slots: {state.get('folder_reserved_count', state.get('video_count', 0))}/{VIDEOS_PER_FOLDER}\\n"
+                        f"{gofile.current_folder_link() or 'No active folder'}"
                     )
                     continue
+
                 if text.startswith("/finish"):
-                    count = int(state.get("video_count", 0))
-                    link = gofile.current_folder_link()
-                    if count and link:
-                        count, link = close_current_folder()
-                        bot.send(f"GoFile folder completed ({count} videos):\n{link}")
+                    count, link, finished = pipeline.finish_current_folder()
+                    if not finished:
+                        bot.send("Uploads are still running for this folder. Try /finish again after they complete.")
+                    elif count and link:
+                        bot.send(f"GoFile folder completed ({count} videos):\\n{link}")
                     else:
-                        bot.send("There are no videos in the current folder.")
+                        bot.send("There are no completed videos in the current folder.")
+                    continue
+
+                # Process the response to a channel inspection.
+                if pending_channel is not None and not text.startswith("/"):
+                    info = pending_channel
+                    choice = text.lower().strip()
+                    pages: list[int] = []
+                    if choice in {"all", "all videos", "all pages"}:
+                        pages = list(range(1, info.total_pages + 1))
+                    elif choice.startswith("pages "):
+                        try:
+                            for token_part in choice[6:].split(","):
+                                token_part = token_part.strip()
+                                if "-" in token_part:
+                                    first, last = (int(v.strip()) for v in token_part.split("-", 1))
+                                    if first > last:
+                                        raise ValueError
+                                    pages.extend(range(first, last + 1))
+                                else:
+                                    pages.append(int(token_part))
+                            pages = sorted(set(pages))
+                            if not pages or any(p < 1 or p > info.total_pages for p in pages):
+                                raise ValueError
+                        except ValueError:
+                            bot.send(f"Invalid selection. Use all, pages 1-3, or pages 1,3. Available pages: 1-{info.total_pages}.")
+                            continue
+                    else:
+                        bot.send(f"Reply with all, pages 1-3, or pages 1,3. Available pages: 1-{info.total_pages}.")
+                        continue
+
+                    pending_channel = None
+                    bot.send(f"Reading {len(pages)} selected page(s)…")
+                    try:
+                        video_urls = channel_scraper.videos_for_pages(info, pages)
+                    except Exception as exc:
+                        bot.send(f"Could not read channel pages: {type(exc).__name__}: {str(exc)[:350]}")
+                        continue
+                    if not video_urls:
+                        bot.send("No videos were found on those pages.")
+                        continue
+                    bot.send(
+                        f"Found {len(video_urls)} videos from {info.name}. "
+                        "Starting the concurrent download/upload pipeline."
+                    )
+                    for index, video_url in enumerate(video_urls, 1):
+                        start_video_job(video_url, f"{info.name} · {index}/{len(video_urls)}")
+                    continue
+
+                channel_match = CHANNEL_URL_RE.search(text)
+                if channel_match:
+                    channel_url = channel_match.group(0).rstrip(".,)")
+                    try:
+                        info = channel_scraper.inspect(channel_url)
+                        pending_channel = info
+                        bot.send(
+                            f"📺 Channel: {info.name}\\n"
+                            f"Videos: {info.total_videos}\\n"
+                            f"Pages: {info.total_pages}\\n\\n"
+                            "Reply with one of these:\\n"
+                            "• all — download every video\\n"
+                            "• pages 1-3 — download a page range\\n"
+                            "• pages 1,3,5 — download individual pages"
+                        )
+                    except Exception as exc:
+                        LOG.exception("Channel inspection failed")
+                        bot.send(f"Channel inspection failed: {type(exc).__name__}: {str(exc)[:400]}")
                     continue
 
                 match = URL_RE.search(text)
-                if not match:
-                    continue
-                url = match.group(0).rstrip(".,)")
-                progress_message = bot.send(
-                    "⏳ Starting…\nPreparing Javtiful stream and download."
-                )
-                progress_message_id = int(progress_message["message_id"])
-                last_update = 0.0
-                last_text = ""
+                if match:
+                    start_video_job(match.group(0).rstrip(".,)"))
 
-                def update_progress(detail: str, *, force: bool = False) -> None:
-                    nonlocal last_update, last_text
-                    LOG.info("%s", detail)
-                    now = time.monotonic()
-                    if not force and (now - last_update < 2.0 or detail == last_text):
-                        return
-                    try:
-                        bot.edit(progress_message_id, f"⬇️ Downloading\n{detail[:900]}")
-                        last_update = now
-                        last_text = detail
-                    except Exception as edit_error:
-                        # Telegram rejects edits that do not change the message.
-                        if "message is not modified" not in str(edit_error).lower():
-                            LOG.debug("Progress message edit skipped: %s", edit_error)
-
-                def download_hook(data: dict[str, Any]) -> None:
-                    if data.get("status") == "downloading":
-                        percent = str(data.get("_percent_str") or "").strip()
-                        speed = str(data.get("_speed_str") or "").strip()
-                        eta = str(data.get("_eta_str") or "").strip()
-                        downloaded = data.get("downloaded_bytes")
-                        total = data.get("total_bytes") or data.get("total_bytes_estimate")
-                        if downloaded is not None and total:
-                            try:
-                                downloaded_mb = float(downloaded) / (1024 * 1024)
-                                total_mb = float(total) / (1024 * 1024)
-                                detail = f"{percent} | {downloaded_mb:.1f}/{total_mb:.1f} MB"
-                            except (TypeError, ValueError):
-                                detail = percent or "Downloading…"
-                        else:
-                            detail = percent or "Downloading…"
-                        if speed:
-                            detail += f" | {speed}"
-                        if eta:
-                            detail += f" | ETA {eta}"
-                        update_progress(detail)
-                    elif data.get("status") == "finished":
-                        update_progress("Download finished. Finalizing video file…", force=True)
-
-                try:
-                    update_progress("Resolving video source…", force=True)
-                    media_path = _download_javtiful(url, work_dir, update_progress, download_hook)
-                    bot.edit(progress_message_id, f"✅ Download complete: {media_path.name}\n☁️ Uploading to GoFile…")
-                    result = gofile.upload(media_path)
-                    state["video_count"] = int(state.get("video_count", 0)) + 1
-                    save_state()
-                    count = int(state["video_count"])
-                    bot.edit(progress_message_id, f"✅ GoFile upload successful ({count}/{VIDEOS_PER_FOLDER}).")
-                    if count >= VIDEOS_PER_FOLDER:
-                        count, link = close_current_folder()
-                        bot.send(f"GoFile folder completed ({count} videos):\n{link}")
-                    try:
-                        media_path.unlink(missing_ok=True)
-                    except OSError:
-                        LOG.warning("Could not clean downloaded file: %s", media_path)
-                except Exception as exc:
-                    LOG.exception("Request failed")
-                    try:
-                        bot.edit(progress_message_id, f"❌ Request failed: {type(exc).__name__}: {str(exc)[:500]}")
-                    except Exception:
-                        bot.send(f"Request failed: {type(exc).__name__}: {str(exc)[:500]}")
         except KeyboardInterrupt:
             LOG.info("Stopping on keyboard interrupt")
+            pipeline.shutdown()
             return
         except (requests.RequestException, GoFileError, RuntimeError, ValueError) as exc:
             LOG.exception("Polling/worker error")
