@@ -205,7 +205,7 @@ class JavtifulStreamDetector:
                 ) from exc
             completed_stdout = "\\n".join(output_lines)
 
-            if completed.returncode != 0 or not resolved_path.is_file():
+            if return_code != 0 or not resolved_path.is_file():
                 details = completed_stdout.strip()
                 details = details[-2500:] if details else "No detector diagnostics were emitted."
                 diagnostic_summary = ""
