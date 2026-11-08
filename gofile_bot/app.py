@@ -322,7 +322,7 @@ def run() -> None:
             except Exception as exc:
                 LOG.exception("Video job failed")
                 try:
-                    bot.send(f"❌ {code} failed: {type(exc).__name__}: {str(exc)[:300]}")
+                    bot.send(f"❌ {code} failed: {type(exc).__name__}: {str(exc)[:1600]}")
                 except Exception:
                     pass
                 with dashboard_lock:
