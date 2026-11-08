@@ -39,7 +39,7 @@ Send a Javtiful video URL as a normal message to process one video. For channel 
 ## Folder behavior
 
 - Each folder is public and named `TMJDLC Batch 001`, `TMJDLC Batch 002`, etc.
-- A folder is announced after its 20th successful upload.
+- A full folder is announced after all 20 reserved upload attempts finish; failed uploads can leave fewer than 20 files.
 - The next folder is created lazily when the next video is submitted.
 - Use `/finish` to announce a folder containing 1–19 videos.
 - Empty folders are not announced.
