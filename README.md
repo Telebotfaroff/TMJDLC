@@ -32,7 +32,8 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 
 - `/start` — help and controller instructions.
 - `/status` — current folder number, video count and link.
-- `/finish` — send the current partial folder link after active downloads/uploads finish and close that folder.\n- `/setgofilekey` — configure or replace the GoFile API key through the private bot chat.
+- `/finish` — send the current partial folder link after active downloads/uploads finish and close that folder.
+- `/setgofilekey` — configure or replace the GoFile API key through the private bot chat.
 
 Send a Javtiful video URL as a normal message to process one video. For channel mode, send a URL like `https://javtiful.com/channel/NAME`; then reply `all`, `pages 1-3`, or `pages 1,3`. The bot runs up to two downloads and two GoFile uploads concurrently. Only the configured owner can control the bot.
 
