@@ -24,13 +24,13 @@ Add these values in Colab Secrets and allow notebook access:
 - `TG_OWNER_ID` — your numeric Telegram user ID.
 - `GOFILE_API_TOKEN` — optional GoFile account token. If omitted, the app creates a guest account and saves its token in the local state file.
 
-Run the notebook cells in order and keep the final cell running. Open the bot's private chat and send `/start`.
+Run the notebook cells in order and keep the final cell running. Open the bot's private chat and send `/start`. Then send `/setgofilekey` and reply with your GoFile API key. The bot validates it and stores it in the local JSON state file; you do not need to add `GOFILE_API_TOKEN` to Colab Secrets.
 
 ## Telegram commands
 
 - `/start` — help and controller instructions.
 - `/status` — current folder number, video count and link.
-- `/finish` — send the current partial folder link and close that folder.
+- `/finish` — send the current partial folder link and close that folder.\n- `/setgofilekey` — configure or replace the GoFile API key through the private bot chat.
 
 Send a Javtiful video URL as a normal message to start processing. Only the configured owner can control the bot.
 
