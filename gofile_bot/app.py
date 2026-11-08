@@ -34,8 +34,11 @@ class TelegramBot:
             raise RuntimeError(f"Telegram API {method} failed: {payload.get('description', 'unknown error')}")
         return payload.get("result")
 
-    def send(self, text: str) -> None:
-        self.call("sendMessage", chat_id=self.owner_id, text=text, disable_web_page_preview=False)
+    def send(self, text: str) -> dict[str, Any]:
+        return self.call("sendMessage", chat_id=self.owner_id, text=text, disable_web_page_preview=False)
+
+    def edit(self, message_id: int, text: str) -> None:
+        self.call("editMessageText", chat_id=self.owner_id, message_id=message_id, text=text, disable_web_page_preview=True)
 
     def delete_message(self, message_id: int) -> None:
         self.call("deleteMessage", chat_id=self.owner_id, message_id=message_id)
@@ -50,13 +53,15 @@ class TelegramBot:
         return result or []
 
 
-def _download_javtiful(url: str, work_dir: Path, progress) -> Path:
+def _download_javtiful(url: str, work_dir: Path, progress, progress_hook=None) -> Path:
     # Reuse only the existing Javtiful resolver/downloader; no legacy bot, DB or queue.
     from tmjdlc.providers.javtiful import JavtifulProvider
 
     provider = JavtifulProvider(progress_callback=progress, max_attempts=2)
     stem = f"video_{int(time.time())}"
-    path, _stream = provider.download(url, work_dir, stem, quality=720)
+    path, _stream = provider.download(
+        url, work_dir, stem, quality=720, progress_hook=progress_hook
+    )
     return path
 
 
@@ -190,19 +195,61 @@ def run() -> None:
                 if not match:
                     continue
                 url = match.group(0).rstrip(".,)")
-                bot.send("Download started. This bot processes one link at a time.")
+                progress_message = bot.send(
+                    "⏳ Starting…\nPreparing Javtiful stream and download."
+                )
+                progress_message_id = int(progress_message["message_id"])
+                last_update = 0.0
+                last_text = ""
 
-                def progress(detail: str) -> None:
+                def update_progress(detail: str, *, force: bool = False) -> None:
+                    nonlocal last_update, last_text
                     LOG.info("%s", detail)
+                    now = time.monotonic()
+                    if not force and (now - last_update < 2.0 or detail == last_text):
+                        return
+                    try:
+                        bot.edit(progress_message_id, f"⬇️ Downloading\n{detail[:900]}")
+                        last_update = now
+                        last_text = detail
+                    except Exception as edit_error:
+                        # Telegram rejects edits that do not change the message.
+                        if "message is not modified" not in str(edit_error).lower():
+                            LOG.debug("Progress message edit skipped: %s", edit_error)
+
+                def download_hook(data: dict[str, Any]) -> None:
+                    if data.get("status") == "downloading":
+                        percent = str(data.get("_percent_str") or "").strip()
+                        speed = str(data.get("_speed_str") or "").strip()
+                        eta = str(data.get("_eta_str") or "").strip()
+                        downloaded = data.get("downloaded_bytes")
+                        total = data.get("total_bytes") or data.get("total_bytes_estimate")
+                        if downloaded is not None and total:
+                            try:
+                                downloaded_mb = float(downloaded) / (1024 * 1024)
+                                total_mb = float(total) / (1024 * 1024)
+                                detail = f"{percent} | {downloaded_mb:.1f}/{total_mb:.1f} MB"
+                            except (TypeError, ValueError):
+                                detail = percent or "Downloading…"
+                        else:
+                            detail = percent or "Downloading…"
+                        if speed:
+                            detail += f" | {speed}"
+                        if eta:
+                            detail += f" | ETA {eta}"
+                        update_progress(detail)
+                    elif data.get("status") == "finished":
+                        update_progress("Download finished. Finalizing video file…", force=True)
 
                 try:
-                    media_path = _download_javtiful(url, work_dir, progress)
-                    bot.send(f"Download complete: {media_path.name}\nUploading to GoFile…")
+                    update_progress("Resolving video source…", force=True)
+                    media_path = _download_javtiful(url, work_dir, update_progress, download_hook)
+                    bot.edit(progress_message_id, f"✅ Download complete: {media_path.name}\n☁️ Uploading to GoFile…")
                     result = gofile.upload(media_path)
                     state["video_count"] = int(state.get("video_count", 0)) + 1
                     save_state()
                     count = int(state["video_count"])
-                    bot.send(f"GoFile upload successful ({count}/{VIDEOS_PER_FOLDER}).")
+                    bot.edit(progress_message_id, f"✅ GoFile upload successful ({count}/{VIDEOS_PER_FOLDER}).")
                     if count >= VIDEOS_PER_FOLDER:
                         count, link = close_current_folder()
                         bot.send(f"GoFile folder completed ({count} videos):\n{link}")
@@ -212,7 +259,10 @@ def run() -> None:
                         LOG.warning("Could not clean downloaded file: %s", media_path)
                 except Exception as exc:
                     LOG.exception("Request failed")
-                    bot.send(f"Request failed: {type(exc).__name__}: {str(exc)[:500]}")
+                    try:
+                        bot.edit(progress_message_id, f"❌ Request failed: {type(exc).__name__}: {str(exc)[:500]}")
+                    except Exception:
+                        bot.send(f"Request failed: {type(exc).__name__}: {str(exc)[:500]}")
         except KeyboardInterrupt:
             LOG.info("Stopping on keyboard interrupt")
             return
