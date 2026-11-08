@@ -75,7 +75,13 @@ class DownloadUploadPipeline:
         )
         progress(f"Download complete: {path.name}. Waiting for GoFile upload…")
         upload_future = self.upload_pool.submit(self._upload_one, path, progress)
-        return upload_future.result()
+        try:
+            return upload_future.result()
+        finally:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                LOG.warning("Could not remove completed download: %s", path)
 
     def _reserve_folder(self) -> tuple[str, str, int]:
         with self.lock:
