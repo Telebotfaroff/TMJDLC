@@ -132,7 +132,7 @@ def run() -> None:
             bot.send("GoFile could not verify that API key. Check that it is the account API token, then send /setgofilekey to retry.")
 
     def folder_completed(count: int, link: str) -> None:
-        bot.send(f"GoFile folder completed ({count} videos):\\n{link}")
+        bot.send(f"GoFile folder completed ({count} videos):\n{link}")
 
     pipeline = DownloadUploadPipeline(
         gofile, state, save_state, work_dir, folder_completed,
@@ -152,6 +152,21 @@ def run() -> None:
         seconds = max(0, int(seconds))
         return f"{seconds // 3600:02d}:{(seconds % 3600) // 60:02d}:{seconds % 60:02d}"
 
+    def _format_size(size: int) -> str:
+        value = float(max(0, size))
+        for unit in ("B", "KB", "MB", "GB", "TB"):
+            if value < 1024 or unit == "TB":
+                return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+            value /= 1024
+        return "0 B"
+
+    def _progress_bar(done: int, total: int, width: int = 12) -> str:
+        if total <= 0:
+            return "░" * width + " 0%"
+        ratio = min(1.0, max(0.0, done / total))
+        filled = min(width, int(ratio * width))
+        return f"{'█' * filled}{'░' * (width - filled)} {ratio * 100:.1f}%"
+
     def _dashboard_text() -> str:
         now = time.monotonic()
         downloading = [j for j in dashboard_jobs.values() if j["phase"] == "downloading"]
@@ -162,8 +177,12 @@ def run() -> None:
         for i, job in enumerate(sorted(downloading, key=lambda x: x["order"])[:2], 1):
             lines.append(f"{i}. {job['title']}")
             lines.append(
-                f"Speed - {job['speed']} | Estimate time - {job['eta']} | "
-                f"Time taken - {_duration(now - job['phase_started'])}"
+                f"{_progress_bar(job.get('done', 0), job.get('total', 0))}  "
+                f"{_format_size(job.get('done', 0))} / {_format_size(job.get('total', 0))}"
+            )
+            lines.append(
+                f"Speed - {job['speed']} | ETA - {job['eta']} | "
+                f"Elapsed - {_duration(now - job['phase_started'])}"
             )
         lines.append("")
         lines.append("📤 Uploading")
@@ -211,6 +230,8 @@ def run() -> None:
                 "phase_started": time.monotonic(),
                 "last_upload_bytes": 0,
                 "last_upload_at": time.monotonic(),
+                "done": 0,
+                "total": 0,
             }
         refresh_dashboard(force=True)
 
@@ -231,6 +252,8 @@ def run() -> None:
                         rate = max(0, sent - job["last_upload_bytes"]) / elapsed
                         job["last_upload_bytes"] = sent
                         job["last_upload_at"] = now
+                        job["done"] = sent
+                        job["total"] = total
                         job["speed"] = f"{rate / (1024 * 1024):.2f} MB/s"
                         job["eta"] = _duration((total - sent) / rate) if rate > 0 and total >= sent else "Calculating…"
                         if job["phase"] != "uploading":
@@ -244,24 +267,36 @@ def run() -> None:
                         job["speed"] = bits[1]
                     if len(bits) > 2 and bits[2]:
                         job["eta"] = bits[2]
+                    if len(bits) > 3:
+                        try:
+                            job["done"] = int(bits[3] or 0)
+                            job["total"] = int(bits[4] or 0) if len(bits) > 4 else 0
+                        except ValueError:
+                            pass
                     job["phase"] = "downloading"
                 elif "Waiting for GoFile upload" in detail:
                     job["phase"] = "uploading"
                     job["phase_started"] = time.monotonic()
                     job["speed"] = "Starting…"
                     job["eta"] = "Calculating…"
+                    job["done"] = 0
+                    job["total"] = 0
                 elif "Uploading " in detail:
                     job["phase"] = "uploading"
                     job["phase_started"] = time.monotonic()
                     job["speed"] = "Starting…"
                     job["eta"] = "Calculating…"
+                    job["done"] = 0
+                    job["total"] = 0
             refresh_dashboard()
 
         def download_hook(data: dict[str, Any]) -> None:
             if data.get("status") == "downloading":
                 speed = str(data.get("_speed_str") or "").strip() or "Calculating…"
                 eta = str(data.get("_eta_str") or "").strip() or "Calculating…"
-                progress(f"DOWNLOAD|{speed}|{eta}")
+                downloaded = int(data.get("downloaded_bytes") or 0)
+                total = int(data.get("total_bytes") or data.get("total_bytes_estimate") or 0)
+                progress(f"DOWNLOAD|{speed}|{eta}|{downloaded}|{total}")
             elif data.get("status") == "finished":
                 progress("Download finished. Finalizing video…")
 
@@ -286,8 +321,8 @@ def run() -> None:
 
     LOG.info("TMJDLC GoFile controller starting; state=%s", state_path)
     bot.send(
-        "TMJDLC GoFile bot is online. Send a Javtiful video or channel URL.\\n"
-        "Channel downloads support all videos or selected pages.\\n"
+        "TMJDLC GoFile bot is online. Send a Javtiful video or channel URL.\n"
+        "Channel downloads support all videos or selected pages.\n"
         "Concurrency: 2 downloads + 2 GoFile uploads."
     )
 
@@ -323,19 +358,19 @@ def run() -> None:
 
                 if text.startswith("/start"):
                     bot.send(
-                        "TMJDLC GoFile Controller\\n"
-                        "Send a Javtiful video or channel URL.\\n"
-                        "/status — current folder progress\\n"
-                        "/finish — publish the current partial folder\\n"
+                        "TMJDLC GoFile Controller\n"
+                        "Send a Javtiful video or channel URL.\n"
+                        "/status — current folder progress\n"
+                        "/finish — publish the current partial folder\n"
                         "/setgofilekey — configure your GoFile API key"
                     )
                     continue
 
                 if text.startswith("/status"):
                     bot.send(
-                        f"Folder: {state.get('folder_number', 0)}\\n"
-                        f"Uploaded: {state.get('video_count', 0)}/{VIDEOS_PER_FOLDER}\\n"
-                        f"Reserved upload slots: {state.get('folder_reserved_count', state.get('video_count', 0))}/{VIDEOS_PER_FOLDER}\\n"
+                        f"Folder: {state.get('folder_number', 0)}\n"
+                        f"Uploaded: {state.get('video_count', 0)}/{VIDEOS_PER_FOLDER}\n"
+                        f"Reserved upload slots: {state.get('folder_reserved_count', state.get('video_count', 0))}/{VIDEOS_PER_FOLDER}\n"
                         f"{gofile.current_folder_link() or 'No active folder'}"
                     )
                     continue
@@ -345,7 +380,7 @@ def run() -> None:
                     if not finished:
                         bot.send("Downloads or uploads are still running. Try /finish again after all active jobs complete.")
                     elif count and link:
-                        bot.send(f"GoFile folder completed ({count} videos):\\n{link}")
+                        bot.send(f"GoFile folder completed ({count} videos):\n{link}")
                     else:
                         bot.send("There are no completed videos in the current folder.")
                     continue
@@ -403,12 +438,12 @@ def run() -> None:
                         info = channel_scraper.inspect(channel_url)
                         pending_channel = info
                         bot.send(
-                            f"📺 Channel: {info.name}\\n"
-                            f"Videos: {info.total_videos}\\n"
-                            f"Pages: {info.total_pages}\\n\\n"
-                            "Reply with one of these:\\n"
-                            "• all — download every video\\n"
-                            "• pages 1-3 — download a page range\\n"
+                            f"📺 Channel: {info.name}\n"
+                            f"Videos: {info.total_videos}\n"
+                            f"Pages: {info.total_pages}\n\n"
+                            "Reply with one of these:\n"
+                            "• all — download every video\n"
+                            "• pages 1-3 — download a page range\n"
                             "• pages 1,3,5 — download individual pages"
                         )
                     except Exception as exc:
