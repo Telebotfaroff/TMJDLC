@@ -8,7 +8,8 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 - Submit an individual Javtiful video URL or a channel URL.
 - Channel inspection with all-videos, page-range, or individual-page selection (e.g. `all`, `pages 1-3`, `pages 1,3`).
 - Concurrent pipeline: up to 2 downloads and 2 GoFile uploads at the same time.
-- Live Telegram download progress with percentage, downloaded size, speed and ETA (where yt-dlp provides them).
+- One live Telegram progress dashboard showing up to 2 active downloads and 2 active uploads, each with the short video code/title, transfer speed, estimated time remaining and elapsed time.
+- Upload speed and ETA are measured from streamed multipart upload bytes.
 - Public GoFile folders containing up to 20 successfully uploaded videos.
 - Automatically reserves no more than 20 upload slots per folder, including concurrent uploads.
 - Sends each completed 20-video folder link to the owner's private Telegram chat.
