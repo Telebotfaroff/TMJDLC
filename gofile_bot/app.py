@@ -71,12 +71,23 @@ def run() -> None:
 
     store = StateStore(state_path)
     state = store.load()
+    state.setdefault("completed_folders", [])
 
     def save_state() -> None:
         store.save(state)
 
     bot = TelegramBot(token, owner_id, state, save_state)
     gofile = GoFileClient(state, save_state, api_token)
+
+    def close_current_folder() -> tuple[int, str]:
+        count = int(state.get("video_count", 0))
+        link = gofile.current_folder_link()
+        if count and link:
+            state["completed_folders"].append({"count": count, "link": link})
+            state.update({"folder_id": "", "folder_code": "", "video_count": 0})
+            save_state()
+        return count, link
+
     LOG.info("TMJDLC GoFile controller starting; state=%s", state_path)
     bot.send("TMJDLC GoFile bot is online. Send a Javtiful video URL to download and upload it.")
 
@@ -111,10 +122,8 @@ def run() -> None:
                     count = int(state.get("video_count", 0))
                     link = gofile.current_folder_link()
                     if count and link:
+                        count, link = close_current_folder()
                         bot.send(f"GoFile folder completed ({count} videos):\n{link}")
-                        state["completed_folders"].append({"count": count, "link": link})
-                        state.update({"folder_id": "", "folder_code": "", "video_count": 0})
-                        save_state()
                     else:
                         bot.send("There are no videos in the current folder.")
                     continue
@@ -137,11 +146,8 @@ def run() -> None:
                     count = int(state["video_count"])
                     bot.send(f"GoFile upload successful ({count}/{VIDEOS_PER_FOLDER}).")
                     if count >= VIDEOS_PER_FOLDER:
-                        link = gofile.current_folder_link()
+                        count, link = close_current_folder()
                         bot.send(f"GoFile folder completed ({count} videos):\n{link}")
-                        state["completed_folders"].append({"count": count, "link": link})
-                        state.update({"folder_id": "", "folder_code": "", "video_count": 0})
-                        save_state()
                     try:
                         media_path.unlink(missing_ok=True)
                     except OSError:
