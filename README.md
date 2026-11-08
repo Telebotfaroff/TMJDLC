@@ -14,17 +14,17 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 - Local JSON state in `/content/TMJDLC/data/gofile_state.json`.
 - No database, no queue, no duplicate detection.
 
-## Colab setup
+## Run on Google Colab
 
-Open [TMJDLC GoFile notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/gofile/notebooks/TMJDLC_GoFile.ipynb).
+<https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/gofile/notebooks/TMJDLC_GoFile.ipynb>
 
-Add these values in Colab Secrets and allow notebook access:
+**[Open TMJDLC GoFile in Google Colab](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/gofile/notebooks/TMJDLC_GoFile.ipynb)**
 
-- `TG_BOT_TOKEN` — BotFather token.
-- `TG_OWNER_ID` — your numeric Telegram user ID.
-- `GOFILE_API_TOKEN` — optional GoFile account token. If omitted, the app creates a guest account and saves its token in the local state file.
-
-Run the notebook cells in order and keep the final cell running. Open the bot's private chat and send `/start`. Then send `/setgofilekey` and reply with your GoFile API key. The bot validates it and stores it in the local JSON state file; you do not need to add `GOFILE_API_TOKEN` to Colab Secrets.
+1. Open the notebook using the link above.
+2. Add `TG_BOT_TOKEN` and `TG_OWNER_ID` in Colab Secrets, then allow the notebook to access them.
+3. Run the notebook cells in order and keep the final cell running.
+4. Open your bot's private chat and send `/start`.
+5. Send `/setgofilekey`, then send your GoFile API key in the next message. The bot verifies it and saves it in the local state file; no GoFile key is required in Colab Secrets.
 
 ## Telegram commands
 
@@ -44,9 +44,9 @@ Send a Javtiful video URL as a normal message to start processing. Only the conf
 
 ## Local state
 
-The app writes its GoFile account token, root folder, active folder, share code, count, completed links and Telegram update offset to `data/gofile_state.json`. Keep this file if you need to retain the guest account and current folder across notebook runs. Colab's temporary `/content` storage is cleared when the runtime is deleted; download this state file before a runtime reset if you need to preserve it.
+The app writes the GoFile API key, root folder, active folder, share code, count, completed links and Telegram update offset to `data/gofile_state.json`. Keep this file private if you need to retain your GoFile account and current folder across notebook runs. Colab's temporary `/content` storage is cleared when the runtime is deleted; download this state file before a runtime reset if you need to preserve it.
 
-Do not share the state file or commit it to GitHub: it contains the GoFile account token.
+Do not share the state file or commit it to GitHub: it contains your GoFile API key.
 
 ## Runtime architecture
 
