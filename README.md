@@ -7,6 +7,7 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 - Private Telegram Bot API controller (no MTProto upload client).
 - Submit one Javtiful video URL at a time.
 - Direct sequential processing: download, upload, report.
+- Live Telegram download progress with percentage, downloaded size, speed and ETA (where yt-dlp provides them).
 - Public GoFile folders containing up to 20 successfully uploaded videos.
 - Automatically starts a new folder when the next video arrives after a folder reaches 20.
 - Sends each completed 20-video folder link to the owner's private Telegram chat.
