@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import queue
 import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -144,28 +146,67 @@ class JavtifulStreamDetector:
             if preferred_quality is not None:
                 command.extend(["--quality", str(preferred_quality)])
 
-            try:
-                completed = subprocess.run(
-                    command,
-                    cwd=repo_root,
-                    capture_output=True,
-                    text=True,
-                    timeout=max(
-                        60,
-                        self.timeout_ms / 1000 + self.capture_ms / 1000 + 45,
-                    ),
-                    check=False,
-                )
-            except subprocess.TimeoutExpired as exc:
-                raise StreamDetectionError(
-                    "The shared Actions detector exceeded its browser timeout."
-                ) from exc
+            # Stream browser output immediately to Colab and the Telegram progress callback.
+            output_queue: queue.Queue[str | None] = queue.Queue()
 
-            if completed.stdout:
-                for line in completed.stdout.splitlines():
-                    self._progress(f"[Actions detector] {line[:1200]}")
+            def read_output(pipe) -> None:
+                try:
+                    for output_line in iter(pipe.readline, ""):
+                        output_queue.put(output_line.rstrip("\\r\\n"))
+                finally:
+                    pipe.close()
+                    output_queue.put(None)
+
+            output_lines: list[str] = []
+            try:
+                process = subprocess.Popen(
+                    command, cwd=repo_root, stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT, text=True, encoding="utf-8",
+                    errors="replace", bufsize=1,
+                )
+                reader = threading.Thread(
+                    target=read_output, args=(process.stdout,),
+                    name="javtiful-detector-log-reader", daemon=True,
+                )
+                reader.start()
+                deadline = time.monotonic() + max(
+                    60, self.timeout_ms / 1000 + self.capture_ms / 1000 + 45
+                )
+                stream_closed = False
+                while not stream_closed:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        process.kill()
+                        process.wait()
+                        raise StreamDetectionError(
+                            "The shared Actions detector exceeded its browser timeout. "
+                            "See the live Colab logs immediately above this error."
+                        )
+                    try:
+                        output_line = output_queue.get(timeout=min(0.5, remaining))
+                    except queue.Empty:
+                        if process.poll() is not None and not reader.is_alive():
+                            break
+                        continue
+                    if output_line is None:
+                        stream_closed = True
+                        continue
+                    output_lines.append(output_line)
+                    log_line = output_line[:1600]
+                    print(f"[Javtiful resolver] {log_line}", flush=True)
+                    self._progress(f"[Javtiful resolver] {log_line}")
+                return_code = process.wait(timeout=5)
+                reader.join(timeout=1)
+            except StreamDetectionError:
+                raise
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise StreamDetectionError(
+                    f"Could not run the shared Actions detector: {type(exc).__name__}: {exc}"
+                ) from exc
+            completed_stdout = "\\n".join(output_lines)
+
             if completed.returncode != 0 or not resolved_path.is_file():
-                details = (completed.stderr or completed.stdout or "").strip()
+                details = completed_stdout.strip()
                 details = details[-2500:] if details else "No detector diagnostics were emitted."
                 diagnostic_summary = ""
                 report_path = report_dir / "stream-detection.json"
@@ -222,7 +263,7 @@ class JavtifulStreamDetector:
                         diagnostic_summary += f"; report_parse_error={type(report_error).__name__}"
                 raise StreamDetectionError(
                     f"The shared Actions detector did not resolve a media URL "
-                    f"(exit={completed.returncode}). {diagnostic_summary} {details}"
+                    f"(exit={return_code}). {diagnostic_summary} {details}"
                 )
 
             try:
