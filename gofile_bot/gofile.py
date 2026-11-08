@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
+
+from requests_toolbelt.multipart.encoder import MultipartEncoder, MultipartEncoderMonitor
 
 import requests
 
@@ -102,7 +104,10 @@ class GoFileClient:
         self.save_state()
         return folder_id, folder_code
 
-    def upload(self, file_path: str | Path, *, folder_id: str | None = None) -> dict[str, Any]:
+    def upload(
+        self, file_path: str | Path, *, folder_id: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
+    ) -> dict[str, Any]:
         self.ensure_account()
         target_folder_id = str(folder_id or self.state.get("folder_id") or "")
         if not target_folder_id:
@@ -111,11 +116,19 @@ class GoFileClient:
         if not path.is_file():
             raise GoFileError(f"Upload file does not exist: {path}")
         with path.open("rb") as stream:
+            encoder = MultipartEncoder(fields={
+                "folderId": target_folder_id,
+                "file": (path.name, stream, "application/octet-stream"),
+            })
+            monitor = MultipartEncoderMonitor(
+                encoder,
+                lambda current: progress_callback(current.bytes_read, current.len)
+                if progress_callback else None,
+            )
             response = requests.post(
                 UPLOAD_URL,
-                headers=self._headers(),
-                data={"folderId": target_folder_id},
-                files={"file": (path.name, stream, "application/octet-stream")},
+                headers={**self._headers(), "Content-Type": monitor.content_type},
+                data=monitor,
                 timeout=(30, 3600),
             )
         data = self._data(response)
