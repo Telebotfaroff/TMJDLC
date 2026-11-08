@@ -82,6 +82,7 @@ class DownloadUploadPipeline:
         path, _stream = provider.download(
             url, self.work_dir, filename, quality=720, progress_hook=progress_hook
         )
+        progress(f"TITLE|{_stream.title or path.stem}")
         progress(f"Download complete: {path.name}. Waiting for GoFile upload…")
         upload_future = self.upload_pool.submit(self._upload_one, path, progress)
         try:
@@ -119,7 +120,10 @@ class DownloadUploadPipeline:
         success = False
         try:
             progress(f"Uploading {path.name} to GoFile folder {number:03d}…")
-            result = self.gofile.upload(path, folder_id=folder_id)
+            result = self.gofile.upload(
+                path, folder_id=folder_id,
+                progress_callback=lambda sent, total: progress(f"UPLOAD|{sent}|{total}"),
+            )
             success = True
             progress("GoFile upload completed.")
             return result
