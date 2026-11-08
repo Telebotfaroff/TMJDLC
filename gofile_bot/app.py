@@ -178,7 +178,8 @@ def run() -> None:
             lines.append(f"{i}. {job['title']}")
             lines.append(
                 f"{_progress_bar(job.get('done', 0), job.get('total', 0))}  "
-                f"{_format_size(job.get('done', 0))} / {_format_size(job.get('total', 0))}"
+                f"{_format_size(job.get('done', 0))} / "
+                f"{_format_size(job.get('total', 0)) if job.get('total', 0) else 'size unknown'}"
             )
             lines.append(
                 f"Speed - {job['speed']} | ETA - {job['eta']} | "
@@ -302,6 +303,13 @@ def run() -> None:
                 total = int(data.get("total_bytes") or data.get("total_bytes_estimate") or 0)
                 progress(f"DOWNLOAD|{speed}|{eta}|{downloaded}|{total}")
             elif data.get("status") == "finished":
+                filename = data.get("filename") or (data.get("info_dict") or {}).get("_filename")
+                try:
+                    final_size = Path(filename).stat().st_size if filename else 0
+                except OSError:
+                    final_size = 0
+                if final_size:
+                    progress(f"DOWNLOAD|Complete|00:00|{final_size}|{final_size}")
                 progress("Download finished. Finalizing video…")
 
         future = pipeline.submit(url, progress, download_hook)
