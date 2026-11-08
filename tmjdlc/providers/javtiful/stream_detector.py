@@ -203,7 +203,7 @@ class JavtifulStreamDetector:
                 raise StreamDetectionError(
                     f"Could not run the shared Actions detector: {type(exc).__name__}: {exc}"
                 ) from exc
-            completed_stdout = "\\n".join(output_lines)
+            completed_stdout = "\n".join(output_lines)
 
             if return_code != 0 or not resolved_path.is_file():
                 details = completed_stdout.strip()
