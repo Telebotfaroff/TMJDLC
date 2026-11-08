@@ -28,6 +28,7 @@ class DownloadUploadPipeline:
         *,
         download_workers: int = 2,
         upload_workers: int = 2,
+        state_lock=None,
     ) -> None:
         self.gofile = gofile
         self.state = state
@@ -40,7 +41,7 @@ class DownloadUploadPipeline:
         self.upload_pool = ThreadPoolExecutor(
             max_workers=upload_workers, thread_name_prefix="gofile-upload"
         )
-        self.lock = threading.RLock()
+        self.lock = state_lock or threading.RLock()
         self.active_jobs = 0
         self.folders: dict[str, dict[str, Any]] = {}
         folder_id = str(state.get("folder_id") or "")
