@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -163,10 +166,63 @@ class JavtifulStreamDetector:
                     self._progress(f"[Actions detector] {line[:1200]}")
             if completed.returncode != 0 or not resolved_path.is_file():
                 details = (completed.stderr or completed.stdout or "").strip()
-                details = details[-5000:] if details else "No detector diagnostics were emitted."
+                details = details[-2500:] if details else "No detector diagnostics were emitted."
+                diagnostic_summary = ""
+                report_path = report_dir / "stream-detection.json"
+                if report_path.is_file():
+                    try:
+                        report = json.loads(report_path.read_text(encoding="utf-8"))
+                        video_state = report.get("video_elements") or {}
+                        videos = video_state.get("videos") or []
+                        video_bits = [
+                            "video_count=" + str(video_state.get("video_count", 0))
+                        ]
+                        for video in videos[:2]:
+                            video_bits.append(
+                                "video(ready=" + str(video.get("ready_state"))
+                                + ", network=" + str(video.get("network_state"))
+                                + ", paused=" + str(video.get("paused"))
+                                + ", error=" + str(video.get("error_code")) + ")"
+                            )
+                        api_bits = [
+                            "playback_api(status=" + str(item.get("status"))
+                            + ", keys=" + ",".join(item.get("json_keys") or [])
+                            + ", sources=" + str(len(item.get("sources") or [])) + ")"
+                            for item in (report.get("playback_api_responses") or [])[-3:]
+                        ]
+                        failed_bits = [
+                            str(item.get("resource_type")) + ":" + str(item.get("failure"))[:140]
+                            for item in (report.get("failed_requests") or [])[-4:]
+                        ]
+                        error_bits = [
+                            str(item.get("message", ""))[:180]
+                            for item in (report.get("page_errors") or [])[-3:]
+                        ]
+                        iframe_bits = [
+                            str(item.get("host")) + str(item.get("path", ""))[:80]
+                            for item in (video_state.get("iframes") or [])[:4]
+                        ]
+                        diagnostic_summary = (
+                            " | Browser diagnosis: "
+                            + "; ".join(video_bits)
+                            + "; iframes=" + (", ".join(iframe_bits) or "none")
+                            + "; " + ("; ".join(api_bits) if api_bits else "playback_api=not_seen")
+                            + "; failed=" + ("; ".join(failed_bits) if failed_bits else "none")
+                            + "; page_errors=" + ("; ".join(error_bits) if error_bits else "none")
+                        )
+                        # Keep the redacted report in the Colab checkout for inspection.
+                        # The report masks signed query parameters and contains no resolved stream URL.
+                        safe_id = re.sub(r"[^A-Za-z0-9_-]+", "_", parsed.path.strip("/").replace("/", "_"))[:70] or "javtiful"
+                        saved_dir = repo_root / "artifacts" / "stream-detection"
+                        saved_dir.mkdir(parents=True, exist_ok=True)
+                        saved_report = saved_dir / f"{safe_id}-{time.time_ns()}.json"
+                        shutil.copy2(report_path, saved_report)
+                        diagnostic_summary += f"; report={saved_report}"
+                    except Exception as report_error:
+                        diagnostic_summary += f"; report_parse_error={type(report_error).__name__}"
                 raise StreamDetectionError(
                     f"The shared Actions detector did not resolve a media URL "
-                    f"(exit={completed.returncode}). {details}"
+                    f"(exit={completed.returncode}). {diagnostic_summary} {details}"
                 )
 
             try:
