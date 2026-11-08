@@ -55,7 +55,19 @@ class GoFileClient:
                 raise GoFileError("Guest account response did not include token and root folder")
             self.save_state()
             return
-        response = requests.get(f"{API_BASE}/accounts/me", headers=self._headers(), timeout=TIMEOUT)
+        # Current GoFile API resolves a token via /accounts/getid, then exposes
+        # rootFolder on /accounts/{accountId}. The old /accounts/me route is not
+        # part of the current API and caused valid keys to be rejected.
+        response = requests.get(f"{API_BASE}/accounts/getid", headers=self._headers(), timeout=TIMEOUT)
+        account = self._data(response)
+        account_id = str(account.get("id") or "")
+        if not account_id:
+            raise GoFileError("GoFile did not return an account ID for this API key")
+        response = requests.get(
+            f"{API_BASE}/accounts/{account_id}",
+            headers=self._headers(),
+            timeout=TIMEOUT,
+        )
         data = self._data(response)
         self.state["root_folder_id"] = str(data.get("rootFolder") or "")
         if not self.state["root_folder_id"]:
