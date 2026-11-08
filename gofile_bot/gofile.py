@@ -102,10 +102,11 @@ class GoFileClient:
         self.save_state()
         return folder_id, folder_code
 
-    def upload(self, file_path: str | Path) -> dict[str, Any]:
+    def upload(self, file_path: str | Path, *, folder_id: str | None = None) -> dict[str, Any]:
         self.ensure_account()
-        if not self.state.get("folder_id"):
-            self.create_public_folder()
+        target_folder_id = str(folder_id or self.state.get("folder_id") or "")
+        if not target_folder_id:
+            target_folder_id, _ = self.create_public_folder()
         path = Path(file_path)
         if not path.is_file():
             raise GoFileError(f"Upload file does not exist: {path}")
@@ -113,7 +114,7 @@ class GoFileClient:
             response = requests.post(
                 UPLOAD_URL,
                 headers=self._headers(),
-                data={"folderId": self.state["folder_id"]},
+                data={"folderId": target_folder_id},
                 files={"file": (path.name, stream, "application/octet-stream")},
                 timeout=(30, 3600),
             )
