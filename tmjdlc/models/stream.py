@@ -35,6 +35,7 @@ class StreamResult:
     duration_seconds: float | None
     headers: dict[str, str] = field(default_factory=dict)
     detected_from: str = "network"
+    title: str | None = None
 
     @property
     def safe_stream_url(self) -> str:
