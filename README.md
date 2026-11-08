@@ -5,11 +5,12 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 ## Features
 
 - Private Telegram Bot API controller (no MTProto upload client).
-- Submit one Javtiful video URL at a time.
-- Direct sequential processing: download, upload, report.
+- Submit an individual Javtiful video URL or a channel URL.
+- Channel inspection with all-videos, page-range, or individual-page selection (e.g. `all`, `pages 1-3`, `pages 1,3`).
+- Concurrent pipeline: up to 2 downloads and 2 GoFile uploads at the same time.
 - Live Telegram download progress with percentage, downloaded size, speed and ETA (where yt-dlp provides them).
 - Public GoFile folders containing up to 20 successfully uploaded videos.
-- Automatically starts a new folder when the next video arrives after a folder reaches 20.
+- Automatically reserves no more than 20 upload slots per folder, including concurrent uploads.
 - Sends each completed 20-video folder link to the owner's private Telegram chat.
 - `/status` reports current folder progress; `/finish` publishes a partial folder link.
 - Local JSON state in `/content/TMJDLC/data/gofile_state.json`.
@@ -33,7 +34,7 @@ A lightweight Google Colab downloader controlled by a private Telegram bot. Vide
 - `/status` — current folder number, video count and link.
 - `/finish` — send the current partial folder link and close that folder.\n- `/setgofilekey` — configure or replace the GoFile API key through the private bot chat.
 
-Send a Javtiful video URL as a normal message to start processing. Only the configured owner can control the bot.
+Send a Javtiful video URL as a normal message to process one video. For channel mode, send a URL like `https://javtiful.com/channel/NAME`; then reply `all`, `pages 1-3`, or `pages 1,3`. The bot runs up to two downloads and two GoFile uploads concurrently. Only the configured owner can control the bot.
 
 ## Folder behavior
 
@@ -45,10 +46,10 @@ Send a Javtiful video URL as a normal message to start processing. Only the conf
 
 ## Local state
 
-The app writes the GoFile API key, root folder, active folder, share code, count, completed links and Telegram update offset to `data/gofile_state.json`. Keep this file private if you need to retain your GoFile account and current folder across notebook runs. Colab's temporary `/content` storage is cleared when the runtime is deleted; download this state file before a runtime reset if you need to preserve it.
+The app writes the GoFile API key, root folder, active folder, share code, successful/reserved counts, completed links and Telegram update offset to `data/gofile_state.json`. Keep this file private if you need to retain your GoFile account and current folder across notebook runs. Colab's temporary `/content` storage is cleared when the runtime is deleted; download this state file before a runtime reset if you need to preserve it.
 
 Do not share the state file or commit it to GitHub: it contains your GoFile API key.
 
 ## Runtime architecture
 
-`gofile_bot/` is the new controller/uploader implementation. It uses the existing Javtiful resolver and yt-dlp downloader only; it does not start the legacy MTProto bot, Neon integration or queue worker.
+`gofile_bot/` is the new controller/uploader implementation. It uses the existing Javtiful channel scraper, resolver and yt-dlp downloader. Two in-memory download workers feed two in-memory upload workers; there is no persistent queue, database or legacy MTProto bot.
