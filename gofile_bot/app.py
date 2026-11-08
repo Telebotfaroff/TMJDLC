@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import time
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -85,8 +86,11 @@ def run() -> None:
     state = store.load()
     state.setdefault("completed_folders", [])
 
+    state_lock = threading.RLock()
+
     def save_state() -> None:
-        store.save(state)
+        with state_lock:
+            store.save(state)
 
     bot = TelegramBot(token, owner_id, state, save_state)
     gofile = GoFileClient(state, save_state, api_token)
@@ -132,7 +136,7 @@ def run() -> None:
 
     pipeline = DownloadUploadPipeline(
         gofile, state, save_state, work_dir, folder_completed,
-        download_workers=2, upload_workers=2,
+        download_workers=2, upload_workers=2, state_lock=state_lock,
     )
     channel_scraper = JavtifulChannelScraper()
     pending_channel = None
@@ -207,8 +211,9 @@ def run() -> None:
         try:
             updates = bot.poll()
             for update in updates:
-                state["telegram_offset"] = int(update["update_id"])
-                save_state()
+                with state_lock:
+                    state["telegram_offset"] = int(update["update_id"])
+                    save_state()
                 message = update.get("message") or {}
                 chat = message.get("chat") or {}
                 sender = message.get("from") or {}
