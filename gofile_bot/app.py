@@ -100,7 +100,7 @@ def run() -> None:
         if not api_key or api_key.startswith("/"):
             bot.send("No API key was saved. Send /setgofilekey and then send the key.")
             return
-        if int(state.get("video_count", 0)) > 0 or int(state.get("folder_reserved_count", 0)) > 0:
+        if int(state.get("video_count", 0)) > 0 or int(state.get("folder_reserved_count", 0)) > 0 or pipeline.active_jobs > 0:
             bot.send("Finish the current folder with /finish after active downloads/uploads complete before changing GoFile accounts.")
             return
         previous = {
