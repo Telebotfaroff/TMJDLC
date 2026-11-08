@@ -41,6 +41,7 @@ class DownloadUploadPipeline:
             max_workers=upload_workers, thread_name_prefix="gofile-upload"
         )
         self.lock = threading.RLock()
+        self.active_jobs = 0
         self.folders: dict[str, dict[str, Any]] = {}
         folder_id = str(state.get("folder_id") or "")
         if folder_id:
@@ -62,7 +63,14 @@ class DownloadUploadPipeline:
         progress: Callable[[str], None],
         progress_hook: Callable[[dict[str, Any]], None] | None = None,
     ) -> Future:
-        return self.download_pool.submit(self._download_then_upload, url, progress, progress_hook)
+        with self.lock:
+            self.active_jobs += 1
+        future = self.download_pool.submit(self._download_then_upload, url, progress, progress_hook)
+        def release_slot(_future):
+            with self.lock:
+                self.active_jobs = max(0, self.active_jobs - 1)
+        future.add_done_callback(release_slot)
+        return future
 
     def _download_then_upload(self, url, progress, progress_hook):
         provider = JavtifulProvider(progress_callback=progress, max_attempts=2)
@@ -147,6 +155,8 @@ class DownloadUploadPipeline:
     def finish_current_folder(self) -> tuple[int, str, bool]:
         """Close the current partial folder only when its in-flight uploads are done."""
         with self.lock:
+            if self.active_jobs:
+                return int(self.state.get("video_count", 0)), "", False
             folder_id = str(self.state.get("folder_id") or "")
             if not folder_id:
                 return 0, "", True
