@@ -26,7 +26,7 @@ def _safe_error_detail(error: Exception) -> str:
     """Keep useful diagnostics while stripping query strings from embedded URLs."""
     message = str(error).strip()
     message = re.sub(r"(https?://[^\s?'\"<>]+)\?[^\s'\"<>]*", r"\1?[QUERY REDACTED]", message)
-    return message[:600] or "No additional error details were provided."
+    return message[:1800] or "No additional error details were provided."
 
 
 class JavtifulProvider:
