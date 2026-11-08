@@ -142,17 +142,19 @@ def run() -> None:
     pending_channel = None
 
     def start_video_job(url: str, label: str = "") -> None:
-        status = bot.send(
-            f"⏳ Waiting for a download slot ({label or 'video'}).\\n"
-            "Pipeline: up to 2 downloads and 2 GoFile uploads simultaneously."
-        )
-        message_id = int(status["message_id"])
+        message_id = None
         last_update = 0.0
         last_text = ""
 
         def progress(detail: str) -> None:
-            nonlocal last_update, last_text
+            nonlocal last_update, last_text, message_id
             LOG.info("%s | %s", label or "video", detail)
+            if message_id is None:
+                status = bot.send(
+                    f"⬇️ Starting {label or 'video'}…\\n"
+                    "Pipeline: up to 2 downloads and 2 GoFile uploads simultaneously."
+                )
+                message_id = int(status["message_id"])
             now = time.monotonic()
             if now - last_update < 2.0 or detail == last_text:
                 return
@@ -190,11 +192,18 @@ def run() -> None:
         def on_done(done) -> None:
             try:
                 done.result()
-                bot.edit(message_id, "✅ Download + GoFile upload completed.")
+                if message_id is None:
+                    status = bot.send(f"✅ {label or 'Video'} completed.")
+                    message_id = int(status["message_id"])
+                else:
+                    bot.edit(message_id, "✅ Download + GoFile upload completed.")
             except Exception as exc:
                 LOG.exception("Video job failed")
                 try:
-                    bot.edit(message_id, f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
+                    if message_id is None:
+                        bot.send(f"❌ {label or 'Video'} failed: {type(exc).__name__}: {str(exc)[:350]}")
+                    else:
+                        bot.edit(message_id, f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
                 except Exception:
                     bot.send(f"❌ Failed: {type(exc).__name__}: {str(exc)[:450]}")
 
