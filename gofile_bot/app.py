@@ -82,6 +82,41 @@ def run() -> None:
     bot = TelegramBot(token, owner_id, state, save_state)
     gofile = GoFileClient(state, save_state, api_token)
 
+    def configure_gofile_key(api_key: str, message_id: int) -> None:
+        # Remove the Telegram message first so the credential is not left in chat history.
+        try:
+            bot.delete_message(message_id)
+        except Exception:
+            LOG.warning("Could not delete the message containing the GoFile API key")
+        if not api_key or api_key.startswith("/"):
+            bot.send("No API key was saved. Send /setgofilekey and then send the key.")
+            return
+        if int(state.get("video_count", 0)) > 0:
+            bot.send("Finish the current folder with /finish before changing GoFile accounts.")
+            return
+        previous = {
+            key: state.get(key)
+            for key in ("gofile_token", "root_folder_id", "folder_id", "folder_code", "video_count")
+        }
+        state["gofile_token"] = api_key.strip()
+        state["root_folder_id"] = ""
+        state["folder_id"] = ""
+        state["folder_code"] = ""
+        state["video_count"] = 0
+        save_state()
+        try:
+            gofile.ensure_account()
+            bot.send("GoFile API key verified successfully. This account will be used for future uploads.")
+        except Exception:
+            for key, value in previous.items():
+                if value is None:
+                    state.pop(key, None)
+                else:
+                    state[key] = value
+            save_state()
+            LOG.exception("GoFile API-key verification failed")
+            bot.send("GoFile could not verify that API key. Check that it is the account API token, then send /setgofilekey to retry.")
+
     def close_current_folder() -> tuple[int, str]:
         count = int(state.get("video_count", 0))
         link = gofile.current_folder_link()
@@ -112,39 +147,17 @@ def run() -> None:
                 if state.get("awaiting_gofile_key"):
                     state["awaiting_gofile_key"] = False
                     save_state()
-                    try:
-                        bot.delete_message(int(message.get("message_id", 0)))
-                    except Exception:
-                        LOG.warning("Could not delete the message containing the GoFile API key")
-                    if not text or text.startswith("/"):
-                        bot.send("No API key was saved. Send /setgofilekey to try again.")
-                        continue
-                    if int(state.get("video_count", 0)) > 0:
-                        bot.send("Finish the current folder with /finish before changing GoFile accounts.")
-                        continue
-                    previous_token = state.get("gofile_token", "")
-                    previous_root = state.get("root_folder_id", "")
-                    state["gofile_token"] = text
-                    state["root_folder_id"] = ""
-                    state["folder_id"] = ""
-                    state["folder_code"] = ""
-                    state["video_count"] = 0
-                    save_state()
-                    try:
-                        gofile.ensure_account()
-                        bot.send("GoFile API key verified successfully. This account will be used for future uploads.")
-                    except Exception:
-                        state["gofile_token"] = previous_token
-                        state["root_folder_id"] = previous_root
-                        save_state()
-                        LOG.exception("GoFile API-key verification failed")
-                        bot.send("GoFile could not verify that API key. The previous account settings were restored. Send /setgofilekey to retry.")
+                    configure_gofile_key(text, int(message.get("message_id", 0)))
                     continue
 
                 if text.startswith("/setgofilekey"):
-                    state["awaiting_gofile_key"] = True
-                    save_state()
-                    bot.send("Send your GoFile API key as your next private message. I will delete that message after receiving it and will not repeat the key.")
+                    parts = text.split(maxsplit=1)
+                    if len(parts) == 2:
+                        configure_gofile_key(parts[1].strip(), int(message.get("message_id", 0)))
+                    else:
+                        state["awaiting_gofile_key"] = True
+                        save_state()
+                        bot.send("Send your GoFile API key in your next private message. I will delete that message after receiving it.")
                     continue
 
                 if text.startswith("/start"):
