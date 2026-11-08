@@ -4,3 +4,4 @@ yt-dlp>=2025.1
 playwright>=1.50,<2
 beautifulsoup4>=4.12,<5
 lxml>=5,<7
+requests-toolbelt>=1,<2
