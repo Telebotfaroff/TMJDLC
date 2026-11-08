@@ -190,6 +190,7 @@ def run() -> None:
         future = pipeline.submit(url, progress, download_hook)
 
         def on_done(done) -> None:
+            nonlocal message_id
             try:
                 done.result()
                 if message_id is None:
