@@ -109,7 +109,7 @@ class BatchProgress:
                 lines.append(f"{icon} <b>{html.escape(code)}</b> · {label}")
         lines += ["━━━━━━━━━━━━━━━━━━━━",
                   f"Active: {active} · Completed: {completed}/{total} · Failed: {failed}"]
-        return "\\n".join(lines)
+        return "\n".join(lines)
 
     async def start(self) -> None:
         try:
@@ -321,24 +321,21 @@ class DrivePipeline:
                     def download(progress):
                         engine = DownloadEngine(self.settings.work_dir, progress_callback=progress)
                         return engine.download(job.url, job_id=job.job_id)
-                    result, download_message = await self._tracked_transfer(job, "DOWNLOAD", download)
-                    if download_message:
-                        try:
-                            await download_message.edit_text(
-                                f"✅ <b>DOWNLOAD COMPLETE · {html.escape(job.code)}</b>\n"
-                                f"<code>[██████████]</code>  <b>100%</b>\n"
-                                f"📦 {_size(result.size)}\n☁️ Waiting for Drive upload…",
-                                parse_mode="HTML", disable_web_page_preview=True,
-                            )
-                        except Exception:
-                            log.exception("Could not finalize download progress for %s", job.code)
+                    result, _ = await self._tracked_transfer(job, "DOWNLOAD", download)
+                    tracker = self.batches.get(job.batch_id)
+                    if tracker:
+                        await tracker.update(job.code, status="WAITING_UPLOAD", done=result.size,
+                                             total=result.size, speed=None, eta=None)
                 except Exception as exc:
                     self._save_job(job, "failed", error=str(exc)[:500])
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
-                    if not getattr(exc, "_tmjdlc_progress_message", None):
+                    tracker = self.batches.get(job.batch_id)
+                    if tracker:
+                        await tracker.update(job.code, status="FAILED")
+                    elif not getattr(exc, "_tmjdlc_progress_message", None):
                         await self._notify(job.chat_id,
-                            f"❌ <b>{html.escape(job.code)}</b> download failed.\n{html.escape(str(exc)[:600])}")
+                            f"❌ <b>{html.escape(job.code)}</b> download failed.\\n{html.escape(str(exc)[:600])}")
                     continue
                 finally:
                     await self.download_gate.release()
@@ -376,22 +373,19 @@ class DrivePipeline:
                         DownloadEngine(self.settings.work_dir).cleanup_job, job.job_id)
                     self._save_job(job, "completed", filename=result.filename, size=result.size,
                         folder_url=folder["url"], drive_file_id=uploaded["id"])
-                    safe_url = html.escape(folder["url"], quote=True)
-                    final = (f"✅ <b>{html.escape(job.code)} completed</b>\n"
-                             f"📦 Size: {_size(result.size)}\n"
-                             f"☁️ <a href=\"{safe_url}\">Open Drive folder</a>")
                     tracker = self.batches.get(job.batch_id)
                     if tracker:
                         await tracker.update(job.code, status="COMPLETED", done=result.size,
                                              total=result.size, speed=None, eta=0)
-                    else:
-                        await self._notify(job.chat_id, final)
                 except Exception as exc:
                     self._save_job(job, "upload_failed", error=str(exc)[:500])
-                    if not getattr(exc, "_tmjdlc_progress_message", None):
+                    tracker = self.batches.get(job.batch_id)
+                    if tracker:
+                        await tracker.update(job.code, status="FAILED")
+                    elif not getattr(exc, "_tmjdlc_progress_message", None):
                         await self._notify(job.chat_id,
                             f"⚠️ <b>{html.escape(job.code)}</b> downloaded, but Drive upload failed. "
-                            f"Temporary file retained.\n{html.escape(str(exc)[:600])}")
+                            f"Temporary file retained.\\n{html.escape(str(exc)[:600])}")
                 finally:
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
