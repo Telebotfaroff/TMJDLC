@@ -8,7 +8,7 @@ Telegram uses the Bot API for commands and progress notifications only. Video fi
 
 ## Current status
 
-Implemented foundation: configuration, persistent JSON library, Google Drive folder/upload/index manager, Javtiful URL validation, browser-based stream resolution, yt-dlp download engine, and a tested channel pagination scraper. Telegram command handlers, interactive page/video selection, and queue orchestration are still pending. This is not yet a complete runnable bot.
+Implemented foundation: configuration, persistent JSON library, Google Drive folder/upload/index manager, Javtiful URL validation, browser-based stream resolution, yt-dlp download engine, channel pagination scraper, and reusable page/video selection with duplicate filtering. Telegram command handlers, interactive page/video selection, and queue orchestration are still pending. This is not yet a complete runnable bot.
 
 ## Fixed design decisions
 
@@ -21,26 +21,35 @@ Implemented foundation: configuration, persistent JSON library, Google Drive fol
 - Download concurrency and Drive upload concurrency are separate settings.
 - No Neon/Postgres, GoFile, MTProto/WZGram, Telegram media uploads, or file splitting.
 
-## Channel scanner
+## Channel scanning and selection
 
-The JavtifulChannelScraper validates a /channel/SLUG URL, reads the channel's video count, calculates pagination, and fetches only selected pages. It collapses duplicate video links by Javtiful's numeric video ID. Example:
+The JavtifulChannelScraper validates a /channel/SLUG URL, reads the channel's video count, calculates pagination, and fetches only selected pages. It collapses duplicate links by Javtiful's numeric video ID.
+
+Use one-based page and video selections: all, 1,3,5-8. Selection helpers validate ranges, remove repeated video IDs, and skip catalogue codes already present in the persistent database.
 
 ```python
-from tmjdlc.providers.javtiful import JavtifulChannelScraper
+from tmjdlc.providers.javtiful import JavtifulChannelScraper, select_videos
 
 scraper = JavtifulChannelScraper()
 info = scraper.inspect("https://javtiful.com/channel/CHANNEL_SLUG")
 print(info.name, info.total_videos, info.total_pages)
-
-# Fetch pages selected by the user:
 video_urls = scraper.videos_for_pages(info, [1, 2, 5])
+
+selection = select_videos(
+    video_urls,
+    "1,3,5-8",
+    completed_codes={"ABP-123"},  # use codes from JsonStore.read()["videos"]
+)
+for video in selection.selected:
+    print(video.index, video.code, video.url)
+print("Skipped duplicates:", len(selection.skipped_duplicates))
 ```
 
-This is the scanner layer only; the Telegram page-selection interface and job queue will be connected in a later step.
+The selection layer is reusable by the future Telegram inline-keyboard interface. The Telegram page/video selection interface and download queue are not connected yet.
 
 ## Downloader
 
-See docs/DOWNLOADER.md for the one-job DownloadEngine API. It accepts Javtiful page URLs, uses the browser-based stream detector and yt-dlp, emits progress callbacks, retains failed job files, and returns a DownloadResult.
+See docs/DOWNLOADER.md for the one-job DownloadEngine API. It uses the browser-based stream detector and yt-dlp, emits progress callbacks, retains failed job files, and returns a DownloadResult. The proven stream detector and downloader are kept separate from the new selection layer.
 
 ## Google Colab
 
