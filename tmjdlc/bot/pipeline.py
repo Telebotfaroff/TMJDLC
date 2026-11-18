@@ -1,12 +1,12 @@
-"""Bounded download/upload pipeline for the Telegram control bot."""
+"""Bounded Drive pipeline with live Telegram transfer progress."""
 from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from tmjdlc.config import Settings
 from tmjdlc.downloader.engine import DownloadEngine, DownloadResult
@@ -30,14 +30,51 @@ class UploadJob:
     result: DownloadResult
 
 
+def _size(value: int | float | None) -> str:
+    if value is None:
+        return "?"
+    number = float(value)
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if number < 1024 or unit == "TiB":
+            return f"{number:.2f} {unit}"
+        number /= 1024
+    return "?"
+
+
+def _eta(value: float | int | None) -> str:
+    if value is None or value < 0:
+        return "Calculating…"
+    seconds = int(value)
+    hours, rest = divmod(seconds, 3600)
+    minutes, seconds = divmod(rest, 60)
+    return f"{hours}h {minutes:02}m" if hours else (f"{minutes}m {seconds:02}s" if minutes else f"{seconds}s")
+
+
+def _card(code: str, phase: str, done: int, total: int | None,
+          speed: float | None, eta: float | None, detail: str = "") -> str:
+    if total and total > 0:
+        percent = min(100.0, max(0.0, done * 100 / total))
+        blocks = min(10, int(percent / 10))
+        bar = "█" * blocks + "░" * (10 - blocks)
+        size_line, pct = f"{_size(done)} / {_size(total)}", f"{percent:.1f}%"
+        if eta is None and speed and speed > 0:
+            eta = max(0, total - done) / speed
+    else:
+        bar, pct, size_line = "░" * 10, "Preparing…" if not done else "Size unknown", _size(done)
+    speed_line = f"{_size(speed)}/s" if speed and speed > 0 else "Calculating…"
+    emoji = "⬇️" if phase == "DOWNLOAD" else "☁️"
+    return (f"{emoji} <b>{phase}</b> · <b>{code}</b>\n"
+            f"<code>[{bar}]</code>  <b>{pct}</b>\n"
+            f"📦 {size_line}\n⚡ {speed_line}   ⏳ ETA: {_eta(eta)}"
+            + (f"\n{detail}" if detail else ""))
+
+
 class AdjustableGate:
     """A concurrency gate whose limit can be changed while workers are running."""
-
     def __init__(self, limit: int):
         if not 1 <= limit <= 6:
             raise ValueError("Download concurrency must be between 1 and 6")
-        self.limit = limit
-        self.active = 0
+        self.limit, self.active = limit, 0
         self.condition = asyncio.Condition()
 
     async def set_limit(self, limit: int) -> None:
@@ -59,46 +96,28 @@ class AdjustableGate:
 
 
 class DrivePipeline:
-    """Downloads to temporary Colab storage, then uploads through a bounded queue."""
-
-    def __init__(
-        self,
-        settings: Settings,
-        drive: DriveManager,
-        store: JsonStore,
-        bot: Any,
-    ):
-        self.settings = settings
-        self.drive = drive
-        self.store = store
-        self.bot = bot
-        self.engine = DownloadEngine(settings.work_dir)
+    """Download to temporary Colab storage, then upload through a bounded queue."""
+    def __init__(self, settings: Settings, drive: DriveManager, store: JsonStore, bot: Any):
+        self.settings, self.drive, self.store, self.bot = settings, drive, store, bot
         self.download_queue: asyncio.Queue[QueueJob | None] = asyncio.Queue(maxsize=12)
         self.upload_queue: asyncio.Queue[UploadJob | None] = asyncio.Queue(
-            maxsize=max(1, settings.max_parallel_downloads)
-        )
+            maxsize=max(1, settings.max_parallel_downloads))
         self.download_gate = AdjustableGate(settings.max_parallel_downloads)
         self.tasks: list[asyncio.Task] = []
         self.active_codes: set[str] = set()
         self._codes_lock = asyncio.Lock()
-        self._stopping = False
 
     async def start(self) -> None:
         if self.tasks:
             return
-        self._stopping = False
         self.tasks = [
-            asyncio.create_task(self._download_worker(), name=f"download-{i + 1}")
-            for i in range(6)
+            asyncio.create_task(self._download_worker(), name=f"download-{i+1}") for i in range(6)
         ] + [
-            asyncio.create_task(self._upload_worker(), name=f"upload-{i + 1}")
+            asyncio.create_task(self._upload_worker(), name=f"upload-{i+1}")
             for i in range(self.settings.max_parallel_uploads)
         ]
 
     async def stop(self) -> None:
-        self._stopping = True
-        for _ in range(6):
-            await self.download_queue.put(None)
         for task in self.tasks:
             task.cancel()
         await asyncio.gather(*self.tasks, return_exceptions=True)
@@ -108,9 +127,7 @@ class DrivePipeline:
         await self.download_gate.set_limit(limit)
 
     async def submit(self, chat_id: int, items: list[tuple[str, str]]) -> tuple[list[str], list[str]]:
-        """Queue (URL, catalogue code) pairs; return queued IDs and skipped codes."""
-        queued: list[str] = []
-        skipped: list[str] = []
+        queued, skipped = [], []
         for url, raw_code in items:
             code = raw_code.strip().upper()
             if not code:
@@ -123,34 +140,82 @@ class DrivePipeline:
                 if self.download_queue.full():
                     skipped.append(f"{code} (queue full)")
                     continue
-                job_id = uuid.uuid4().hex[:12]
-                job = QueueJob(job_id=job_id, url=url, code=code, chat_id=chat_id)
+                job = QueueJob(uuid.uuid4().hex[:12], url, code, chat_id)
                 self.active_codes.add(code)
                 self._save_job(job, "queued")
                 self.download_queue.put_nowait(job)
-                queued.append(job_id)
+                queued.append(job.job_id)
         return queued, skipped
 
     def _save_job(self, job: QueueJob, status: str, **extra: Any) -> None:
         def mutate(data: dict[str, Any]) -> None:
-            record = data.setdefault("jobs", {}).setdefault(job.job_id, {})
-            record.update(
-                {
-                    "job_id": job.job_id,
-                    "code": job.code,
-                    "url": job.url,
-                    "status": status,
-                    "chat_id": job.chat_id,
-                    **extra,
-                }
-            )
+            data.setdefault("jobs", {}).setdefault(job.job_id, {}).update(
+                {"job_id": job.job_id, "code": job.code, "url": job.url,
+                 "status": status, "chat_id": job.chat_id, **extra})
         self.store.update(mutate)
 
-    async def _notify(self, chat_id: int, message: str) -> None:
+    async def _notify(self, chat_id: int, text: str) -> None:
         try:
-            await self.bot.send_message(chat_id=chat_id, text=message)
+            await self.bot.send_message(chat_id=chat_id, text=text)
         except Exception:
-            log.exception("Unable to send Telegram status message")
+            log.exception("Unable to send Telegram notification")
+
+    async def _tracked_transfer(self, job: QueueJob, phase: str, operation: Callable,
+                                total: int | None = None):
+        loop = asyncio.get_running_loop()
+        events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+        started = time.monotonic()
+        try:
+            message = await self.bot.send_message(
+                chat_id=job.chat_id,
+                text=_card(job.code, phase, 0, total, None, None, "Starting…"),
+                parse_mode="HTML")
+        except Exception:
+            log.exception("Could not create progress message for %s", job.code)
+            message = None
+
+        def report(data: dict[str, Any]) -> None:
+            loop.call_soon_threadsafe(events.put_nowait, dict(data))
+
+        worker = asyncio.create_task(asyncio.to_thread(operation, report))
+        latest: dict[str, Any] = {}
+        last_edit = 0.0
+
+        async def update(data: dict[str, Any], force: bool = False) -> None:
+            nonlocal last_edit
+            if message is None:
+                return
+            now = time.monotonic()
+            if not force and now - last_edit < 2.0:
+                return
+            done = int(data.get("downloaded_bytes") or data.get("uploaded_bytes") or data.get("done") or 0)
+            size = data.get("total_bytes") or data.get("total") or total
+            speed = data.get("speed")
+            if speed is None and done:
+                speed = done / max(0.1, now - started)
+            eta = data.get("eta")
+            if eta is None and size and speed and speed > 0:
+                eta = max(0, size - done) / speed
+            try:
+                await message.edit_text(
+                    _card(job.code, phase, done, size, speed, eta, data.get("message", "")),
+                    parse_mode="HTML")
+                last_edit = now
+            except Exception as exc:
+                if "message is not modified" not in str(exc).lower():
+                    log.debug("Progress edit failed: %s", exc)
+
+        while not worker.done():
+            try:
+                latest = await asyncio.wait_for(events.get(), timeout=0.75)
+                await update(latest)
+            except asyncio.TimeoutError:
+                continue
+        while not events.empty():
+            latest = events.get_nowait()
+        result = await worker
+        await update(latest, force=True)
+        return result, message
 
     async def _download_worker(self) -> None:
         while True:
@@ -161,20 +226,20 @@ class DrivePipeline:
                 await self.download_gate.acquire()
                 try:
                     self._save_job(job, "downloading")
-                    await self._notify(job.chat_id, f"⬇️ Downloading {job.code}\nJob: {job.job_id}")
-                    result = await asyncio.to_thread(
-                        self.engine.download, job.url, job_id=job.job_id
-                    )
+                    def download(progress):
+                        engine = DownloadEngine(self.settings.work_dir, progress_callback=progress)
+                        return engine.download(job.url, job_id=job.job_id)
+                    result, _ = await self._tracked_transfer(job, "DOWNLOAD", download)
                 except Exception as exc:
                     self._save_job(job, "failed", error=str(exc)[:500])
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
-                    await self._notify(job.chat_id, f"❌ {job.code} download failed.\n{str(exc)[:700]}")
+                    await self._notify(job.chat_id, f"❌ <b>{job.code}</b> download failed.\n{str(exc)[:600]}")
                     continue
                 finally:
                     await self.download_gate.release()
                 self._save_job(job, "downloaded", filename=result.filename, size=result.size)
-                await self.upload_queue.put(UploadJob(job=job, result=result))
+                await self.upload_queue.put(UploadJob(job, result))
             finally:
                 self.download_queue.task_done()
 
@@ -187,45 +252,42 @@ class DrivePipeline:
                 job, result = item.job, item.result
                 try:
                     self._save_job(job, "uploading", filename=result.filename, size=result.size)
-                    await self._notify(job.chat_id, f"☁️ Uploading {job.code} to Google Drive…")
                     folder = await asyncio.to_thread(self.drive.ensure_code_folder, job.code)
-                    uploaded = await asyncio.to_thread(
-                        self.drive.upload_file, result.filepath, folder["id"]
-                    )
+                    def upload(progress):
+                        return self.drive.upload_file(
+                            result.filepath, folder["id"],
+                            progress_callback=lambda done, total: progress(
+                                {"uploaded_bytes": done, "total": total}))
+                    uploaded, progress_message = await self._tracked_transfer(
+                        job, "UPLOAD", upload, total=result.size)
                     if int(uploaded.get("size", -1)) != result.size:
                         raise IOError("Drive upload size verification failed; local file retained.")
-                    self.store.record_video(
-                        job.code,
-                        folder_id=folder["id"],
-                        folder_url=folder["url"],
-                        filename=result.filename,
-                        size=result.size,
-                    )
+                    self.store.record_video(job.code, folder_id=folder["id"],
+                        folder_url=folder["url"], filename=result.filename, size=result.size)
                     library = self.store.read()
-                    index_entries = {
-                        code: value["folder_url"]
-                        for code, value in library["videos"].items()
-                        if value.get("folder_url")
-                    }
-                    await asyncio.to_thread(self.drive.write_index, index_entries)
-                    await asyncio.to_thread(self.engine.cleanup_job, job.job_id)
-                    self._save_job(
-                        job, "completed", filename=result.filename, size=result.size,
-                        folder_url=folder["url"], drive_file_id=uploaded["id"]
-                    )
-                    await self._notify(
-                        job.chat_id,
-                        f"✅ {job.code} completed\n"
-                        f"Size: {result.size / 1024 / 1024:.2f} MiB\n"
-                        f"Drive: {folder['url']}",
-                    )
+                    entries = {code: value["folder_url"] for code, value in library["videos"].items()
+                               if value.get("folder_url")}
+                    await asyncio.to_thread(self.drive.write_index, entries)
+                    await asyncio.to_thread(
+                        DownloadEngine(self.settings.work_dir).cleanup_job, job.job_id)
+                    self._save_job(job, "completed", filename=result.filename, size=result.size,
+                        folder_url=folder["url"], drive_file_id=uploaded["id"])
+                    final = (f"✅ <b>{job.code} completed</b>\n"
+                             f"📦 Size: {_size(result.size)}\n"
+                             f"☁️ <a href=\"{folder['url']}\">Open Drive folder</a>")
+                    if progress_message:
+                        try:
+                            await progress_message.edit_text(final, parse_mode="HTML",
+                                disable_web_page_preview=True)
+                        except Exception:
+                            await self._notify(job.chat_id, final)
+                    else:
+                        await self._notify(job.chat_id, final)
                 except Exception as exc:
                     self._save_job(job, "upload_failed", error=str(exc)[:500])
-                    await self._notify(
-                        job.chat_id,
-                        f"⚠️ {job.code} downloaded, but Drive upload failed. "
-                        f"The temporary file was retained for retry.\n{str(exc)[:600]}",
-                    )
+                    await self._notify(job.chat_id,
+                        f"⚠️ <b>{job.code}</b> downloaded, but Drive upload failed. "
+                        f"Temporary file retained.\n{str(exc)[:600]}")
                 finally:
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
@@ -243,8 +305,5 @@ class DrivePipeline:
         lines.extend(f"{state}: {counts[state]}" for state in order if counts.get(state))
         if len(lines) == 1:
             lines.append("No jobs recorded yet.")
-        lines.append(
-            f"Download limit: {self.download_gate.limit} | "
-            f"Upload workers: {self.settings.max_parallel_uploads}"
-        )
+        lines.append(f"Download limit: {self.download_gate.limit} | Upload workers: {self.settings.max_parallel_uploads}")
         return "\n".join(lines)
