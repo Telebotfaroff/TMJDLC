@@ -5,7 +5,10 @@ import asyncio
 import logging
 from pathlib import Path
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    BotCommand, InlineKeyboardButton, InlineKeyboardMarkup,
+    KeyboardButton, ReplyKeyboardMarkup, Update,
+)
 from telegram.ext import (
     Application,
     ApplicationBuilder,
@@ -42,6 +45,12 @@ async def _reply(update: Update, text: str, **kwargs) -> None:
 
 def build_application(settings: Settings, drive: DriveManager, store: JsonStore) -> Application:
     async def post_init(app: Application) -> None:
+        await app.bot.set_my_commands([
+            BotCommand("start", "Open TMJDLC controls"),
+            BotCommand("status", "Show queue and worker status"),
+            BotCommand("uploads", "Change Drive upload workers"),
+            BotCommand("cancel", "Cancel current selection"),
+        ])
         pipeline = DrivePipeline(settings, drive, store, app.bot)
         app.bot_data["pipeline"] = pipeline
         await pipeline.start()
@@ -63,6 +72,12 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
     app.bot_data["scraper"] = JavtifulChannelScraper()
     app.bot_data["parser"] = JavtifulURLParser()
 
+    control_keyboard = ReplyKeyboardMarkup(
+        [[KeyboardButton("/status"), KeyboardButton("/uploads"), KeyboardButton("/cancel")]],
+        resize_keyboard=True,
+        is_persistent=True,
+    )
+
     async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not _is_admin(update, settings):
             await _reply(update, "Access denied.")
@@ -73,7 +88,8 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
             "🎬 TMJDLC · Google Drive edition\n\n"
             "Send a Javtiful channel URL to choose pages and videos, "
             "or send one video URL directly.\n\n"
-            "Commands: /status · /cancel",
+            "Use the command buttons below to control the bot.",
+            reply_markup=control_keyboard,
         )
 
     async def status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -82,11 +98,29 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
         pipeline: DrivePipeline = context.application.bot_data["pipeline"]
         await _reply(update, pipeline.status_text())
 
+    async def uploads(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not _is_admin(update, settings):
+            return
+        pipeline: DrivePipeline = context.application.bot_data["pipeline"]
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                f"{'✅ ' if n == pipeline.upload_limit else ''}{n} upload worker{'s' if n != 1 else ''}",
+                callback_data=f"uploadworkers:{n}")]
+            for n in (1, 2, 3, 4)
+        ])
+        await _reply(
+            update,
+            f"☁️ Drive upload workers: {pipeline.upload_limit}/4\\n"
+            "Choose how many videos may upload to Google Drive simultaneously:",
+            reply_markup=keyboard,
+        )
+
     async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not _is_admin(update, settings):
             return
         context.user_data.clear()
-        await _reply(update, "Selection cancelled. Already queued jobs will continue.")
+        await _reply(update, "Selection cancelled. Already queued jobs will continue.",
+                     reply_markup=control_keyboard)
 
     async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not _is_admin(update, settings):
@@ -95,6 +129,15 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
         if not message or not message.text:
             return
         value = message.text.strip()
+        if value == "/status":
+            await status(update, context)
+            return
+        if value == "/uploads":
+            await uploads(update, context)
+            return
+        if value == "/cancel":
+            await cancel(update, context)
+            return
         stage = context.user_data.get("stage")
 
         if stage == "pages":
@@ -187,6 +230,7 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
             f"Last page videos: {info.last_page_count}\n\n"
             "Which pages should I scan? Send all, one page, or ranges "
             "like 1,3,5-8.",
+            reply_markup=control_keyboard,
         )
 
     async def choose_parallel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -221,9 +265,33 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
         await query.edit_message_text(text)
 
     app.add_handler(CommandHandler("start", start))
+    async def choose_upload_workers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        query = update.callback_query
+        if not query:
+            return
+        await query.answer()
+        if not _is_admin(update, settings):
+            await query.edit_message_text("Access denied.")
+            return
+        try:
+            limit = int((query.data or "").split(":", 1)[1])
+            if not 1 <= limit <= 4:
+                raise ValueError
+        except (ValueError, IndexError):
+            await query.edit_message_text("Invalid upload-worker option.")
+            return
+        pipeline: DrivePipeline = context.application.bot_data["pipeline"]
+        await pipeline.set_upload_limit(limit)
+        await query.edit_message_text(
+            f"✅ Drive upload workers set to {limit}/4.\\n"
+            "This setting is saved and will remain after Colab restarts."
+        )
+
     app.add_handler(CommandHandler("status", status))
+    app.add_handler(CommandHandler("uploads", uploads))
     app.add_handler(CommandHandler("cancel", cancel))
     app.add_handler(CallbackQueryHandler(choose_parallel, pattern=r"^parallel:[1-6]$"))
+    app.add_handler(CallbackQueryHandler(choose_upload_workers, pattern=r"^uploadworkers:[1-4]$"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     return app
 
