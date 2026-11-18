@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 
-_CODE_PATTERN = re.compile(r"(?i)\\b([a-z]{2,8})[-_ ]?(\\d{2,6})\\b")
+_CODE_PATTERN = re.compile(r"(?i)\b([a-z]{2,8})[-_ ]?(\d{2,6})\b")
 
 
 @dataclass(frozen=True, slots=True)
