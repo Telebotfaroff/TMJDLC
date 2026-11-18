@@ -25,6 +25,12 @@ Implemented foundation: configuration, persistent JSON library, Google Drive fol
 
 See docs/DOWNLOADER.md for the one-job DownloadEngine API. It accepts Javtiful page URLs, uses yt-dlp, emits progress callbacks, retains failed job files, and returns a DownloadResult with code, path, size, duration, and thumbnail metadata.
 
+## Google Colab
+
+[Open TMJDLC in Google Colab](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/drive/notebooks/TMJDLC_Drive.ipynb)
+
+The notebook installs the `drive` branch, runs tests, mounts Google Drive, and provides a single-video Javtiful download → Drive upload workflow. Telegram bot controls and parallel queue orchestration are not yet included.
+
 ## Development
 
 Python 3.11+ is the target. Install with pip install -r requirements.txt && pip install -e .; run tests with pytest. A real Javtiful URL must be tested from Colab because extractor support depends on the current site and yt-dlp version.
