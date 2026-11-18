@@ -1,26 +1,44 @@
 # Colab setup
 
-This foundation is ready for local tests. The full bot entry point and downloader are not implemented yet.
+## 1. Open the notebook
 
-## Install
+[Open TMJDLC Google Drive Edition in Colab](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/drive/notebooks/TMJDLC_Drive.ipynb)
+
+Run the notebook from top to bottom. It installs the `drive` branch, Chromium, mounts Google Drive and initializes the persistent library.
+
+## 2. Configure the Telegram bot
+
+Create a Telegram bot with BotFather. Set these environment variables in Colab (or in a local `.env` file):
+
+- `TG_BOT_TOKEN`: bot token.
+- `TG_ADMIN_IDS`: your numeric Telegram user ID(s), comma-separated.
+- `TMJDLC_WORK_DIR`: temporary Colab download directory.
+- `TMJDLC_MAX_PARALLEL_DOWNLOADS`: default download limit, 1–6.
+- `TMJDLC_MAX_PARALLEL_UPLOADS`: simultaneous Drive uploads, 1–4.
+
+The bot accepts only configured admin IDs. It uses Telegram Bot API for commands and progress; media files are uploaded directly to Google Drive.
+
+## 3. Start the bot in Colab
+
+After mounting Drive and setting the variables, run:
 
 ```bash
-git clone -b drive https://github.com/Telebotfaroff/TMJDLC.git
-cd TMJDLC
-pip install -r requirements.txt
+cd /content/TMJDLC
+python -m tmjdlc.bot
 ```
 
-## Configure
+Keep the Colab runtime alive while the bot is running.
 
-Copy `.env.example` to `.env` and set:
+## Telegram workflow
 
-- `TG_BOT_TOKEN`
-- `TG_ADMIN_IDS` (comma-separated numeric Telegram IDs)
-- `TMJDLC_WORK_DIR` (temporary Colab disk)
-- `TMJDLC_DRIVE_ROOT_NAME` or an existing `TMJDLC_DRIVE_ROOT_ID`
-- Download and upload worker limits
+1. Send a Javtiful channel URL, or a single video URL.
+2. For a channel, choose pages using `all`, `1,3,5-8`, etc.
+3. Choose videos using the same syntax.
+4. Select 1–6 parallel downloads.
+5. The bounded pipeline downloads to temporary Colab storage, then uploads to Drive with the configured upload-worker limit.
+6. Use `/status` to view the queue. Use `/cancel` to cancel the current selection flow; already queued jobs continue.
 
-Mount Drive in Colab, then use `DriveManager.from_colab()` to authenticate and initialize the library. Store `database.json` inside the mounted library root, not in the temporary work directory.
+Completed files are recorded in `database.json`, and the root `index.txt` is refreshed. Local job folders are deleted only after a verified upload and successful library/index update. If Drive upload fails, the local file is retained.
 
 ## Tests
 
@@ -28,18 +46,10 @@ Mount Drive in Colab, then use `DriveManager.from_colab()` to authenticate and i
 python -m pytest -q
 ```
 
-The Drive API is isolated behind `DriveManager`; its live authentication and upload operations must be verified from the user's Colab runtime. Unit tests do not require Google credentials.
-
-
-## Javtiful browser resolver
-
-The downloader reuses the Playwright-based resolver from the original main branch.
-After installing Python requirements, install Chromium in the Colab runtime:
+The browser resolver requires Chromium:
 
 ```bash
 python -m playwright install --with-deps chromium
 ```
 
-The resolver launches Chromium headlessly, activates the Javtiful player, captures
-the actual media request, and passes that short-lived URL directly to yt-dlp.
-Do not print or persist the resolved signed media URL.
+Do not run multiple Colab runtimes against the same JSON database. The JSON file is intended for one active worker runtime.
