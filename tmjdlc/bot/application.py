@@ -289,7 +289,7 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
         pipeline: DrivePipeline = context.application.bot_data["pipeline"]
         await pipeline.set_upload_limit(limit)
         await query.edit_message_text(
-            f"✅ Drive upload workers set to {limit}/4.\\n"
+            f"✅ Drive upload workers set to {limit}/4.\n"
             "This setting is saved and will remain after Colab restarts."
         )
 
