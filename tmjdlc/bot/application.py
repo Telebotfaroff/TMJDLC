@@ -228,6 +228,34 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
     return app
 
 
+async def start_bot_async(
+    settings: Settings, drive: DriveManager, store: JsonStore
+) -> Application:
+    """Start polling inside an already-running notebook event loop."""
+    app = build_application(settings, drive, store)
+    await app.initialize()
+    pipeline = DrivePipeline(settings, drive, store, app.bot)
+    app.bot_data["pipeline"] = pipeline
+    await pipeline.start()
+    await app.start()
+    if app.updater is None:
+        raise RuntimeError("Telegram updater is unavailable")
+    await app.updater.start_polling(drop_pending_updates=True)
+    return app
+
+
+async def stop_bot_async(app: Application) -> None:
+    """Stop a bot started with start_bot_async."""
+    if app.updater and app.updater.running:
+        await app.updater.stop()
+    pipeline = app.bot_data.get("pipeline")
+    if pipeline:
+        await pipeline.stop()
+    if app.running:
+        await app.stop()
+    await app.shutdown()
+
+
 def run_bot() -> None:
     settings = Settings.from_env()
     library_root = Path("/content/drive/MyDrive") / settings.drive_root_name
