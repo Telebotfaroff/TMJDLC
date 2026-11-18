@@ -36,7 +36,9 @@ Keep the Colab runtime alive while the bot is running.
 3. Choose videos using the same syntax.
 4. Select 1–6 parallel downloads.
 5. The bounded pipeline downloads to temporary Colab storage, then uploads to Drive with the configured upload-worker limit.
-6. Use `/status` to view the queue. Use `/cancel` to cancel the current selection flow; already queued jobs continue.
+6. Use the Telegram command buttons or `/status`, `/uploads`, and `/cancel` to control the bot.
+7. Open `/uploads` and choose 1–4 simultaneous Google Drive uploads. The selected limit is saved in the Drive library database and restored after Colab restarts. Four upload worker tasks are available; the selected limit controls how many run at once.
+8. `/cancel` cancels the current selection flow; already queued jobs continue.
 
 Completed files are recorded in `database.json`, and the root `index.txt` is refreshed. Local job folders are deleted only after a verified upload and successful library/index update. If Drive upload fails, the local file is retained.
 
