@@ -1,7 +1,31 @@
-# Google Colab setup plan
+# Colab setup
 
-The final notebook will install project dependencies, mount Google Drive, authenticate the current Colab user for Drive API access, load Telegram Bot API credentials, create the temporary work directory, initialize the Drive root folder plus `database.json` and `index.txt`, and run a startup self-check before starting polling and workers.
+This foundation is ready for local tests. The full bot entry point and downloader are not implemented yet.
 
-Telegram API ID/hash are not required because Telegram is used through the Bot API only. Downloaded videos are temporary in Colab and permanent in Google Drive.
+## Install
 
-Do not run an incomplete notebook. The notebook will be added after the modules it launches exist and pass tests.
+```bash
+git clone -b drive https://github.com/Telebotfaroff/TMJDLC.git
+cd TMJDLC
+pip install -r requirements.txt
+```
+
+## Configure
+
+Copy `.env.example` to `.env` and set:
+
+- `TG_BOT_TOKEN`
+- `TG_ADMIN_IDS` (comma-separated numeric Telegram IDs)
+- `TMJDLC_WORK_DIR` (temporary Colab disk)
+- `TMJDLC_DRIVE_ROOT_NAME` or an existing `TMJDLC_DRIVE_ROOT_ID`
+- Download and upload worker limits
+
+Mount Drive in Colab, then use `DriveManager.from_colab()` to authenticate and initialize the library. Store `database.json` inside the mounted library root, not in the temporary work directory.
+
+## Tests
+
+```bash
+python -m pytest -q
+```
+
+The Drive API is isolated behind `DriveManager`; its live authentication and upload operations must be verified from the user's Colab runtime. Unit tests do not require Google credentials.

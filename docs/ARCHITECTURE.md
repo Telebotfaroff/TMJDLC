@@ -1,48 +1,34 @@
 # Architecture
 
-## Pipeline
+## Current foundation
 
-1. Telegram receives a single URL or a channel URL.
-2. The Javtiful provider inspects the post/channel and returns normalized video metadata.
-3. The queue rejects codes already present in the library or already queued.
-4. A bounded download worker downloads into a per-job directory under Colab temporary storage.
-5. A bounded Drive worker uploads the completed file into its code folder.
-6. The Drive client verifies the remote file (at minimum file ID and size).
-7. The library store atomically records the completed code, Drive folder URL, file metadata, and job result.
-8. The index writer updates the root Drive `index.txt`.
-9. Only after verification and durable state update does cleanup remove the local file.
+- `tmjdlc.config.Settings` loads and validates environment configuration.
+- `tmjdlc.storage.JsonStore` stores the durable library and job state in JSON. Writes use a temporary file, fsync, atomic replacement, a thread lock, and a process lock on POSIX. The previous valid database is retained as `database.json.bak`.
+- `tmjdlc.drive.DriveManager` authenticates through Colab, creates/reuses the library root and per-code folders, uploads files resumably, verifies uploaded size, and maintains the root `index.txt`.
 
-## Packages
+## Intended job lifecycle
 
-- `bot/`: Telegram Bot API commands, callbacks, and progress panel. No media upload code.
-- `providers/javtiful/`: Javtiful page/channel parsing and stream resolution.
-- `downloader/`: yt-dlp invocation, progress callbacks, and media validation.
-- `drive/`: authenticated Drive API client, folder management, resumable upload, verification, and index writing.
-- `queue/`: job model, bounded scheduling, retries, cancellation, and recovery.
-- `storage/`: atomic JSON state and duplicate lookup.
-- `workers/`: download/upload orchestration and lifecycle.
-- `utils/`: configuration, logging, paths, and formatting helpers.
+1. Receive a request through Telegram Bot API.
+2. Normalize provider metadata and code.
+3. Reject codes already in the JSON library or active queue.
+4. Download into a unique temporary job directory.
+5. Upload to that code's Google Drive folder.
+6. Verify the Drive file ID and uploaded byte size.
+7. Record the completed video in `database.json` and refresh `index.txt`.
+8. Delete the local temporary file only after durable completion.
+
+A failed upload must remain retryable and must not be recorded as completed.
 
 ## Persistence
 
-`database.json` is the local library/job-state file stored on mounted Drive, not ephemeral Colab storage. Writes must be atomic and protected against concurrent worker updates. A code is completed only after Drive verification succeeds.
+Mount Google Drive in Colab and place `database.json` under the mounted Drive library root. The work directory is temporary Colab storage. Do not keep the only copy of the database on the ephemeral runtime disk.
 
-The root Drive `index.txt` contains one line per code, for example:
-
-`ABP {https://drive.google.com/drive/folders/FOLDER_ID}`
+The JSON store exposes atomic updates and duplicate lookup. For this single Colab worker design, it uses local file locks; do not run multiple independent Colab runtimes against the same JSON database. If multi-runtime processing is introduced later, move coordination to a transactional database.
 
 ## Concurrency
 
-Download and upload limits are independent. Downloads may continue while previous files upload. The upload queue is bounded to prevent Colab disk exhaustion. The scheduler applies backpressure before starting more downloads when temporary disk space is low.
+Download and upload worker limits are configured separately. The upload queue must be bounded so downloads cannot fill Colab storage while Drive is slow.
 
-## Failure rules
+## Not included
 
-- Download failure: retain diagnostic state; do not create a completed-library entry.
-- Upload failure: keep the local file for retry; do not mark completed.
-- Verification failure: treat upload as failed; do not delete the local file.
-- Successful verified upload: persist state and index, then delete the local file.
-- Restart: recover interrupted jobs from JSON state and reconcile incomplete uploads where possible.
-
-## Explicit exclusions
-
-No Neon/Postgres, GoFile, MTProto/WZGram, Telegram video uploads, or splitting files into parts.
+No Telegram media uploads, MTProto/WZGram, GoFile, Neon/Postgres, or video splitting.
