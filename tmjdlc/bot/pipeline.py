@@ -254,6 +254,10 @@ class DrivePipeline:
                     )
                 except Exception:
                     log.exception("Could not mark %s progress failed for %s", phase, job.code)
+            try:
+                setattr(exc, "_tmjdlc_progress_message", message)
+            except Exception:
+                pass
             raise
 
     async def _download_worker(self) -> None:
@@ -283,8 +287,9 @@ class DrivePipeline:
                     self._save_job(job, "failed", error=str(exc)[:500])
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
-                    await self._notify(job.chat_id,
-                        f"❌ <b>{html.escape(job.code)}</b> download failed.\n{html.escape(str(exc)[:600])}")
+                    if not getattr(exc, "_tmjdlc_progress_message", None):
+                        await self._notify(job.chat_id,
+                            f"❌ <b>{html.escape(job.code)}</b> download failed.\n{html.escape(str(exc)[:600])}")
                     continue
                 finally:
                     await self.download_gate.release()
@@ -336,9 +341,10 @@ class DrivePipeline:
                         await self._notify(job.chat_id, final)
                 except Exception as exc:
                     self._save_job(job, "upload_failed", error=str(exc)[:500])
-                    await self._notify(job.chat_id,
-                        f"⚠️ <b>{html.escape(job.code)}</b> downloaded, but Drive upload failed. "
-                        f"Temporary file retained.\n{html.escape(str(exc)[:600])}")
+                    if not getattr(exc, "_tmjdlc_progress_message", None):
+                        await self._notify(job.chat_id,
+                            f"⚠️ <b>{html.escape(job.code)}</b> downloaded, but Drive upload failed. "
+                            f"Temporary file retained.\n{html.escape(str(exc)[:600])}")
                 finally:
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
