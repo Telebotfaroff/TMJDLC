@@ -8,7 +8,7 @@ Telegram uses the Bot API for commands and progress notifications only. Video fi
 
 ## Current status
 
-This commit establishes the new project structure and architecture. Downloader, provider resolver, Drive uploader, queue workers, and Telegram handlers will be implemented and tested in separate steps. This scaffold is not a runnable bot yet.
+Implemented foundation: configuration, persistent JSON library, Google Drive folder/upload/index manager, Javtiful URL validation, and a yt-dlp download engine. Telegram command handlers, channel pagination/scanning, and queue orchestration are still pending. This is not yet a complete runnable bot.
 
 ## Fixed design decisions
 
@@ -16,18 +16,15 @@ This commit establishes the new project structure and architecture. Downloader, 
 - Colab local storage is temporary only; successful uploads are verified before local files are deleted.
 - Google Drive is the permanent media destination.
 - Telegram Bot API is used only for control and progress.
-- `database.json` is the duplicate-detection and job-state index.
-- Each video code gets a Drive folder; `index.txt` records entries such as `ABP {FOLDER LINK}`.
-- Channel scanning supports page selection and duplicate filtering.
+- database.json is the duplicate-detection and job-state index.
+- Each video code gets a Drive folder; index.txt records entries such as ABP {FOLDER LINK}.
 - Download concurrency and Drive upload concurrency are separate settings.
 - No Neon/Postgres, GoFile, MTProto/WZGram, Telegram media uploads, or file splitting.
 
-## Repository layout
+## Downloader
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for module responsibilities and data flow, and [docs/SETUP.md](docs/SETUP.md) for the planned Colab setup.
+See docs/DOWNLOADER.md for the one-job DownloadEngine API. It accepts Javtiful page URLs, uses yt-dlp, emits progress callbacks, retains failed job files, and returns a DownloadResult with code, path, size, duration, and thumbnail metadata.
 
 ## Development
 
-Python 3.11+ is the target. Install with `pip install -r requirements.txt && pip install -e .`; run tests with `pytest`.
-
-The implementation will keep provider, download, Drive, persistence, workers, and Telegram control code isolated so each stage can be tested independently.
+Python 3.11+ is the target. Install with pip install -r requirements.txt && pip install -e .; run tests with pytest. A real Javtiful URL must be tested from Colab because extractor support depends on the current site and yt-dlp version.

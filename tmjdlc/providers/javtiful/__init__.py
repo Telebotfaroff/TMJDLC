@@ -1,1 +1,3 @@
-"""Javtiful provider integration."""
+from .provider import JavtifulProvider, VideoSource
+
+__all__ = ["JavtifulProvider", "VideoSource"]
