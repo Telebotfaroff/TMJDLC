@@ -73,3 +73,23 @@ def test_batch_progress_compacts_large_batches():
     assert "CODE-29" in card
     assert "CODE-30" not in card
     assert "… and 15 more videos" in card
+
+
+
+def test_adjustable_gate_supports_four_upload_workers():
+    gate = AdjustableGate(1, maximum=4)
+    async def scenario():
+        await gate.set_limit(4)
+        for _ in range(4):
+            await gate.acquire()
+        assert gate.active == 4
+        await gate.release()
+        await gate.release()
+        await gate.release()
+        await gate.release()
+    asyncio.run(scenario())
+
+
+def test_upload_gate_rejects_more_than_four_workers():
+    with pytest.raises(ValueError):
+        AdjustableGate(5, maximum=4)
