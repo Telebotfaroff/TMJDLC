@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tmjdlc"
-version = "0.1.0"
-description = "Provider-based media discovery and Telegram publishing pipeline"
+version = "2.0.0"
+description = "Colab-to-Google-Drive media pipeline with Telegram Bot API control"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 dynamic = ["dependencies"]
 
 [tool.setuptools.packages.find]
@@ -22,7 +22,7 @@ addopts = "-ra"
 
 [tool.ruff]
 line-length = 100
-target-version = "py312"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
