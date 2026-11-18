@@ -268,12 +268,23 @@ class DrivePipeline:
                     def download(progress):
                         engine = DownloadEngine(self.settings.work_dir, progress_callback=progress)
                         return engine.download(job.url, job_id=job.job_id)
-                    result, _ = await self._tracked_transfer(job, "DOWNLOAD", download)
+                    result, download_message = await self._tracked_transfer(job, "DOWNLOAD", download)
+                    if download_message:
+                        try:
+                            await download_message.edit_text(
+                                f"✅ <b>DOWNLOAD COMPLETE · {html.escape(job.code)}</b>\n"
+                                f"<code>[██████████]</code>  <b>100%</b>\n"
+                                f"📦 {_size(result.size)}\n☁️ Waiting for Drive upload…",
+                                parse_mode="HTML", disable_web_page_preview=True,
+                            )
+                        except Exception:
+                            log.exception("Could not finalize download progress for %s", job.code)
                 except Exception as exc:
                     self._save_job(job, "failed", error=str(exc)[:500])
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
-                    await self._notify(job.chat_id, f"❌ <b>{job.code}</b> download failed.\n{str(exc)[:600]}")
+                    await self._notify(job.chat_id,
+                        f"❌ <b>{html.escape(job.code)}</b> download failed.\n{html.escape(str(exc)[:600])}")
                     continue
                 finally:
                     await self.download_gate.release()
@@ -311,9 +322,10 @@ class DrivePipeline:
                         DownloadEngine(self.settings.work_dir).cleanup_job, job.job_id)
                     self._save_job(job, "completed", filename=result.filename, size=result.size,
                         folder_url=folder["url"], drive_file_id=uploaded["id"])
-                    final = (f"✅ <b>{job.code} completed</b>\n"
+                    safe_url = html.escape(folder["url"], quote=True)
+                    final = (f"✅ <b>{html.escape(job.code)} completed</b>\n"
                              f"📦 Size: {_size(result.size)}\n"
-                             f"☁️ <a href=\"{folder['url']}\">Open Drive folder</a>")
+                             f"☁️ <a href=\"{safe_url}\">Open Drive folder</a>")
                     if progress_message:
                         try:
                             await progress_message.edit_text(final, parse_mode="HTML",
@@ -325,8 +337,8 @@ class DrivePipeline:
                 except Exception as exc:
                     self._save_job(job, "upload_failed", error=str(exc)[:500])
                     await self._notify(job.chat_id,
-                        f"⚠️ <b>{job.code}</b> downloaded, but Drive upload failed. "
-                        f"Temporary file retained.\n{str(exc)[:600]}")
+                        f"⚠️ <b>{html.escape(job.code)}</b> downloaded, but Drive upload failed. "
+                        f"Temporary file retained.\n{html.escape(str(exc)[:600])}")
                 finally:
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
