@@ -71,7 +71,11 @@ class DriveManager:
         url = folder.get("webViewLink") or f"https://drive.google.com/drive/folders/{folder_id}"
         return {"id": folder_id, "url": url, "name": key}
 
-    def upload_file(self, local_path: str | Path, folder_id: str) -> dict[str, Any]:
+    def upload_file(
+        self, local_path: str | Path, folder_id: str, *,
+        progress_callback: Any | None = None,
+    ) -> dict[str, Any]:
+        """Upload resumably and report (uploaded_bytes, total_bytes) after each chunk."""
         try:
             from googleapiclient.http import MediaFileUpload
         except ImportError as exc:
@@ -79,15 +83,23 @@ class DriveManager:
         path = Path(local_path)
         if not path.is_file():
             raise FileNotFoundError(path)
-        media = MediaFileUpload(str(path), resumable=True)
-        result = self.service.files().create(
+        total = path.stat().st_size
+        media = MediaFileUpload(str(path), chunksize=8 * 1024 * 1024, resumable=True)
+        request = self.service.files().create(
             body={"name": path.name, "parents": [folder_id]},
             media_body=media,
             fields="id,name,size,webViewLink"
-        ).execute()
-        if not result.get("id") or int(result.get("size", -1)) != path.stat().st_size:
+        )
+        response = None
+        while response is None:
+            status, response = request.next_chunk()
+            if status is not None and progress_callback:
+                progress_callback(int(status.progress() * total), total)
+        if not response.get("id") or int(response.get("size", -1)) != total:
             raise IOError("Drive upload verification failed: ID or size mismatch")
-        return result
+        if progress_callback:
+            progress_callback(total, total)
+        return response
 
     def write_index(self, entries: dict[str, str], filename: str = "index.txt") -> str:
         """Create/update root index. Entries are code -> folder URL."""
