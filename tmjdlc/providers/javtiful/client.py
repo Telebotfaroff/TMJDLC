@@ -9,18 +9,19 @@ from typing import Any
 
 from tmjdlc.downloaders.yt_dlp import YtDlpStreamDownloader
 from tmjdlc.models.stream import StreamResult
+from tmjdlc.providers.javtiful.provider import JavtifulURLParser, VideoSource
 from tmjdlc.providers.javtiful.stream_detector import JavtifulStreamDetector
 
 
 def _safe_error_detail(error: Exception) -> str:
     """Keep useful diagnostics while stripping query strings from embedded URLs."""
     message = str(error).strip()
-    message = re.sub(r"(https?://[^\s?'\"<>]+)\?[^\s'\"<>]*", r"\1?[QUERY REDACTED]", message)
+    message = re.sub(r"(https?://[^\\s?'\\"<>]+)\\?[^\\s'\\"<>]*", r"\\1?[QUERY REDACTED]", message)
     return message[:600] or "No additional error details were provided."
 
 
 class JavtifulProvider:
-    """Resolve Javtiful playback sources and download them in the same runtime."""
+    """Parse Javtiful post URLs, resolve playback sources and download them."""
 
     def __init__(
         self,
@@ -33,11 +34,16 @@ class JavtifulProvider:
         if max_attempts < 1:
             raise ValueError("max_attempts must be at least 1")
         self.progress_callback = progress_callback
+        self.url_parser = JavtifulURLParser()
         self.detector = detector or JavtifulStreamDetector(
             progress_callback=self._progress
         )
         self.downloader = downloader or YtDlpStreamDownloader()
         self.max_attempts = max_attempts
+
+    def parse(self, post_url: str) -> VideoSource:
+        """Validate a Javtiful URL and return its normalized catalogue code."""
+        return self.url_parser.parse(post_url)
 
     def _progress(self, message: str) -> None:
         if self.progress_callback is not None:
@@ -50,6 +56,7 @@ class JavtifulProvider:
         self, post_url: str, *, quality: int | None = None
     ) -> StreamResult:
         """Resolve a fresh, temporary stream URL from the original post URL."""
+        self.parse(post_url)
         return self.detector.detect(post_url, preferred_quality=quality)
 
     def download(
@@ -68,6 +75,7 @@ class JavtifulProvider:
         separate output stem so a partial file from an expired URL is not resumed
         against a newly signed URL.
         """
+        self.parse(post_url)
         if not filename or Path(filename).name != filename:
             raise ValueError("filename must be a plain file name without directories")
 
