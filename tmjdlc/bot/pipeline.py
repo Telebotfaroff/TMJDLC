@@ -147,15 +147,16 @@ class BatchProgress:
 
 class AdjustableGate:
     """A concurrency gate whose limit can be changed while workers are running."""
-    def __init__(self, limit: int):
-        if not 1 <= limit <= 6:
-            raise ValueError("Download concurrency must be between 1 and 6")
+    def __init__(self, limit: int, maximum: int = 6):
+        self.maximum = maximum
+        if not 1 <= limit <= maximum:
+            raise ValueError(f"Concurrency must be between 1 and {maximum}")
         self.limit, self.active = limit, 0
         self.condition = asyncio.Condition()
 
     async def set_limit(self, limit: int) -> None:
-        if not 1 <= limit <= 6:
-            raise ValueError("Download concurrency must be between 1 and 6")
+        if not 1 <= limit <= self.maximum:
+            raise ValueError(f"Concurrency must be between 1 and {self.maximum}")
         async with self.condition:
             self.limit = limit
             self.condition.notify_all()
@@ -179,6 +180,15 @@ class DrivePipeline:
         self.upload_queue: asyncio.Queue[UploadJob | None] = asyncio.Queue(
             maxsize=max(1, settings.max_parallel_downloads))
         self.download_gate = AdjustableGate(settings.max_parallel_downloads)
+        saved_upload_limit = store.read().get("settings", {}).get(
+            "max_parallel_uploads", settings.max_parallel_uploads)
+        try:
+            saved_upload_limit = int(saved_upload_limit)
+        except (TypeError, ValueError):
+            saved_upload_limit = settings.max_parallel_uploads
+        if not 1 <= saved_upload_limit <= 4:
+            saved_upload_limit = settings.max_parallel_uploads
+        self.upload_gate = AdjustableGate(saved_upload_limit, maximum=4)
         self.tasks: list[asyncio.Task] = []
         self.active_codes: set[str] = set()
         self.batches: dict[str, BatchProgress] = {}
@@ -191,7 +201,7 @@ class DrivePipeline:
             asyncio.create_task(self._download_worker(), name=f"download-{i+1}") for i in range(6)
         ] + [
             asyncio.create_task(self._upload_worker(), name=f"upload-{i+1}")
-            for i in range(self.settings.max_parallel_uploads)
+            for i in range(4)
         ]
 
     async def stop(self) -> None:
@@ -202,6 +212,15 @@ class DrivePipeline:
 
     async def set_download_limit(self, limit: int) -> None:
         await self.download_gate.set_limit(limit)
+
+    async def set_upload_limit(self, limit: int) -> None:
+        await self.upload_gate.set_limit(limit)
+        self.store.update(lambda data: data.setdefault("settings", {}).update(
+            {"max_parallel_uploads": limit}))
+
+    @property
+    def upload_limit(self) -> int:
+        return self.upload_gate.limit
 
     async def submit(self, chat_id: int, items: list[tuple[str, str]]) -> tuple[list[str], list[str]]:
         queued, skipped = [], []
@@ -412,5 +431,5 @@ class DrivePipeline:
         lines.extend(f"{state}: {counts[state]}" for state in order if counts.get(state))
         if len(lines) == 1:
             lines.append("No jobs recorded yet.")
-        lines.append(f"Download limit: {self.download_gate.limit} | Upload workers: {self.settings.max_parallel_uploads}")
+        lines.append(f"Download limit: {self.download_gate.limit} | Upload workers: {self.upload_gate.limit}/4")
         return "\n".join(lines)
