@@ -83,6 +83,12 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
             await _reply(update, "Access denied.")
             return
         context.user_data.clear()
+        await context.bot.set_my_commands([
+            BotCommand("start", "Open TMJDLC controls"),
+            BotCommand("status", "Show queue and worker status"),
+            BotCommand("uploads", "Change Drive upload workers"),
+            BotCommand("cancel", "Cancel current selection"),
+        ])
         await _reply(
             update,
             "🎬 TMJDLC · Google Drive edition\n\n"
@@ -110,7 +116,7 @@ def build_application(settings: Settings, drive: DriveManager, store: JsonStore)
         ])
         await _reply(
             update,
-            f"☁️ Drive upload workers: {pipeline.upload_limit}/4\\n"
+            f"☁️ Drive upload workers: {pipeline.upload_limit}/4\n"
             "Choose how many videos may upload to Google Drive simultaneously:",
             reply_markup=keyboard,
         )
