@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import html
 import time
 import uuid
 from dataclasses import dataclass
@@ -63,10 +64,12 @@ def _card(code: str, phase: str, done: int, total: int | None,
         bar, pct, size_line = "░" * 10, "Preparing…" if not done else "Size unknown", _size(done)
     speed_line = f"{_size(speed)}/s" if speed and speed > 0 else "Calculating…"
     emoji = "⬇️" if phase == "DOWNLOAD" else "☁️"
-    return (f"{emoji} <b>{phase}</b> · <b>{code}</b>\n"
+    safe_code = html.escape(code)
+    safe_detail = html.escape(str(detail)) if detail else ""
+    return (f"{emoji} <b>{phase}</b> · <b>{safe_code}</b>\n"
             f"<code>[{bar}]</code>  <b>{pct}</b>\n"
             f"📦 {size_line}\n⚡ {speed_line}   ⏳ ETA: {_eta(eta)}"
-            + (f"\n{detail}" if detail else ""))
+            + (f"\n{safe_detail}" if safe_detail else ""))
 
 
 class AdjustableGate:
@@ -156,66 +159,102 @@ class DrivePipeline:
 
     async def _notify(self, chat_id: int, text: str) -> None:
         try:
-            await self.bot.send_message(chat_id=chat_id, text=text)
+            await self.bot.send_message(chat_id=chat_id, text=text, parse_mode="HTML", disable_web_page_preview=True)
         except Exception:
             log.exception("Unable to send Telegram notification")
 
     async def _tracked_transfer(self, job: QueueJob, phase: str, operation: Callable,
                                 total: int | None = None):
+        """Run a blocking transfer and safely coalesce thread progress into Telegram edits."""
         loop = asyncio.get_running_loop()
         events: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
         started = time.monotonic()
+        last_sample_at = started
+        last_sample_bytes = 0
+        last_speed: float | None = None
+        last_edit = 0.0
+        message = None
+
         try:
             message = await self.bot.send_message(
                 chat_id=job.chat_id,
-                text=_card(job.code, phase, 0, total, None, None, "Starting…"),
-                parse_mode="HTML")
+                text=_card(job.code, phase, 0, total, None, None, "Preparing transfer…"),
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+            )
         except Exception:
-            log.exception("Could not create progress message for %s", job.code)
-            message = None
+            log.exception("Could not create %s progress message for %s", phase, job.code)
 
         def report(data: dict[str, Any]) -> None:
             loop.call_soon_threadsafe(events.put_nowait, dict(data))
 
         worker = asyncio.create_task(asyncio.to_thread(operation, report))
         latest: dict[str, Any] = {}
-        last_edit = 0.0
 
         async def update(data: dict[str, Any], force: bool = False) -> None:
-            nonlocal last_edit
+            nonlocal last_edit, last_sample_at, last_sample_bytes, last_speed
             if message is None:
                 return
             now = time.monotonic()
-            if not force and now - last_edit < 2.0:
+            if not force and now - last_edit < 1.5:
                 return
             done = int(data.get("downloaded_bytes") or data.get("uploaded_bytes") or data.get("done") or 0)
-            size = data.get("total_bytes") or data.get("total") or total
-            speed = data.get("speed")
-            if speed is None and done:
-                speed = done / max(0.1, now - started)
+            raw_total = (data.get("total_bytes") or data.get("total_bytes_estimate")
+                         or data.get("filesize") or data.get("filesize_approx")
+                         or data.get("total") or total)
+            size = int(raw_total) if raw_total else None
+            reported_speed = data.get("speed")
+            if reported_speed:
+                speed = float(reported_speed)
+                last_speed = speed
+            else:
+                elapsed = now - last_sample_at
+                delta = max(0, done - last_sample_bytes)
+                if elapsed >= 0.25 and delta:
+                    instant = delta / elapsed
+                    last_speed = instant if last_speed is None else (0.65 * instant + 0.35 * last_speed)
+                speed = last_speed
+            if done >= last_sample_bytes:
+                last_sample_bytes, last_sample_at = done, now
             eta = data.get("eta")
             if eta is None and size and speed and speed > 0:
                 eta = max(0, size - done) / speed
+            detail = data.get("message") or ""
             try:
                 await message.edit_text(
-                    _card(job.code, phase, done, size, speed, eta, data.get("message", "")),
-                    parse_mode="HTML")
+                    _card(job.code, phase, done, size, speed, eta, detail),
+                    parse_mode="HTML",
+                    disable_web_page_preview=True,
+                )
                 last_edit = now
             except Exception as exc:
                 if "message is not modified" not in str(exc).lower():
-                    log.debug("Progress edit failed: %s", exc)
+                    log.warning("%s progress edit failed for %s: %s", phase, job.code, exc)
 
-        while not worker.done():
-            try:
-                latest = await asyncio.wait_for(events.get(), timeout=0.75)
-                await update(latest)
-            except asyncio.TimeoutError:
-                continue
-        while not events.empty():
-            latest = events.get_nowait()
-        result = await worker
-        await update(latest, force=True)
-        return result, message
+        try:
+            while not worker.done():
+                try:
+                    latest = await asyncio.wait_for(events.get(), timeout=0.5)
+                    await update(latest)
+                except asyncio.TimeoutError:
+                    continue
+            await asyncio.sleep(0)
+            while not events.empty():
+                latest = events.get_nowait()
+                await update(latest, force=True)
+            result = await worker
+            return result, message
+        except Exception as exc:
+            if message is not None:
+                try:
+                    await message.edit_text(
+                        f"❌ <b>{html.escape(phase)} failed · {html.escape(job.code)}</b>\n{html.escape(str(exc)[:700])}",
+                        parse_mode="HTML",
+                        disable_web_page_preview=True,
+                    )
+                except Exception:
+                    log.exception("Could not mark %s progress failed for %s", phase, job.code)
+            raise
 
     async def _download_worker(self) -> None:
         while True:
