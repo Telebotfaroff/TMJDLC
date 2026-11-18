@@ -29,3 +29,17 @@ python -m pytest -q
 ```
 
 The Drive API is isolated behind `DriveManager`; its live authentication and upload operations must be verified from the user's Colab runtime. Unit tests do not require Google credentials.
+
+
+## Javtiful browser resolver
+
+The downloader reuses the Playwright-based resolver from the original main branch.
+After installing Python requirements, install Chromium in the Colab runtime:
+
+```bash
+python -m playwright install --with-deps chromium
+```
+
+The resolver launches Chromium headlessly, activates the Javtiful player, captures
+the actual media request, and passes that short-lived URL directly to yt-dlp.
+Do not print or persist the resolved signed media URL.

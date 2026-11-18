@@ -5,9 +5,7 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 
-_CODE_PATTERNS = (
-    re.compile(r"(?i)\b([a-z]{2,8})[-_ ]?(\d{2,6})\b"),
-)
+_CODE_PATTERN = re.compile(r"(?i)\\b([a-z]{2,8})[-_ ]?(\\d{2,6})\\b")
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,8 +15,8 @@ class VideoSource:
     provider: str = "javtiful"
 
 
-class JavtifulProvider:
-    """Validates Javtiful page URLs and extracts a stable catalogue code."""
+class JavtifulURLParser:
+    """Validate a Javtiful post URL and extract its catalogue code."""
 
     HOSTS = {"javtiful.com", "www.javtiful.com"}
 
@@ -37,7 +35,7 @@ class JavtifulProvider:
 
     @staticmethod
     def extract_code(value: str) -> str | None:
-        match = _CODE_PATTERNS[0].search(value)
+        match = _CODE_PATTERN.search(value)
         if match:
             return f"{match.group(1).upper()}-{match.group(2)}"
         return None

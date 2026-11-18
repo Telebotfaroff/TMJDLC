@@ -7,3 +7,4 @@ google-api-python-client>=2.150,<3
 google-auth>=2.35,<3
 google-auth-httplib2>=0.2,<1
 python-dotenv>=1,<2
+playwright>=1.50,<2

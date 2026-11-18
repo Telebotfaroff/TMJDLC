@@ -1,3 +1,13 @@
-from .provider import JavtifulProvider, VideoSource
+"""Javtiful URL parsing and browser-based stream resolution."""
 
-__all__ = ["JavtifulProvider", "VideoSource"]
+from .client import JavtifulProvider
+from .provider import JavtifulURLParser, VideoSource
+from .stream_detector import JavtifulStreamDetector, StreamDetectionError
+
+__all__ = [
+    "JavtifulProvider",
+    "JavtifulURLParser",
+    "JavtifulStreamDetector",
+    "StreamDetectionError",
+    "VideoSource",
+]
