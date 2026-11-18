@@ -379,6 +379,7 @@ class DrivePipeline:
                 if item is None:
                     return
                 job, result = item.job, item.result
+                await self.upload_gate.acquire()
                 try:
                     self._save_job(job, "uploading", filename=result.filename, size=result.size)
                     folder = await asyncio.to_thread(self.drive.ensure_code_folder, job.code)
@@ -417,6 +418,7 @@ class DrivePipeline:
                 finally:
                     async with self._codes_lock:
                         self.active_codes.discard(job.code)
+                    await self.upload_gate.release()
             finally:
                 self.upload_queue.task_done()
 
