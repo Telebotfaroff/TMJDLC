@@ -82,6 +82,7 @@ class BatchProgress:
                       for code in codes}
         self.message = None
         self.lock = asyncio.Lock()
+        self.last_edit = 0.0
 
     def render(self) -> str:
         total = len(self.items)
@@ -89,7 +90,8 @@ class BatchProgress:
         failed = sum(x["status"] == "FAILED" for x in self.items.values())
         active = sum(x["status"] in ("DOWNLOADING", "UPLOADING") for x in self.items.values())
         lines = [f"🎬 <b>DOWNLOAD BATCH · {total} VIDEOS</b>", "━━━━━━━━━━━━━━━━━━━━"]
-        for code, item in self.items.items():
+        visible_items = list(self.items.items())[:30]
+        for code, item in visible_items:
             status = item["status"]
             if status in ("DOWNLOADING", "UPLOADING"):
                 phase = item["phase"]
@@ -107,6 +109,8 @@ class BatchProgress:
                 label = {"QUEUED": "Waiting", "WAITING_UPLOAD": "Waiting for upload",
                          "COMPLETED": "Completed", "FAILED": "Failed"}.get(status, status)
                 lines.append(f"{icon} <b>{html.escape(code)}</b> · {label}")
+        if total > len(visible_items):
+            lines.append(f"… and {total - len(visible_items)} more videos")
         lines += ["━━━━━━━━━━━━━━━━━━━━",
                   f"Active: {active} · Completed: {completed}/{total} · Failed: {failed}"]
         return "\n".join(lines)
@@ -128,9 +132,14 @@ class BatchProgress:
                 item["status"] = status
             item.update(values)
             if self.message is not None:
+                now = time.monotonic()
+                terminal_change = status in ("COMPLETED", "FAILED", "WAITING_UPLOAD")
+                if not terminal_change and now - self.last_edit < 1.2:
+                    return
                 try:
                     await self.message.edit_text(self.render(), parse_mode="HTML",
                                                  disable_web_page_preview=True)
+                    self.last_edit = now
                 except Exception as exc:
                     if "message is not modified" not in str(exc).lower():
                         log.warning("Batch progress edit failed: %s", exc)
