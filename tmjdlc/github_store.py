@@ -172,7 +172,7 @@ class GitHubDataStore:
                 "TMJDLC_UPLOAD_QUEUE_POLL_SECONDS": 2,
                 "TMJDLC_JOB_LEASE_SECONDS": 3600,
                 "TMJDLC_JOB_MAX_ATTEMPTS": 3,
-                "TMJDLC_UPLOAD_CONCURRENCY": 1,
+                "TMJDLC_UPLOAD_CONCURRENCY": 4,
                 "TMJDLC_WORK_DIR": "/content/tmjdlc-bot",
                 "TMJDLC_AUTO_CLEAN": True,
                 "TMJDLC_MIN_FREE_DISK_GB": 3,
