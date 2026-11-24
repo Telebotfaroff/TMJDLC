@@ -13,7 +13,7 @@ Use the private repository:
 
 On first startup, TMJDLC creates:
 
-- `config/secrets.json` — Telegram bot token, API ID/hash, Premium user session string, admin IDs, optional helper bot tokens, and optional GoFile token.
+- `config/secrets.json` — Telegram bot token, API ID/hash, admin IDs, optional helper bot tokens, and optional GoFile token.
 - `config/bot.json` — default worker and runtime settings.
 - `config/commands.json` — customizable Telegram menu labels, visibility, and order.
 - `catalogue/channels.json` — saved Javtiful channel catalogue.
@@ -35,7 +35,7 @@ python -m playwright install --with-deps chromium
 python -m tmjdlc.bot
 ```
 
-The main bot token receives updates. For Premium uploads up to 4GB, put your Premium account's MTProto session string in `TG_SESSION_STRING` in `config/secrets.json` and keep `TG_PREMIUM_UPLOAD` set to `true`. The separate upload client uses that user session; without it, the uploader falls back to the bot token and the smaller file limit. The Premium account must also be an administrator with posting permission in the destination channel.
+The main bot token receives updates and handles every upload. Videos larger than 1,950,000,000 bytes are automatically split by FFmpeg into sequential, independently playable MP4 parts. Each part is uploaded below Telegram's 2 GB limit, with part numbering in its caption and separate upload receipts so interrupted jobs can resume without re-uploading completed parts.
 
 ## Commands
 
@@ -58,6 +58,8 @@ The main bot token receives updates. For Premium uploads up to 4GB, put your Pre
 - Download claims stop when active uploads plus the configured pending-upload capacity is full.
 - Worker leases and retry state are persisted in SQLite and synchronized to GitHub.
 - Complete Telegram and GoFile upload metadata is saved as individual JSON records.
-- Downloaded media stays on Colab storage and is cleaned after successful delivery when enabled.
+- Videos larger than 1,950,000,000 bytes are split into independently playable MP4 parts before Telegram upload.
+- Each part is uploaded sequentially and its Telegram receipt is persisted independently for safe resume.
+- Downloaded media and generated parts stay on Colab storage and are cleaned after successful delivery when enabled.
 
 Keep the Colab runtime running while jobs process. Colab media storage is temporary; queue state, settings, channel catalogue, and completed upload records are stored in the private GitHub data repository.
