@@ -1224,15 +1224,8 @@ async def start_cmd(client, message):
         await message.reply_text(
             "🎞 <b>First-time setup · Video upload channel</b>\n"
             "Send <code>@channelusername</code> for a public channel, or forward a recent post "
-            "from your private channel to this bot. "
-            "I will verify that this bot is an administrator with posting permission, then save it in the private GitHub data repository.\n"
+            "from your private channel. The bot will verify administrator and posting access.\n"
             "Use /cancelsetup to stop.",
-            parse_mode=ParseMode.HTML,
-        )
-    else:
-        await message.reply_text(
-            f"✅ Video upload channel is configured: <code>{html.escape(configured_video)}</code>\n"
-            "Use /setupload to change it.",
             parse_mode=ParseMode.HTML,
         )
     await panel_cmd(client, message)
@@ -1247,11 +1240,14 @@ async def panel_cmd(client, message):
     running = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
     download_workers = int(await asyncio.to_thread(queue.get_setting, "parallel_downloads", str(MAX_WORKERS)) or MAX_WORKERS)
     upload_workers = int(await asyncio.to_thread(queue.get_setting, "upload_concurrency", "1") or 1)
+    destination = await asyncio.to_thread(queue.get_setting, "upload_channel", "")
+    destination_label = html.escape(str(destination)) if destination else "Not configured"
     body = (
         "🎬 <b>TMJDLC · Javtiful Downloader</b>\n\n"
         f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\n"
         f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\n"
-        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>{download_workers} downloads + {upload_workers} uploads</b>"
+        f"📤 Destination: <code>{destination_label}</code>\n"
+        f"💽 Free: <b>{free:.1f} GiB</b> · ⚙️ <b>{download_workers}↓ + {upload_workers}↑</b>"
     )
     markup = build_panel_keyboard()
     await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
