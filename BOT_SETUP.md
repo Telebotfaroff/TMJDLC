@@ -35,7 +35,7 @@ python -m playwright install --with-deps chromium
 python -m tmjdlc.bot
 ```
 
-The main bot token receives updates. For Premium uploads up to 4GB, put your Premium account's MTProto session string in `TG_SESSION_STRING` in `config/secrets.json` and keep `TG_PREMIUM_UPLOAD` set to `true`. The separate upload client uses that user session; without it, the uploader falls back to the bot token and the smaller file limit.
+The main bot token receives updates. For Premium uploads up to 4GB, put your Premium account's MTProto session string in `TG_SESSION_STRING` in `config/secrets.json` and keep `TG_PREMIUM_UPLOAD` set to `true`. The separate upload client uses that user session; without it, the uploader falls back to the bot token and the smaller file limit. The Premium account must also be an administrator with posting permission in the destination channel.
 
 ## Commands
 
