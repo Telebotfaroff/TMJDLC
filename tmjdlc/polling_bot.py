@@ -2543,8 +2543,12 @@ async def on_start(client):
         queue.get_setting, "progress_notifications", "true"
     )
     progress_notifications_enabled = str(notification_setting).lower() in {"1", "true", "yes", "on"}
+    orphaned = await asyncio.to_thread(queue.recover_orphaned_jobs, 90)
     recovered = await asyncio.to_thread(queue.recover_expired)
-    log.info("GitHub-backed SQLite queue ready; recovered expired jobs=%s", recovered)
+    log.info(
+        "GitHub-backed SQLite queue ready; orphaned active jobs=%s | expired jobs=%s",
+        orphaned, recovered,
+    )
     global workers
     workers = [
         *[
