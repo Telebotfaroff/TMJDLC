@@ -1642,15 +1642,18 @@ async def destination_cmd(client, message, *, edit=False):
         f'<a href="{html.escape(folder_url, quote=True)}">Open current public folder</a>'
         if folder_url else ("Created; link unavailable" if folder_code else "Not initialized yet")
     )
+    video_channel = await asyncio.to_thread(queue.get_setting, "upload_channel", "Not set")
     body = (
-        "☁️ <b>Upload Destination</b>\n\n"
-        f"Current mode: <b>{html.escape(mode.upper())}</b>\n"
-        "Choose where completed downloads should be delivered.\n\n"
-        f"Current GoFile folder: {folder_label}\n"
-        f"Batch: <b>#{html.escape(str(folder_number))}</b> · Videos: <b>{int(folder_count or 0)}/20</b>\n"
+        "☁️ <b>Upload Destination</b>\\n\\n"
+        f"Delivery mode: <b>{html.escape(mode.upper())}</b>\\n"
+        f"🎞 Telegram video channel: <code>{html.escape(str(video_channel))}</code>\\n"
+        "Choose where completed downloads should be delivered. Use the channel button below to change the Telegram upload channel.\\n\\n"
+        f"Current GoFile folder: {folder_label}\\n"
+        f"Batch: <b>#{html.escape(str(folder_number))}</b> · Videos: <b>{int(folder_count or 0)}/20</b>\\n"
         "Each public folder holds up to 20 videos. Completed folder links are sent to admins."
     )
     markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🎞 Set Telegram upload channel", callback_data="settings:video")],
         [InlineKeyboardButton("📨 Telegram" + (" ✓" if mode == "telegram" else ""),
                               callback_data="settings:destination:telegram")],
         [InlineKeyboardButton("☁️ GoFile" + (" ✓" if mode == "gofile" else ""),
@@ -2120,9 +2123,14 @@ async def callback_handler(client, callback):
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
         await callback.answer()
+        current = await asyncio.to_thread(queue.get_setting, "upload_channel", "Not set")
         return await callback.message.reply_text(
-            "Forward any recent post from the private video channel here. "
-            "The bot will resolve and verify the channel before saving it in Neon. Send CANCEL to stop."
+            "🎞 <b>Set Telegram video upload channel</b>\\n\\n"
+            f"Current channel: <code>{html.escape(str(current))}</code>\\n"
+            "Send the public channel @username, or forward a recent post from a private channel. "
+            "I will verify that the bot is an administrator with posting permission and save the channel in the private GitHub Database repository.\\n"
+            "Send CANCEL to stop.",
+            parse_mode=ParseMode.HTML,
         )
     if data.startswith("settings:notifications:"):
         enabled = data.rsplit(":", 1)[-1] == "on"
