@@ -1497,7 +1497,7 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
                               callback_data="queue:pause" if not paused else "queue:resume"),
          InlineKeyboardButton("🛑 Cancel queued", callback_data="queue:cancel_queued")],
         [InlineKeyboardButton("🚨 Cancel ALL tasks", callback_data="queue:cancel_all:ask")],
-        [InlineKeyboardButton("🧹 Clear completed", callback_data="queue:clear:ask"),
+        [InlineKeyboardButton("🗑 Clear history", callback_data="queue:clear:ask"),
          InlineKeyboardButton("🔄 Refresh", callback_data=f"queue:page:{offset}")],
         [InlineKeyboardButton("🏠 Home", callback_data="home:show")],
     ])
@@ -2296,14 +2296,16 @@ async def callback_handler(client, callback):
     if data == "queue:clear:ask":
         await callback.answer()
         return await callback.message.edit_text(
-            "🧹 <b>Clear completed history?</b>\nCompleted jobs still referenced by the media catalogue will be retained.",
+            "🗑 <b>Clear finished queue history?</b>\n"
+            "This removes completed jobs not linked to the media catalogue, plus all failed and cancelled jobs. "
+            "Queued and active jobs are not deleted.",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("Yes, clear history", callback_data="queue:clear:confirm"),
+                [InlineKeyboardButton("🗑 Yes, clear history", callback_data="queue:clear:confirm"),
                  InlineKeyboardButton("No, go back", callback_data="home:queue")]]),
             parse_mode=ParseMode.HTML)
     if data == "queue:clear:confirm":
         count = await asyncio.to_thread(queue.clear_completed_history)
-        await callback.answer(f"Removed {count} completed history rows.", show_alert=True)
+        await callback.answer(f"Deleted {count} finished queue records.", show_alert=True)
         return await render_queue(callback.message, edit=True)
     if data.startswith("queue:page:"):
         offset = int(data.rsplit(":", 1)[-1])
