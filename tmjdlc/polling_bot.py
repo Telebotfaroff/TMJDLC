@@ -1918,7 +1918,7 @@ async def text_handler(client, message):
             return await render_catalogue(message)
         if action == "destination":
             return await destination_cmd(client, message)
-        return await message.reply_text(
+        if action == "worker":
             counts = await asyncio.to_thread(queue.counts)
             active_downloads = counts.get("downloading", 0)
             active_uploads = counts.get("uploading", 0)
@@ -1927,7 +1927,6 @@ async def text_handler(client, message):
                 f"Upload workers: {active_uploads}/2\\nQueue polling: {POLL_SECONDS}s\\n"
                 f"Free disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
             )
-        )
     if uid in download_state:
         download_state.discard(uid)
         if not VIDEO_ID.search(text) or urlparse(text).hostname not in {"javtiful.com", "www.javtiful.com"}:
