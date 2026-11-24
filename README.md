@@ -14,6 +14,7 @@ Use `/start` to open the persistent menu:
 - **Settings / Upload Destination** — choose Telegram, GoFile, or both; GoFile reuses one persistent guest account and shared folder.
 - **Settings** — configure the Telegram video destination, download workers, and 1- or 2-video simultaneous uploads.
 - **Storage** and **Worker Status** — inspect runtime health.
+- **Live Processes** (`/processes`) — inspect active downloads, uploads, waiting upload backlog, worker IDs, progress, and free disk; use Refresh for an updated snapshot.
 
 The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
 
@@ -28,7 +29,9 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 - Automatic 720p selection for single and batch downloads.
 - Durable Neon queue with retry and restart recovery.
 - Separate download and upload progress reporting.
-- Optional two-video concurrent uploads, controlled from Settings (default: one).
+- One or two download workers and one or two upload workers, with a hard maximum of two each.
+- Per-upload-worker backlog limits prevent uncontrolled downloads from filling Colab storage.
+- Live process monitor (`/processes`) shows active downloads, uploads, waiting uploads, worker IDs, and progress.
 - Batch-scoped cancellation.
 - Disk-space guard and automatic cleanup after successful upload.
 - Javtiful stream resolution is refreshed before retrying a failed download.
