@@ -346,6 +346,22 @@ class JobQueue:
         upload_backlog_limit = max(1, upload_limit * max(0, int(max_pending_uploads)))
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
+            # Quarantine malformed legacy rows instead of letting them occupy a
+            # download slot or repeatedly re-enter the runnable queue.
+            conn.execute("""
+                UPDATE tmjdlc_bot_jobs
+                SET status='failed',worker_id=NULL,lease_until=NULL,
+                    last_error='Invalid or missing Javtiful source URL; removed from runnable queue',
+                    updated_at=now()
+                WHERE status='queued'
+                  AND (TRIM(COALESCE(video_id,''))=''
+                    OR NOT (
+                      LOWER(TRIM(COALESCE(post_url,''))) LIKE 'https://javtiful.com/%'
+                      OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'https://www.javtiful.com/%'
+                      OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'http://javtiful.com/%'
+                      OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'http://www.javtiful.com/%'
+                    ))
+            """)
             row = conn.execute("""
                 WITH candidate AS (
                   SELECT id FROM tmjdlc_bot_jobs
@@ -640,7 +656,7 @@ class JobQueue:
                 ORDER BY CASE status
                     WHEN 'downloading' THEN 0 WHEN 'uploading' THEN 1
                     WHEN 'ready' THEN 2 ELSE 3 END,
-                    created_at ASC,id ASC
+                    created_at DESC,id DESC
                 LIMIT %s OFFSET %s
             """, (max(1, min(50, limit)), max(0, offset))).fetchall()
             return [dict(row) for row in rows]
