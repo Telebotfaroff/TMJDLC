@@ -66,3 +66,15 @@ def test_github_store_fetches_large_blob_when_contents_api_omits_inline_data():
 
     store = GitHubDataStore("token", session=LargeBlobSession())
     assert store.read_bytes("database/tmjdlc.sqlite3.gz") == b"large-snapshot"
+
+
+def test_database_snapshot_round_trip(tmp_path):
+    session = FakeSession()
+    store = GitHubDataStore("token", session=session)
+    source = tmp_path / "source.sqlite3"
+    restored = tmp_path / "restored.sqlite3"
+    source.write_bytes(b"sqlite-database-snapshot-bytes")
+
+    store.save_database(source)
+    assert store.restore_database(restored) is True
+    assert restored.read_bytes() == source.read_bytes()
