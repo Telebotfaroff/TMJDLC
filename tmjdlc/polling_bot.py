@@ -2335,7 +2335,9 @@ async def callback_handler(client, callback):
         return await callback.answer("Not authorized.", show_alert=True)
     data = callback.data or ""
     global parallel
-    if data == "settings:section:uploads":\n        return await callback.answer("Choose 1–4 simultaneous upload slots below.")\n    if data == "menu:show":
+    if data == "settings:section:uploads":
+        return await callback.answer("Choose 1–4 simultaneous upload slots below.")
+    if data == "menu:show":
         await callback.answer()
         return await render_menu_settings(callback.message, edit=True)
     if data == "menu:noop":
