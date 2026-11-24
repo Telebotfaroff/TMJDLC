@@ -2210,6 +2210,7 @@ async def callback_handler(client, callback):
         if value not in {1, 2}:
             return await callback.answer("Choose 1 or 2 uploads.", show_alert=True)
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
+        await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer(f"Simultaneous uploads set to {value}.")
         return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:backlog:"):
@@ -2227,6 +2228,7 @@ async def callback_handler(client, callback):
         elif direction == "down":
             parallel = max(1, parallel - 1)
         await asyncio.to_thread(queue.set_setting, "download_concurrency", str(parallel))
+        await asyncio.to_thread(queue.flush_snapshot)
         async with condition:
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
