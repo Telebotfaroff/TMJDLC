@@ -1139,11 +1139,15 @@ async def download_worker_loop(slot: int = 1):
             upload_backlog = max(0, min(2, int(await asyncio.to_thread(
                 queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)
             ) or MAX_PENDING_UPLOADS)))
+            background_download = str(await asyncio.to_thread(
+                queue.get_setting, "background_download", "true"
+            )).lower() in {"1", "true", "yes", "on"}
             job = await asyncio.to_thread(
                 queue.claim, identity, LEASE,
                 max_downloading=parallel,
                 max_uploads=upload_concurrency,
                 max_pending_uploads=upload_backlog,
+                background_download=background_download,
             )
             if job:
                 log.info(
@@ -1854,18 +1858,20 @@ async def destination_cmd(client, message, *, edit=False):
 
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, paused, upload_concurrency, notifications, upload_destination, upload_backlog = await asyncio.gather(
+    video, paused, upload_concurrency, notifications, upload_destination, upload_backlog, background_download = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
         asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
+        asyncio.to_thread(queue.get_setting, "background_download", "true"),
     )
     upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(upload_concurrency or MAX_UPLOAD_WORKERS)))
     upload_backlog = max(0, min(2, int(upload_backlog or 0)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
+    background_download = str(background_download).lower() in {"1", "true", "yes", "on"}
     body = (
         "⚙️ <b>Settings</b>\n\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\n"
@@ -1874,6 +1880,7 @@ async def settings_cmd(client, message, check_access=True):
         f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\n"
         f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\n"
         f"📥 Waiting uploads per worker: <b>{upload_backlog}</b>\n"
+        f"🚀 Background download: <b>{'ON' if background_download else 'OFF'}</b>\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
         f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
@@ -2324,6 +2331,20 @@ async def callback_handler(client, callback):
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer(f"Simultaneous uploads set to {value}.")
         return await settings_cmd(client, callback.message, check_access=False)
+    if data == "settings:background_download:toggle":
+        current = str(await asyncio.to_thread(
+            queue.get_setting, "background_download", "true"
+        )).lower() in {"1", "true", "yes", "on"}
+        enabled = not current
+        await asyncio.to_thread(
+            queue.set_setting, "background_download", "true" if enabled else "false"
+        )
+        await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer(
+            "Background downloads enabled. Uploads can be kept supplied."
+            if enabled else "Background downloads paused while upload slots are busy."
+        )
+        return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:backlog:"):
         value = int(data.rsplit(":", 1)[-1])
         if value not in {0, 1, 2}:
@@ -2617,6 +2638,8 @@ async def on_start(client):
         await asyncio.to_thread(queue.flush_snapshot)
     if not await asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", ""):
         await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS))
+    if not await asyncio.to_thread(queue.get_setting, "background_download", ""):
+        await asyncio.to_thread(queue.set_setting, "background_download", "true")
     if not await asyncio.to_thread(queue.get_setting, "menu_items", ""):
         menu_config = await asyncio.to_thread(github_store.read_json, "config/commands.json", {"items": []})
         if isinstance(menu_config, dict) and menu_config.get("items"):
