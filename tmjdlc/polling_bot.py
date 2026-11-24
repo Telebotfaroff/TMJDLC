@@ -1161,7 +1161,8 @@ async def start_cmd(client, message):
          [KeyboardButton("📋 Queue"), KeyboardButton("⚙️ Settings")],
          [KeyboardButton("☁️ Upload Destination")],
          [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")],
-         [KeyboardButton("⚡ Live Processes")]],
+         [KeyboardButton("⚡ Live Processes")],
+         [KeyboardButton("📚 Channel Catalogue")]],
         resize_keyboard=True, is_persistent=True,
     )
     configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
@@ -1210,6 +1211,7 @@ async def panel_cmd(client, message):
         [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
          InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
         [InlineKeyboardButton("⚡ Live Processes", callback_data="home:processes")],
+        [InlineKeyboardButton("📚 Channel Catalogue", callback_data="home:catalogue")],
     ])
     await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
@@ -1287,6 +1289,7 @@ async def batch_cmd(client, message):
     status = await message.reply_text("🔎 Inspecting channel…")
     try:
         info = await asyncio.to_thread(JavtifulChannelScraper().inspect, url)
+        await persist_channel_info(info)
         channel_state[message.from_user.id] = {
             "info": info, "selection": "new", "quality": 720,
             "skip_existing": True,
@@ -1485,6 +1488,76 @@ async def render_processes(target, *, edit: bool = False):
 async def processes_cmd(client, message):
     if await deny(message): return
     return await render_processes(message)
+
+
+def catalogue_keyboard(channels: list[dict], offset: int = 0) -> InlineKeyboardMarkup:
+    rows = []
+    page = channels[offset:offset + 10]
+    for index, channel in enumerate(page, start=offset):
+        name = str(channel.get("name") or channel.get("slug") or "Javtiful channel")
+        rows.append([InlineKeyboardButton(
+            f"🎬 {name[:38]}", callback_data=f"catalogue:open:{index}"
+        )])
+    navigation = []
+    if offset > 0:
+        navigation.append(InlineKeyboardButton(
+            "⬅️ Previous", callback_data=f"catalogue:page:{max(0, offset - 10)}"
+        ))
+    if offset + 10 < len(channels):
+        navigation.append(InlineKeyboardButton(
+            "Next ➡️", callback_data=f"catalogue:page:{offset + 10}"
+        ))
+    if navigation:
+        rows.append(navigation)
+    rows.extend([
+        [InlineKeyboardButton("🔎 Scan Javtiful channels", callback_data="catalogue:scan")],
+        [InlineKeyboardButton("🔄 Refresh", callback_data=f"catalogue:page:{offset}"),
+         InlineKeyboardButton("🏠 Home", callback_data="home:show")],
+    ])
+    return InlineKeyboardMarkup(rows)
+
+
+async def render_catalogue(target, offset: int = 0, *, edit: bool = False):
+    channels = await asyncio.to_thread(github_store.list_channels)
+    updated = await asyncio.to_thread(
+        github_store.read_json, "catalogue/channels.json", {"channels": [], "updated_at": None}
+    )
+    updated_at = updated.get("updated_at") if isinstance(updated, dict) else None
+    body = (
+        "📚 <b>Javtiful Channel Catalogue</b>\n"
+        f"Saved channels: <b>{len(channels)}</b>\n"
+        f"Last catalogue update: <code>{html.escape(str(updated_at or 'Never'))}</code>\n\n"
+        "Choose a saved channel to inspect its current video count and pages, "
+        "or scan Javtiful for more channel URLs."
+    )
+    if channels:
+        body += f"\n\nShowing {offset + 1}–{min(offset + 10, len(channels))}."
+    markup = catalogue_keyboard(channels, offset)
+    if edit:
+        try:
+            return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            if "MESSAGE_NOT_MODIFIED" in str(exc):
+                return target
+            raise
+    return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+async def channels_cmd(client, message):
+    if await deny(message): return
+    return await render_catalogue(message)
+
+
+async def persist_channel_info(info):
+    await asyncio.to_thread(github_store.save_channel, {
+        "url": info.url,
+        "slug": info.slug,
+        "name": info.name,
+        "total_videos": info.total_videos,
+        "total_pages": info.total_pages,
+        "last_page_count": info.last_page_count,
+        "last_scanned_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    })
 
 
 async def ensure_gofile_ready() -> dict[str, str]:
@@ -1725,6 +1798,7 @@ async def text_handler(client, message):
         "💽 Storage": "storage",
         "🖥 Worker Status": "worker",
         "⚡ Live Processes": "processes",
+        "📚 Channel Catalogue": "catalogue",
         "☁️ Upload Destination": "destination",
     }
     if text in menu:
@@ -1742,6 +1816,8 @@ async def text_handler(client, message):
             return await storage_cmd(client, message)
         if action == "processes":
             return await render_processes(message)
+        if action == "catalogue":
+            return await render_catalogue(message)
         if action == "destination":
             return await destination_cmd(client, message)
         return await message.reply_text(
@@ -1813,6 +1889,7 @@ async def text_handler(client, message):
         status = await message.reply_text("🔎 Inspecting Javtiful channel…")
         try:
             info = await asyncio.to_thread(JavtifulChannelScraper().inspect, text)
+            await persist_channel_info(info)
             channel_state[uid] = {
                 "info": info, "selection": "new", "quality": 720,
                 "skip_existing": True,
@@ -1858,6 +1935,49 @@ async def callback_handler(client, callback):
     if data == "home:processes":
         await callback.answer()
         return await render_processes(callback.message, edit=True)
+    if data == "home:catalogue":
+        await callback.answer()
+        return await render_catalogue(callback.message, edit=True)
+    if data.startswith("catalogue:page:"):
+        offset = int(data.rsplit(":", 1)[-1])
+        await callback.answer()
+        return await render_catalogue(callback.message, offset, edit=True)
+    if data == "catalogue:scan":
+        await callback.answer("Scanning Javtiful channel listings…")
+        await callback.message.edit_text("🔎 Scanning Javtiful for channel page URLs. This may take a few minutes…")
+        try:
+            discovered = await asyncio.to_thread(JavtifulChannelScraper().discover_channels, max_pages=100)
+            now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            records = [{**item, "last_scanned_at": now} for item in discovered]
+            if records:
+                await asyncio.to_thread(github_store.save_channels, records)
+            await callback.message.edit_text(
+                f"✅ <b>Channel scan completed</b>\nDiscovered: <b>{len(discovered)}</b>\n"
+                "The catalogue has been saved to the private GitHub data repository.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📚 Open catalogue", callback_data="catalogue:page:0")]]),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            log.exception("Javtiful channel catalogue scan failed")
+            await callback.message.edit_text(f"❌ Channel scan failed: {html.escape(str(exc)[:400])}")
+        return
+    if data.startswith("catalogue:open:"):
+        index = int(data.rsplit(":", 1)[-1])
+        channels = await asyncio.to_thread(github_store.list_channels)
+        if index < 0 or index >= len(channels):
+            return await callback.answer("Channel entry no longer exists.", show_alert=True)
+        selected = channels[index]
+        await callback.answer("Inspecting selected channel…")
+        try:
+            info = await asyncio.to_thread(JavtifulChannelScraper().inspect, selected["url"])
+            await persist_channel_info(info)
+            channel_state[uid] = {"info": info, "selection": "new", "quality": 720, "skip_existing": True}
+            return await callback.message.edit_text(
+                batch_summary(info, channel_state[uid]),
+                reply_markup=batch_keyboard(uid), parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            return await callback.message.edit_text(f"Channel inspection failed: {html.escape(str(exc)[:400])}")
     if data == "processes:refresh":
         await callback.answer("Refreshing live process data…")
         return await render_processes(callback.message, edit=True)
@@ -2164,6 +2284,7 @@ app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & f
 app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
 app.add_handler(MessageHandler(processes_cmd, filters.command("processes") & filters.private))
+app.add_handler(MessageHandler(channels_cmd, filters.command(["channels", "catalogue"]) & filters.private))
 app.add_handler(MessageHandler(batch_cmd, filters.command("batch") & filters.private))
 app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filters.private))
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
@@ -2173,7 +2294,7 @@ app.add_handler(MessageHandler(cancelsetup_cmd, filters.command("cancelsetup") &
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
-app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:|processes:)")))
+app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:|processes:|catalogue:)")))
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 
