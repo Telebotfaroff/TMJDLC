@@ -76,10 +76,25 @@ class GitHubDataStore:
                 f"GitHub read failed for {path}: HTTP {response.status_code}."
             )
         payload = response.json()
-        if payload.get("type") != "file" or not payload.get("content"):
+        if payload.get("type") != "file":
             raise GitHubStoreError(f"GitHub path is not a readable file: {path}.")
+        encoded = payload.get("content") or ""
+        if not encoded and payload.get("sha"):
+            # Contents API omits inline content for larger files. Fetch the blob
+            # directly so compressed SQLite snapshots can exceed 1 MiB.
+            blob_response = self.session.get(
+                f"{self.base_url}/git/blobs/{payload['sha']}", timeout=self.timeout
+            )
+            if not blob_response.ok:
+                raise GitHubStoreError(
+                    f"GitHub blob read failed for {path}: HTTP {blob_response.status_code}."
+                )
+            blob = blob_response.json()
+            encoded = blob.get("content") or ""
+        if not encoded:
+            raise GitHubStoreError(f"GitHub returned no content for {path}.")
         try:
-            raw = base64.b64decode(payload["content"], validate=False)
+            raw = base64.b64decode(encoded, validate=False)
         except Exception as exc:
             raise GitHubStoreError(f"GitHub returned invalid base64 for {path}.") from exc
         return {"sha": payload.get("sha"), "content": raw}
