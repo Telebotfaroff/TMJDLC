@@ -1161,7 +1161,7 @@ async def download_worker_loop(slot: int = 1):
 
 
 async def upload_worker_loop(slot: int = 1):
-    """Drain ready videos; slot 2 stays idle unless two-upload mode is enabled."""
+    """Drain ready videos; idle slots wait until the configured upload concurrency needs them."""
     identity = f"{worker_id}-upload-{slot}"
     while True:
         try:
