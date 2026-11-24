@@ -191,7 +191,7 @@ def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -
 
 
 if not TOKEN or not API_ID or not API_HASH or not ADMINS:
-    raise RuntimeError("Set TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
+    raise RuntimeError("Add TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS to config/secrets.json in the private GitHub data repository.")
 
 queue = JobQueue(store=github_store, max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK.mkdir(parents=True, exist_ok=True)
@@ -2244,6 +2244,11 @@ async def log_update(client, message):
 
 async def on_start(client):
     await asyncio.to_thread(queue.initialize)
+    if not await asyncio.to_thread(queue.get_setting, "download_concurrency", ""):
+        await asyncio.to_thread(queue.set_setting, "download_concurrency", str(MAX_WORKERS))
+    if not await asyncio.to_thread(queue.get_setting, "upload_concurrency", ""):
+        configured_uploads = max(1, min(2, int(os.getenv("TMJDLC_UPLOAD_CONCURRENCY", "1"))))
+        await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(configured_uploads))
     global parallel
     parallel = max(1, min(MAX_WORKERS, int(await asyncio.to_thread(
         queue.get_setting, "download_concurrency", str(MAX_WORKERS)
