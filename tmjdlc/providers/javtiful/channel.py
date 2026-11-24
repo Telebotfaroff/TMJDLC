@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
+from urllib.parse import parse_qs, urlencode, urljoin, urlsplit, urlunsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -77,6 +77,23 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
     return name, total, urls
 
 
+def parse_channel_links(html: str, base_url: str = BASE_URL) -> list[dict[str, str]]:
+    """Extract unique Javtiful channel-page URLs and their visible anchor labels."""
+    soup = BeautifulSoup(html, "lxml")
+    channels: dict[str, dict[str, str]] = {}
+    for anchor in soup.select("a[href]"):
+        absolute = urljoin(base_url, anchor.get("href", "").strip())
+        parsed = urlsplit(absolute)
+        match = CHANNEL_RE.fullmatch(parsed.path)
+        if parsed.hostname not in {"javtiful.com", "www.javtiful.com"} or not match:
+            continue
+        url = f"{BASE_URL}/channel/{match.group(1)}"
+        slug = match.group(1)
+        name = anchor.get_text(" ", strip=True) or re.sub(r"[-_]+", " ", slug).title()
+        channels[url.lower()] = {"url": url, "slug": slug, "name": name}
+    return list(channels.values())
+
+
 class JavtifulChannelScraper:
     def __init__(self, *, timeout: int = 25, session: requests.Session | None = None):
         self.timeout = timeout
@@ -90,6 +107,70 @@ class JavtifulChannelScraper:
         response = self.session.get(page_url(channel_url, page), timeout=self.timeout)
         response.raise_for_status()
         return parse_listing(response.text)
+
+    def discover_channels(
+        self,
+        seed_urls: list[str] | None = None,
+        *,
+        max_pages: int = 100,
+    ) -> list[dict[str, str]]:
+        """Crawl Javtiful's public listing/navigation pages and collect channel URLs.
+
+        The crawl is deliberately bounded and only follows same-site listing,
+        category, creator, pagination, and homepage links. Video pages are skipped.
+        """
+        seeds = seed_urls or [
+            BASE_URL,
+            f"{BASE_URL}/channels",
+            f"{BASE_URL}/channels/",
+            f"{BASE_URL}/models",
+            f"{BASE_URL}/models/",
+        ]
+        pending = list(dict.fromkeys(seeds))
+        visited: set[str] = set()
+        found: dict[str, dict[str, str]] = {}
+        max_pages = max(1, min(500, int(max_pages)))
+
+        while pending and len(visited) < max_pages:
+            current = pending.pop(0)
+            parsed_current = urlsplit(current)
+            if parsed_current.hostname not in {"javtiful.com", "www.javtiful.com"}:
+                continue
+            normalized = urlunsplit((
+                parsed_current.scheme or "https", parsed_current.netloc,
+                parsed_current.path or "/", parsed_current.query, "",
+            ))
+            if normalized in visited:
+                continue
+            visited.add(normalized)
+            try:
+                response = self.session.get(normalized, timeout=self.timeout)
+                response.raise_for_status()
+            except requests.RequestException:
+                continue
+
+            for item in parse_channel_links(response.text, normalized):
+                found[item["url"].lower()] = item
+
+            soup = BeautifulSoup(response.text, "lxml")
+            for anchor in soup.select("a[href]"):
+                absolute = urljoin(normalized, anchor.get("href", "").strip())
+                parsed = urlsplit(absolute)
+                if parsed.hostname not in {"javtiful.com", "www.javtiful.com"}:
+                    continue
+                if CHANNEL_RE.fullmatch(parsed.path) or VIDEO_RE.match(parsed.path):
+                    continue
+                path = parsed.path.lower().rstrip("/") or "/"
+                query = parse_qs(parsed.query)
+                listing_path = (
+                    path in {"/", "/channels", "/models", "/creators", "/categories"}
+                    or any(token in path for token in ("/channels", "/models", "/creators", "/categories", "/pornstars"))
+                    or "page" in query
+                )
+                if listing_path and absolute not in visited and absolute not in pending:
+                    pending.append(absolute)
+
+        return sorted(found.values(), key=lambda item: item["name"].casefold())
 
     def inspect(self, url: str) -> ChannelInfo:
         channel_url = normalize_channel_url(url)
