@@ -221,7 +221,9 @@ class JobQueue:
         Claims are serialized across workers/instances with an advisory lock.
         """
         download_limit = max(1, int(max_downloading))
-        upload_backlog_limit = max(1, int(max_uploads)) + max(0, int(max_pending_uploads))
+        upload_limit = max(1, int(max_uploads))
+        # max_pending_uploads is a per-uploader backlog allowance.
+        upload_backlog_limit = upload_limit * (1 + max(0, int(max_pending_uploads)))
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
@@ -448,6 +450,22 @@ class JobQueue:
                        last_error,created_at,current_stage,progress_percent
                 FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s OFFSET %s
             """, (max(1, min(50, limit)), max(0, offset))).fetchall()
+            return [dict(row) for row in rows]
+
+    def list_active_jobs(self, limit: int = 20) -> list[dict[str, Any]]:
+        """Return live download, ready-to-upload and upload jobs for the process monitor."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                SELECT id,video_id,post_url,status,worker_id,current_stage,
+                       progress_percent,attempts,max_attempts,created_at,updated_at,
+                       lease_until,output_path
+                FROM tmjdlc_bot_jobs
+                WHERE status IN ('downloading','ready','uploading')
+                ORDER BY CASE status
+                    WHEN 'uploading' THEN 0 WHEN 'downloading' THEN 1 ELSE 2 END,
+                    updated_at DESC,id ASC
+                LIMIT %s
+            """, (max(1, min(50, int(limit))),)).fetchall()
             return [dict(row) for row in rows]
 
     def cancel_queued(self) -> int:
