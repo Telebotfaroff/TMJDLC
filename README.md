@@ -32,7 +32,7 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 - Durable SQLite queue with retry and restart recovery, synchronized to GitHub snapshots.
 - Separate download and upload progress reporting.
 - One or two download workers and one or two upload workers, with a hard maximum of two each.
-- Per-upload-worker backlog limits prevent uncontrolled downloads from filling Colab storage.
+- Per-upload-worker backlog limits (0, 1, or 2 waiting videos per worker) are configurable in Telegram Settings and prevent uncontrolled downloads from filling Colab storage.
 - Live process monitor (`/processes`) shows active downloads, uploads, waiting uploads, worker IDs, and progress.
 - Batch-scoped cancellation.
 - Disk-space guard and automatic cleanup after successful upload.
