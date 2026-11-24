@@ -8,6 +8,7 @@ TMJDLC is a Javtiful Telegram downloader built with Python, WZGram MTProto, yt-d
 
 Use `/start` to open the persistent menu:
 
+- **Help** (`/help`) — show command and feature instructions.
 - **Download Video** — send a Javtiful video URL; it is queued automatically at 720p.
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
