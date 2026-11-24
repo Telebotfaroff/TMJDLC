@@ -501,7 +501,7 @@ async def status_edit(chat_id, message_id, text):
                 terminal_words = ("job completed", "completed ", "cancelled ", "failed ", "requeued ")
                 terminal = [
                     (entry_id, value) for entry_id, value in entries.items()
-                    if value[0].strip().lower().startswith(terminal_words)
+                    if any(word in value[0].strip().lower() for word in terminal_words)
                 ]
                 terminal.sort(key=lambda item: item[1][1], reverse=True)
                 for entry_id, _ in terminal[3:]:
