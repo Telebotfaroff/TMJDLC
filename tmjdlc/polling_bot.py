@@ -1238,7 +1238,7 @@ async def panel_cmd(client, message):
     counts = await asyncio.to_thread(queue.counts)
     free = shutil.disk_usage(WORK).free / (1024 ** 3)
     running = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
-    download_workers = int(await asyncio.to_thread(queue.get_setting, "parallel_downloads", str(MAX_WORKERS)) or MAX_WORKERS)
+    download_workers = int(await asyncio.to_thread(queue.get_setting, "download_concurrency", str(MAX_WORKERS)) or MAX_WORKERS)
     upload_workers = int(await asyncio.to_thread(queue.get_setting, "upload_concurrency", "1") or 1)
     destination = await asyncio.to_thread(queue.get_setting, "upload_channel", "")
     destination_label = html.escape(str(destination)) if destination else "Not configured"
