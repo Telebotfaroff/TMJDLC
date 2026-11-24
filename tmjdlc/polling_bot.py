@@ -1491,9 +1491,7 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
         label = f"#{jid} · {str(job['video_id'])[:15]} · {status}"
         action = None
         if status in {"queued", "downloading", "ready", "uploading"}:
-            action = InlineKeyboardButton("🛑 Stop", callback_data=f"job:cancel:{jid}")
-        elif status == "failed":
-            action = InlineKeyboardButton("🔁 Retry", callback_data=f"job:retry:{jid}")
+            action = InlineKeyboardButton("✖ Cancel", callback_data=f"job:cancel:ask:{jid}")
         row = [InlineKeyboardButton("🔎 " + label, callback_data=f"job:view:{jid}")]
         if action:
             row.append(action)
@@ -1523,11 +1521,12 @@ async def render_queue(target, offset: int = 0, edit: bool = False):
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
     )
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
-    lines = ["📋 <b>Queue Manager</b>", f"Status: <b>{'PAUSED' if paused else 'RUNNING'}</b>", ""]
+    lines = ["📋 <b>Active Queue</b>", f"Status: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
+             "<i>Only queued and active tasks are shown. Finished history is hidden.</i>", ""]
     for key in ("queued", "downloading", "ready", "uploading", "completed", "failed", "cancelled"):
         lines.append(f"{key.title()}: <b>{counts.get(key, 0)}</b>")
     lines.append("")
-    lines.append(f"<b>Recent jobs · {offset+1}–{offset+len(jobs)}</b>" if jobs else "No jobs on this page.")
+    lines.append(f"<b>Tasks · {offset+1}–{offset+len(jobs)}</b>" if jobs else "✅ No pending or active tasks.")
     for job in jobs:
         stage = f" · {html.escape(str(job.get('current_stage') or ''))}" if job.get("current_stage") else ""
         progress = f" · {int(job.get('progress_percent') or 0)}%" if job.get("status") in {"downloading", "uploading"} else ""
@@ -2351,7 +2350,7 @@ async def callback_handler(client, callback):
         )[:3900]
         rows = []
         if status in {"queued", "downloading", "ready", "uploading"}:
-            rows.append([InlineKeyboardButton("🛑 Cancel job", callback_data=f"job:cancel:{job_id}")])
+            rows.append([InlineKeyboardButton("✖ Cancel this task", callback_data=f"job:cancel:ask:{job_id}")])
         elif status == "failed":
             rows.append([InlineKeyboardButton("🔁 Retry job", callback_data=f"job:retry:{job_id}")])
         rows.append([InlineKeyboardButton("📋 Back to queue", callback_data="home:queue"),
@@ -2360,10 +2359,26 @@ async def callback_handler(client, callback):
         return await callback.message.edit_text(
             body, reply_markup=InlineKeyboardMarkup(rows), parse_mode=ParseMode.HTML
         )
-    if data.startswith("job:cancel:"):
+    if data.startswith("job:cancel:ask:"):
+        job_id = int(data.rsplit(":", 1)[-1])
+        job = await asyncio.to_thread(queue.get, job_id)
+        if not job or job.get("status") not in {"queued", "downloading", "ready", "uploading"}:
+            return await callback.answer("This task is no longer cancellable.", show_alert=True)
+        return await callback.message.edit_text(
+            f"✖ <b>Cancel task #{job_id}?</b>\n"
+            f"Video ID: <code>{html.escape(str(job.get('video_id') or 'unknown'))}</code>\n"
+            f"Current status: <b>{html.escape(str(job.get('status') or '').upper())}</b>\n\n"
+            "Only this task will be cancelled. Other queue items will continue.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("✖ Yes, cancel this task", callback_data=f"job:cancel:confirm:{job_id}")],
+                [InlineKeyboardButton("↩ Back to queue", callback_data="home:queue")],
+            ]),
+            parse_mode=ParseMode.HTML,
+        )
+    if data.startswith("job:cancel:confirm:"):
         job_id = int(data.rsplit(":", 1)[-1])
         result = await asyncio.to_thread(queue.request_cancel, job_id)
-        await callback.answer("Cancellation requested." if result else "Job is no longer cancellable.")
+        await callback.answer("Task cancellation requested." if result else "Task is no longer cancellable.")
         return await render_queue(callback.message, edit=True)
     if data.startswith("job:retry:"):
         job_id = int(data.rsplit(":", 1)[-1])
