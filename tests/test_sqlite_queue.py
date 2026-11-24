@@ -65,3 +65,29 @@ def test_download_claim_obeys_active_download_limit(tmp_path):
     assert first is not None
     assert second is not None
     assert third is None
+
+
+def test_completed_upload_record_is_saved_to_github_store(tmp_path):
+    store = FakeGitHubStore()
+    queue = JobQueue(store=store)
+    queue.db_path = tmp_path / "tmjdlc.sqlite3"
+    queue.initialize()
+    record = {
+        "job_id": 77,
+        "video_id": "777",
+        "source_url": "https://javtiful.com/video/777",
+        "filename": "sample.mp4",
+        "file_size": 4096,
+        "duration_seconds": 12,
+        "width": 1280,
+        "height": 720,
+        "upload_destination": "both",
+        "telegram": {"parts": [{"chat_id": -1001, "message_id": 55, "file_id": "telegram-file"}]},
+        "gofile": {"id": "gofile-file", "download_url": "https://gofile.io/d/example"},
+        "uploaded_at": "2026-11-24T00:00:00Z",
+    }
+
+    saved_path = queue.save_upload_record(record)
+
+    assert saved_path == "uploads/test.json"
+    assert store.upload_records == [record]
