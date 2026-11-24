@@ -1097,11 +1097,14 @@ async def download_worker_loop(slot: int = 1):
             upload_concurrency = max(1, min(2, int(await asyncio.to_thread(
                 queue.get_setting, "upload_concurrency", "1"
             ) or 1)))
+            upload_backlog = max(0, min(2, int(await asyncio.to_thread(
+                queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)
+            ) or MAX_PENDING_UPLOADS)))
             job = await asyncio.to_thread(
                 queue.claim, identity, LEASE,
                 max_downloading=parallel,
                 max_uploads=upload_concurrency,
-                max_pending_uploads=MAX_PENDING_UPLOADS,
+                max_pending_uploads=upload_backlog,
             )
             if job:
                 log.info(
@@ -1549,7 +1552,7 @@ async def render_processes(target, *, edit: bool = False):
         f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
         f"⬇️ Download workers: <b>{len(downloading)}/{parallel}</b>",
         f"⬆️ Upload workers: <b>{len(uploading)}/{upload_concurrency}</b>",
-        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * MAX_PENDING_UPLOADS}</b>",
+        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * max(0, min(2, int(await asyncio.to_thread(queue.get_setting, \"upload_backlog_per_worker\", str(MAX_PENDING_UPLOADS)) or MAX_PENDING_UPLOADS)))}</b>",
         f"🕒 Waiting downloads: <b>{counts.get('queued', 0)}</b>",
         f"💽 Free disk: <b>{free_gb:.1f} GiB</b>",
         "",
@@ -1740,14 +1743,16 @@ async def destination_cmd(client, message, *, edit=False):
 
 async def settings_cmd(client, message, check_access=True):
     if check_access and await deny(message): return
-    video, paused, upload_concurrency, notifications, upload_destination = await asyncio.gather(
+    video, paused, upload_concurrency, notifications, upload_destination, upload_backlog = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
         asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
+        asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
     )
     upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
+    upload_backlog = max(0, min(2, int(upload_backlog or 0)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     body = (
@@ -1757,6 +1762,7 @@ async def settings_cmd(client, message, check_access=True):
         "🎥 Quality: <b>720p automatic</b>\\n"
         f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
         f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
+        f"📥 Waiting uploads per worker: <b>{upload_backlog}</b>\\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
         f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
@@ -1769,6 +1775,9 @@ async def settings_cmd(client, message, check_access=True):
          InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
         [InlineKeyboardButton("1 upload" + (" ✓" if upload_concurrency == 1 else ""), callback_data="settings:uploads:1"),
          InlineKeyboardButton("2 uploads" + (" ✓" if upload_concurrency == 2 else ""), callback_data="settings:uploads:2")],
+        [InlineKeyboardButton(f"Backlog 0" + (" ✓" if upload_backlog == 0 else ""), callback_data="settings:backlog:0"),
+         InlineKeyboardButton(f"Backlog 1" + (" ✓" if upload_backlog == 1 else ""), callback_data="settings:backlog:1"),
+         InlineKeyboardButton(f"Backlog 2" + (" ✓" if upload_backlog == 2 else ""), callback_data="settings:backlog:2")],
         [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
                               callback_data="queue:pause" if not paused else "queue:resume")],
         [InlineKeyboardButton("🔕 Pause notifications" if notifications else "🔔 Resume notifications",
@@ -2400,6 +2409,8 @@ async def on_start(client):
     if not await asyncio.to_thread(queue.get_setting, "upload_concurrency", ""):
         configured_uploads = max(1, min(2, int(os.getenv("TMJDLC_UPLOAD_CONCURRENCY", "1"))))
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(configured_uploads))
+    if not await asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", ""):
+        await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS))
     global parallel
     parallel = max(1, min(MAX_WORKERS, int(await asyncio.to_thread(
         queue.get_setting, "download_concurrency", str(MAX_WORKERS)
