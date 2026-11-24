@@ -7,6 +7,7 @@ from tmjdlc.providers.javtiful.channel import (
     normalize_channel_url,
     page_url,
     parse_listing,
+    parse_channel_links,
 )
 
 
@@ -75,3 +76,19 @@ def test_videos_for_selected_pages_deduplicates():
     urls = scraper.videos_for_pages(info, [1, 93, 1])
     assert len(urls) == 30
     assert len(set(urls)) == 30
+
+
+
+def test_parse_channel_links_normalizes_and_deduplicates():
+    html = """
+    <a href="/channel/alpha">Alpha</a>
+    <a href="https://www.javtiful.com/channel/beta/">Beta</a>
+    <a href="/channel/alpha/">Alpha duplicate</a>
+    <a href="/video/123/sample">Video</a>
+    <a href="https://example.com/channel/outside">Outside</a>
+    """
+    channels = parse_channel_links(html)
+    assert [item["url"] for item in channels] == [
+        "https://javtiful.com/channel/alpha",
+        "https://javtiful.com/channel/beta",
+    ]
