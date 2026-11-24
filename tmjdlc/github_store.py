@@ -202,16 +202,24 @@ class GitHubDataStore:
         return channels if isinstance(channels, list) else []
 
     def save_channel(self, channel: dict[str, Any]) -> None:
+        self.save_channels([channel])
+
+    def save_channels(self, incoming: list[dict[str, Any]]) -> None:
+        """Merge a discovered set of channels and commit the catalogue once."""
         with self._lock:
             payload = self.read_json("catalogue/channels.json", {"channels": []})
             channels = payload.get("channels", []) if isinstance(payload, dict) else []
-            key = str(channel.get("url") or "").rstrip("/").lower()
-            if not key:
-                raise ValueError("Channel record requires a URL.")
-            updated = [item for item in channels if str(item.get("url") or "").rstrip("/").lower() != key]
-            updated.append(channel)
+            merged = {
+                str(item.get("url") or "").rstrip("/").lower(): item
+                for item in channels if isinstance(item, dict) and item.get("url")
+            }
+            for channel in incoming:
+                key = str(channel.get("url") or "").rstrip("/").lower()
+                if not key:
+                    continue
+                merged[key] = channel
             self.write_json(
                 "catalogue/channels.json",
-                {"channels": updated, "updated_at": datetime.now(timezone.utc).isoformat()},
-                "Update Javtiful channel catalogue",
+                {"channels": list(merged.values()), "updated_at": datetime.now(timezone.utc).isoformat()},
+                f"Update Javtiful channel catalogue ({len(incoming)} discovered)",
             )
