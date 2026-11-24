@@ -1962,6 +1962,7 @@ async def settings_cmd(client, message, check_access=True):
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     background_download = str(background_download).lower() in {"1", "true", "yes", "on"}
+    secondary_status = "CONNECTED" if _secondary_upload_client and _secondary_upload_client.is_connected else ("CONFIGURED" if SECONDARY_CONFIGURED else "NOT SET")
     body = (
         "⚙️ <b>Settings</b>\n\n"
         f"🎞 Video destination: <code>{html.escape(str(video))}</code>\n"
@@ -1973,7 +1974,7 @@ async def settings_cmd(client, message, check_access=True):
         f"🚀 Background download: <b>{'ON' if background_download else 'OFF'}</b>\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
         f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
-        f"🤖 Secondary uploader: <b>{\"CONNECTED\" if _secondary_upload_client and _secondary_upload_client.is_connected else (\"CONFIGURED\" if SECONDARY_CONFIGURED else \"NOT SET\")}</b>\n"
+        f"🤖 Secondary uploader: <b>{secondary_status}</b>\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
     markup = InlineKeyboardMarkup([
