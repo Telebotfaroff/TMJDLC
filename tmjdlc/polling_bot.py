@@ -1514,7 +1514,7 @@ async def render_dashboard(target, *, edit: bool = False):
             percent = int(job.get("progress_percent") or 0)
             progress = f" · <b>{percent}%</b>" if job.get("status") in {"downloading", "uploading"} else ""
             lines.append(f"• <code>{video_id}</code>  —  {status}{progress}")
-    body = "\\n".join(lines)[:3900]
+    body = "\n".join(lines)[:3900]
     markup = build_panel_keyboard()
     if edit:
         try:
@@ -1995,25 +1995,25 @@ async def settings_cmd(client, message, check_access=True):
     secondary_status = "🟢 CONNECTED" if _secondary_upload_client and _secondary_upload_client.is_connected else ("🟡 CONFIGURED" if SECONDARY_CONFIGURED else "⚪ NOT SET")
     video_label = html.escape(str(video))
     body = (
-        "╭━━━━━━━━━━━━━━━━━━━━━━╮\\n"
-        "       <b>⚙️ TMJDLC SETTINGS</b>\\n"
-        "       <i>Control every part of your bot</i>\\n"
-        "╰━━━━━━━━━━━━━━━━━━━━━━╯\\n\\n"
-        "🎞 <b>UPLOAD DESTINATION</b>\\n"
-        f"Channel: <code>{video_label}</code>\\n"
-        f"Delivery: <b>{html.escape(str(upload_destination).upper())}</b>\\n"
-        "━━━━━━━━━━━━━━━━━━━━\\n"
-        "⚡ <b>WORKER & UPLOAD</b>\\n"
-        f"Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
-        f"Simultaneous uploads: <b>{upload_concurrency}/4</b>\\n"
-        f"Ready backlog: <b>{upload_backlog} per worker</b>\\n"
-        f"Background pre-download: <b>{'ON' if background_download else 'OFF'}</b>\\n"
-        "━━━━━━━━━━━━━━━━━━━━\\n"
-        "📋 <b>QUEUE & NOTIFICATIONS</b>\\n"
-        f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
-        f"Progress notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\\n"
-        "━━━━━━━━━━━━━━━━━━━━\\n"
-        f"🤖 <b>SECONDARY UPLOADER</b>  {secondary_status}\\n"
+        "╭━━━━━━━━━━━━━━━━━━━━━━╮\n"
+        "       <b>⚙️ TMJDLC SETTINGS</b>\n"
+        "       <i>Control every part of your bot</i>\n"
+        "╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n"
+        "🎞 <b>UPLOAD DESTINATION</b>\n"
+        f"Channel: <code>{video_label}</code>\n"
+        f"Delivery: <b>{html.escape(str(upload_destination).upper())}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "⚡ <b>WORKER & UPLOAD</b>\n"
+        f"Download workers: <b>{parallel}/{MAX_WORKERS}</b>\n"
+        f"Simultaneous uploads: <b>{upload_concurrency}/4</b>\n"
+        f"Ready backlog: <b>{upload_backlog} per worker</b>\n"
+        f"Background pre-download: <b>{'ON' if background_download else 'OFF'}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        "📋 <b>QUEUE & NOTIFICATIONS</b>\n"
+        f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
+        f"Progress notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
+        "━━━━━━━━━━━━━━━━━━━━\n"
+        f"🤖 <b>SECONDARY UPLOADER</b>  {secondary_status}\n"
         "<i>Credentials remain hidden in your private Database repository.</i>"
     )
     markup = InlineKeyboardMarkup([
