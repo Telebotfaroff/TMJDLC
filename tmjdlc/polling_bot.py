@@ -1150,7 +1150,17 @@ def build_panel_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(item["label"], callback_data=f"home:{item['action']}") for item in visible[index:index + 2]]
         for index in range(0, len(visible), 2)
     ]
-    rows.append([InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")])
+    rows.extend([
+        [
+            InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
+            InlineKeyboardButton("📚 Batch", callback_data="home:batch"),
+        ],
+        [
+            InlineKeyboardButton("📋 Queue", callback_data="home:queue"),
+            InlineKeyboardButton("⚡ Live processes", callback_data="home:processes"),
+        ],
+        [InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")],
+    ])
     return InlineKeyboardMarkup(rows)
 
 
@@ -1233,24 +1243,56 @@ async def start_cmd(client, message):
 
 
 
+async def render_dashboard(target, *, edit: bool = False):
+    counts, active_jobs, destination, mode, notifications, download_workers, upload_workers = await asyncio.gather(
+        asyncio.to_thread(queue.counts),
+        asyncio.to_thread(queue.list_active_jobs, 4),
+        asyncio.to_thread(queue.get_setting, "upload_channel", ""),
+        asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
+        asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
+        asyncio.to_thread(queue.get_setting, "download_concurrency", str(MAX_WORKERS)),
+        asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
+    )
+    free = shutil.disk_usage(WORK).free / (1024 ** 3)
+    active = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
+    notifications_on = str(notifications).lower() in {"1", "true", "yes", "on"}
+    destination_label = html.escape(str(destination)) if destination else "Not configured"
+    lines = [
+        "🎬 <b>TMJDLC · Control Center</b>",
+        f"{'🟢' if active or counts.get('queued', 0) else '⚪'} <b>{'WORKING' if active else ('QUEUE WAITING' if counts.get('queued', 0) else 'IDLE')}</b>",
+        "",
+        f"⬇️ Downloads: <b>{counts.get('downloading', 0)}/{int(download_workers or MAX_WORKERS)}</b>  ·  "
+        f"⬆️ Uploads: <b>{counts.get('uploading', 0)}/{int(upload_workers or 1)}</b>",
+        f"🕒 Queued: <b>{counts.get('queued', 0)}</b>  ·  📥 Waiting upload: <b>{counts.get('ready', 0)}</b>",
+        f"✅ Completed: <b>{counts.get('completed', 0)}</b>  ·  ❌ Failed: <b>{counts.get('failed', 0)}</b>",
+        "",
+        f"📤 Destination: <code>{destination_label}</code>",
+        f"☁️ Delivery: <b>{html.escape(str(mode).upper())}</b>  ·  🔔 Notifications: <b>{'ON' if notifications_on else 'PAUSED'}</b>",
+        f"💽 Free storage: <b>{free:.1f} GiB</b>",
+    ]
+    if active_jobs:
+        lines.extend(["", "<b>Recent activity</b>"])
+        for job in active_jobs[:3]:
+            status = html.escape(str(job.get("status") or "working").upper())
+            video_id = html.escape(str(job.get("video_id") or "unknown"))
+            percent = int(job.get("progress_percent") or 0)
+            progress = f" · <b>{percent}%</b>" if job.get("status") in {"downloading", "uploading"} else ""
+            lines.append(f"• #{job['id']} <code>{video_id}</code> · {status}{progress}")
+    body = "\n".join(lines)[:3900]
+    markup = build_panel_keyboard()
+    if edit:
+        try:
+            return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            if "MESSAGE_NOT_MODIFIED" in str(exc):
+                return target
+            raise
+    return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
 async def panel_cmd(client, message):
     if await deny(message): return
-    counts = await asyncio.to_thread(queue.counts)
-    free = shutil.disk_usage(WORK).free / (1024 ** 3)
-    running = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
-    download_workers = int(await asyncio.to_thread(queue.get_setting, "download_concurrency", str(MAX_WORKERS)) or MAX_WORKERS)
-    upload_workers = int(await asyncio.to_thread(queue.get_setting, "upload_concurrency", "1") or 1)
-    destination = await asyncio.to_thread(queue.get_setting, "upload_channel", "")
-    destination_label = html.escape(str(destination)) if destination else "Not configured"
-    body = (
-        "🎬 <b>TMJDLC · Javtiful Downloader</b>\n\n"
-        f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\n"
-        f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\n"
-        f"📤 Destination: <code>{destination_label}</code>\n"
-        f"💽 Free: <b>{free:.1f} GiB</b> · ⚙️ <b>{download_workers}↓ + {upload_workers}↑</b>"
-    )
-    markup = build_panel_keyboard()
-    await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await render_dashboard(message)
 
 
 async def storage_cmd(client, message):
@@ -1414,11 +1456,16 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
     rows = []
     for job in jobs:
         jid, status = int(job["id"]), str(job["status"])
-        label = f"#{jid} · {str(job['video_id'])[:18]} · {status}"
+        label = f"#{jid} · {str(job['video_id'])[:15]} · {status}"
+        action = None
         if status in {"queued", "downloading", "ready", "uploading"}:
-            rows.append([InlineKeyboardButton("🛑 " + label, callback_data=f"job:cancel:{jid}")])
+            action = InlineKeyboardButton("🛑 Stop", callback_data=f"job:cancel:{jid}")
         elif status == "failed":
-            rows.append([InlineKeyboardButton("🔁 " + label, callback_data=f"job:retry:{jid}")])
+            action = InlineKeyboardButton("🔁 Retry", callback_data=f"job:retry:{jid}")
+        row = [InlineKeyboardButton("🔎 " + label, callback_data=f"job:view:{jid}")]
+        if action:
+            row.append(action)
+        rows.append(row)
     nav = []
     if offset > 0:
         nav.append(InlineKeyboardButton("⬅️ Newer", callback_data=f"queue:page:{max(0, offset-10)}"))
@@ -2021,17 +2068,8 @@ async def callback_handler(client, callback):
         await callback.answer("Menu order updated.")
         return await render_menu_settings(callback.message, edit=True)
     if data == "home:show":
-        counts = await asyncio.to_thread(queue.counts)
-        free = shutil.disk_usage(WORK).free / (1024 ** 3)
-        running = counts.get("downloading", 0) + counts.get("uploading", 0)
-        body = ("🎬 <b>TMJDLC · Javtiful Downloader</b>\n\n"
-                f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\n"
-                f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\n"
-                f"💽 Free storage: <b>{free:.1f} GiB</b>\n"
-                f"⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>")
-        markup = build_panel_keyboard()
         await callback.answer()
-        return await callback.message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        return await render_dashboard(callback.message, edit=True)
     if data == "home:processes":
         await callback.answer()
         return await render_processes(callback.message, edit=True)
@@ -2239,6 +2277,43 @@ async def callback_handler(client, callback):
         offset = int(data.rsplit(":", 1)[-1])
         await callback.answer()
         return await render_queue(callback.message, offset=offset, edit=True)
+    if data.startswith("job:view:"):
+        job_id = int(data.rsplit(":", 1)[-1])
+        job = await asyncio.to_thread(queue.get, job_id)
+        if not job:
+            return await callback.answer("Job not found.", show_alert=True)
+        status = str(job.get("status") or "unknown")
+        video_id = html.escape(str(job.get("video_id") or "unknown"))
+        post_url = html.escape(str(job.get("post_url") or ""))
+        stage = html.escape(str(job.get("current_stage") or "—"))
+        error = html.escape(str(job.get("last_error") or "—"))[:900]
+        progress = int(job.get("progress_percent") or 0)
+        attempts = f"{job.get('attempts', 0)}/{job.get('max_attempts', 0)}"
+        created = html.escape(str(job.get("created_at") or "—"))
+        updated = html.escape(str(job.get("updated_at") or "—"))
+        body = (
+            f"🧾 <b>Job #{job_id}</b>\n\n"
+            f"🎬 Video: <code>{video_id}</code>\n"
+            f"📌 Status: <b>{html.escape(status.upper())}</b>\n"
+            f"⚙️ Stage: <b>{stage}</b>\n"
+            f"📊 Progress: <b>{progress}%</b>\n"
+            f"🔁 Attempts: <b>{attempts}</b>\n"
+            f"🕒 Created: <code>{created}</code>\n"
+            f"🔄 Updated: <code>{updated}</code>\n"
+            f"🔗 Source: {post_url or '—'}\n"
+            f"⚠️ Last error: <code>{error}</code>"
+        )[:3900]
+        rows = []
+        if status in {"queued", "downloading", "ready", "uploading"}:
+            rows.append([InlineKeyboardButton("🛑 Cancel job", callback_data=f"job:cancel:{job_id}")])
+        elif status == "failed":
+            rows.append([InlineKeyboardButton("🔁 Retry job", callback_data=f"job:retry:{job_id}")])
+        rows.append([InlineKeyboardButton("📋 Back to queue", callback_data="home:queue"),
+                     InlineKeyboardButton("🏠 Home", callback_data="home:show")])
+        await callback.answer()
+        return await callback.message.edit_text(
+            body, reply_markup=InlineKeyboardMarkup(rows), parse_mode=ParseMode.HTML
+        )
     if data.startswith("job:cancel:"):
         job_id = int(data.rsplit(":", 1)[-1])
         result = await asyncio.to_thread(queue.request_cancel, job_id)
