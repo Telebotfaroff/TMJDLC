@@ -153,6 +153,7 @@ condition = asyncio.Condition()
 # Four upload workers share one queue and one global in-process transfer cap.
 video_upload_semaphore = asyncio.Semaphore(MAX_UPLOAD_WORKERS)
 setup_state: dict[int, str] = {}
+secondary_setup_state: dict[int, dict] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
@@ -164,6 +165,7 @@ _chat_status_edit_last_sent: dict[int, float] = {}
 _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
+_secondary_upload_client: Client | None = None
 _upload_client_loads: dict[int, int] = {}
 _helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
@@ -270,6 +272,7 @@ async def sync_upload_peer(peer_id: int) -> None:
 
 async def start_helper_upload_clients() -> None:
     """Start optional upload-only bot clients; downloads and control stay on the primary bot."""
+    global _secondary_upload_client
     client_configs = []
     if SECONDARY_CONFIGURED:
         client_configs.append((
@@ -299,6 +302,8 @@ async def start_helper_upload_clients() -> None:
         try:
             await client.start()
             _helper_upload_clients.append(client)
+            if label == "secondary":
+                _secondary_upload_client = client
             _upload_client_loads[id(client)] = 0
             log.info(
                 "Upload-only Telegram client started | client=%s | bot_id=%s | api_id=%s",
@@ -314,10 +319,95 @@ async def start_helper_upload_clients() -> None:
 
 
 async def stop_helper_upload_clients() -> None:
+    global _secondary_upload_client
     clients = list(_helper_upload_clients)
     _helper_upload_clients.clear()
+    _secondary_upload_client = None
     if clients:
         await asyncio.gather(*(client.stop() for client in clients), return_exceptions=True)
+
+
+
+async def secondary_account_menu(message, edit=False):
+    """Show secondary account status without displaying credentials."""
+    connected = bool(_secondary_upload_client and _secondary_upload_client.is_connected)
+    status = "CONNECTED" if connected else ("CONFIGURED · OFFLINE" if SECONDARY_CONFIGURED else "NOT CONFIGURED")
+    body = (
+        "🤖 <b>Secondary Telegram uploader</b>\n\n"
+        f"Status: <b>{status}</b>\n"
+        "Credentials are stored in your private GitHub Database repository.\n"
+        "The secondary bot is upload-only; the main bot remains the control bot."
+    )
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("➕ Add / Update account", callback_data="settings:secondary:add")],
+        [InlineKeyboardButton("🗑 Disconnect account", callback_data="settings:secondary:remove")],
+        [InlineKeyboardButton("🔄 Refresh status", callback_data="settings:secondary:menu")],
+        [InlineKeyboardButton("⚙️ Back to settings", callback_data="settings:secondary:back")],
+    ])
+    if edit:
+        return await message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+async def validate_secondary_credentials(api_id: int, api_hash: str, token: str) -> str:
+    """Validate the supplied bot token with a temporary in-memory Pyrogram session."""
+    probe = Client(
+        f"tmjdlc_secondary_validate_{uuid.uuid4().hex[:8]}",
+        api_id=api_id, api_hash=api_hash, bot_token=token,
+        in_memory=True, no_updates=True, workers=1,
+    )
+    try:
+        await probe.start()
+        me = await probe.get_me()
+        if not me or not me.is_bot:
+            raise RuntimeError("The supplied token does not belong to a bot account.")
+        return f"@{me.username}" if me.username else str(me.id)
+    finally:
+        if probe.is_connected:
+            await probe.stop()
+
+
+async def save_secondary_credentials(api_id: int, api_hash: str, token: str) -> None:
+    """Save credentials to the private data repo and restart upload-only clients."""
+    global SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN, SECONDARY_CONFIGURED
+    secrets = await asyncio.to_thread(github_store.read_json, "config/secrets.json", {})
+    if not isinstance(secrets, dict):
+        raise GitHubStoreError("The GitHub secrets file is not a valid JSON object.")
+    secrets.update({
+        "TG_SECONDARY_API_ID": str(api_id),
+        "TG_SECONDARY_API_HASH": api_hash,
+        "TG_SECONDARY_BOT_TOKEN": token,
+    })
+    await asyncio.to_thread(
+        github_store.write_json, "config/secrets.json", secrets,
+        "Update TMJDLC secondary Telegram uploader credentials",
+    )
+    SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN = api_id, api_hash, token
+    SECONDARY_CONFIGURED = True
+    os.environ["TG_SECONDARY_API_ID"] = str(api_id)
+    os.environ["TG_SECONDARY_API_HASH"] = api_hash
+    os.environ["TG_SECONDARY_BOT_TOKEN"] = token
+    await stop_helper_upload_clients()
+    await start_helper_upload_clients()
+
+
+async def remove_secondary_credentials() -> None:
+    """Remove the secondary credentials from the private data repository."""
+    global SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN, SECONDARY_CONFIGURED
+    secrets = await asyncio.to_thread(github_store.read_json, "config/secrets.json", {})
+    if not isinstance(secrets, dict):
+        secrets = {}
+    for key in ("TG_SECONDARY_API_ID", "TG_SECONDARY_API_HASH", "TG_SECONDARY_BOT_TOKEN"):
+        secrets.pop(key, None)
+        os.environ.pop(key, None)
+    await asyncio.to_thread(
+        github_store.write_json, "config/secrets.json", secrets,
+        "Remove TMJDLC secondary Telegram uploader credentials",
+    )
+    SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN = 0, "", ""
+    SECONDARY_CONFIGURED = False
+    await stop_helper_upload_clients()
+    await start_helper_upload_clients()
 
 
 async def _helper_can_post(client: Client, chat_id: int) -> bool:
@@ -1883,10 +1973,12 @@ async def settings_cmd(client, message, check_access=True):
         f"🚀 Background download: <b>{'ON' if background_download else 'OFF'}</b>\n"
         f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
         f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
+        f"🤖 Secondary uploader: <b>{\"CONNECTED\" if _secondary_upload_client and _secondary_upload_client.is_connected else (\"CONFIGURED\" if SECONDARY_CONFIGURED else \"NOT SET\")}</b>\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🎞 Set video destination", callback_data="settings:video")],
+        [InlineKeyboardButton("🤖 Manage secondary Telegram account", callback_data="settings:secondary:menu")],
         [InlineKeyboardButton("☁️ Choose upload destination", callback_data="home:destination")],
         [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
          InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
@@ -2023,6 +2115,53 @@ async def text_handler(client, message):
     if await deny(message): return
     text = (message.text or "").strip()
     uid = message.from_user.id
+    secondary_stage = secondary_setup_state.get(uid)
+    if secondary_stage:
+        secret_text = (message.text or "").strip()
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        if secret_text.upper() == "CANCEL":
+            secondary_setup_state.pop(uid, None)
+            return await message.reply_text("Secondary account setup cancelled. No credentials were changed.")
+        step = secondary_stage.get("step")
+        if step == "api_id":
+            if not secret_text.isdigit() or int(secret_text) <= 0:
+                return await message.reply_text("API ID must be a positive number. Send it again, or CANCEL.")
+            secondary_stage["api_id"] = int(secret_text)
+            secondary_stage["step"] = "api_hash"
+            return await message.reply_text("🔐 Now send the secondary API HASH. It will be deleted after receipt.")
+        if step == "api_hash":
+            if len(secret_text) < 20 or len(secret_text) > 128:
+                return await message.reply_text("That API hash does not look valid. Send it again, or CANCEL.")
+            secondary_stage["api_hash"] = secret_text
+            secondary_stage["step"] = "bot_token"
+            return await message.reply_text("🤖 Now send the secondary BOT TOKEN. It will be validated before saving.")
+        if step == "bot_token":
+            try:
+                status_message = await message.reply_text("⏳ Validating Telegram credentials…")
+                username = await validate_secondary_credentials(
+                    int(secondary_stage["api_id"]), str(secondary_stage["api_hash"]), secret_text
+                )
+                await save_secondary_credentials(
+                    int(secondary_stage["api_id"]), str(secondary_stage["api_hash"]), secret_text
+                )
+                secondary_setup_state.pop(uid, None)
+                return await status_message.edit_text(
+                    f"✅ <b>Secondary uploader connected</b>\nAccount: <b>{html.escape(username)}</b>\n"
+                    "Credentials saved to the private GitHub Database repository.\n"
+                    "The main bot and active queue remain running.",
+                    parse_mode=ParseMode.HTML,
+                )
+            except Exception as exc:
+                log.warning("Secondary credential setup failed: %s", type(exc).__name__)
+                secondary_stage["step"] = "bot_token"
+                return await message.reply_text(
+                    f"❌ Could not validate or save the account: {html.escape(str(exc)[:250])}\n"
+                    "Send the bot token again, or CANCEL.",
+                    parse_mode=ParseMode.HTML,
+                )
     editing_key = command_edit_state.pop(uid, None)
     if editing_key:
         if text.upper() == "CANCEL":
@@ -2304,6 +2443,33 @@ async def callback_handler(client, callback):
             await callback.answer()
         await asyncio.to_thread(queue.set_setting, "upload_destination", mode)
         return await destination_cmd(client, callback.message, edit=True)
+    if data == "settings:secondary:menu":
+        await callback.answer()
+        return await secondary_account_menu(callback.message, edit=True)
+    if data == "settings:secondary:add":
+        secondary_setup_state[uid] = {"step": "api_id"}
+        await callback.answer("Credential setup started.")
+        return await callback.message.reply_text(
+            "➕ <b>Add secondary Telegram uploader</b>\n\n"
+            "Send the secondary API ID first. Each credential message is deleted after receipt.\n"
+            "Send CANCEL at any time to stop.",
+            parse_mode=ParseMode.HTML,
+        )
+    if data == "settings:secondary:remove":
+        await callback.answer("Removing secondary account…")
+        try:
+            await remove_secondary_credentials()
+            return await callback.message.edit_text(
+                "🗑 <b>Secondary uploader disconnected</b>\nCredentials removed from the private GitHub Database repository.",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Secondary account", callback_data="settings:secondary:menu")]]),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            log.exception("Could not remove secondary uploader credentials")
+            return await callback.message.reply_text(f"❌ Could not remove credentials: {html.escape(str(exc)[:300])}")
+    if data == "settings:secondary:back":
+        await callback.answer()
+        return await settings_cmd(client, callback.message, check_access=False)
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
         await callback.answer()
