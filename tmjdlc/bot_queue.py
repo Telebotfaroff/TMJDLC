@@ -491,7 +491,21 @@ class JobQueue:
                 SELECT result FROM tmjdlc_job_stages
                 WHERE job_id=%s AND stage=%s AND status='completed'
             """, (job_id, stage)).fetchone()
-            return dict(row["result"]) if row else None
+            if not row:
+                return None
+            result = row["result"]
+            # SQLite stores JSON columns as text; PostgreSQL drivers may return
+            # an already-decoded mapping. Normalize both representations.
+            if isinstance(result, (bytes, bytearray)):
+                result = result.decode("utf-8")
+            if isinstance(result, str):
+                try:
+                    result = json.loads(result)
+                except (TypeError, ValueError):
+                    log.warning("Invalid JSON stage result | job_id=%s stage=%s",
+                                job_id, stage)
+                    return None
+            return dict(result) if isinstance(result, dict) else None
 
     def complete_stage(self, job_id: int, worker_id: str, stage: str,
                        result: dict[str, Any] | None = None) -> bool:
