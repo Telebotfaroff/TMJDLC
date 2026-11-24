@@ -328,14 +328,15 @@ class JobQueue:
         """Claim a download while both download and upload backlogs have capacity.
 
         Multiple download workers may run concurrently, bounded by max_downloading.
-        Ready/uploading jobs are bounded by active upload capacity plus a small
-        prefetch buffer, preventing both uploader starvation and disk overfill.
-        Claims are serialized across workers/instances with an advisory lock.
+        Active uploads and waiting-ready jobs have separate limits. This guarantees
+        exactly the configured number of waiting videos per upload worker, even
+        before an idle uploader claims its first ready job.
         """
         download_limit = max(1, int(max_downloading))
         upload_limit = max(1, int(max_uploads))
-        # max_pending_uploads is a per-uploader backlog allowance.
-        upload_backlog_limit = upload_limit * (1 + max(0, int(max_pending_uploads)))
+        # The waiting queue is separate from active upload slots. For one uploader
+        # and a backlog of one, the next download stops as soon as one video is ready.
+        upload_backlog_limit = upload_limit * max(0, int(max_pending_uploads))
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
@@ -343,7 +344,8 @@ class JobQueue:
                   SELECT id FROM tmjdlc_bot_jobs
                   WHERE status='queued' AND attempts < max_attempts AND cancel_requested=FALSE
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='downloading') < %s
-                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status IN ('ready','uploading')) < %s
+                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='uploading') < %s
+                    AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='ready') < %s
                   ORDER BY priority ASC, created_at ASC, id ASC
                   LIMIT 1
                 )
@@ -352,7 +354,7 @@ class JobQueue:
                   lease_until=now()+(%s*interval '1 second'),
                   started_at=COALESCE(j.started_at,now()),updated_at=now()
                 FROM candidate c WHERE j.id=c.id RETURNING j.*
-            """, (download_limit, upload_backlog_limit, worker_id, lease_seconds)).fetchone()
+            """, (download_limit, upload_limit, upload_backlog_limit, worker_id, lease_seconds)).fetchone()
             if row:
                 conn.execute("""
                     INSERT INTO tmjdlc_workers(worker_id,status,last_heartbeat)
