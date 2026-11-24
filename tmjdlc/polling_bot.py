@@ -2276,7 +2276,11 @@ async def text_handler(client, message):
             download_state.add(uid)
             return await message.reply_text("⬇️ Send a Javtiful video URL. Send /cancel to stop.")
         if action == "batch":
-            return await message.reply_text("📚 Send a Javtiful channel URL to start batch selection.")
+            channel_state[uid] = {"awaiting": "channel_url"}
+            return await message.reply_text(
+                "📚 Send a Javtiful channel page URL. I'll inspect it and show the page-selection options.\n"
+                "Example: https://javtiful.com/channel/CHANNEL"
+            )
         if action == "queue":
             return await queue_cmd(client, message)
         if action == "settings":
@@ -2297,6 +2301,30 @@ async def text_handler(client, message):
                 f"🖥 Worker Status\nDownload workers: {active_downloads}/{parallel}\n"
                 f"Upload workers: {active_uploads}/{MAX_UPLOAD_WORKERS}\nQueue polling: {POLL_SECONDS}s\n"
                 f"Free disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
+            )
+    batch_input = channel_state.get(uid)
+    if batch_input and batch_input.get("awaiting") == "channel_url":
+        if text.upper() == "CANCEL":
+            channel_state.pop(uid, None)
+            return await message.reply_text("Batch selection cancelled.")
+        status = await message.reply_text("🔎 Inspecting channel pages…")
+        try:
+            info = await asyncio.to_thread(JavtifulChannelScraper().inspect, text)
+            await persist_channel_info(info)
+            channel_state[uid] = {
+                "info": info, "selection": "new", "quality": 720,
+                "skip_existing": True, "status_chat_id": status.chat.id,
+            }
+            return await status.edit_text(
+                batch_summary(info, channel_state[uid]),
+                reply_markup=batch_keyboard(uid),
+                parse_mode=ParseMode.HTML,
+            )
+        except Exception as exc:
+            channel_state[uid] = {"awaiting": "channel_url"}
+            return await status.edit_text(
+                f"❌ Channel inspection failed: {type(exc).__name__}: {str(exc)[:300]}\n"
+                "Send another Javtiful channel URL, or CANCEL."
             )
     if uid in download_state:
         download_state.discard(uid)
@@ -2495,8 +2523,12 @@ async def callback_handler(client, callback):
         await callback.answer("Send a Javtiful video URL.")
         return await callback.message.reply_text("⬇️ Send a Javtiful video URL. Downloads use 720p automatically.")
     if data == "home:batch":
+        channel_state[uid] = {"awaiting": "channel_url"}
         await callback.answer("Send a Javtiful channel URL.")
-        return await callback.message.reply_text("📚 Send a Javtiful channel URL to open batch selection.")
+        return await callback.message.reply_text(
+            "📚 Send a Javtiful channel page URL. I'll inspect it and show the page-selection options.\n"
+            "Example: https://javtiful.com/channel/CHANNEL"
+        )
     if data == "home:storage":
         usage = shutil.disk_usage(WORK)
         await callback.answer()
