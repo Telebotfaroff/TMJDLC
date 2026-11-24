@@ -681,8 +681,19 @@ class JobQueue:
             return counts
 
     def clear_completed_history(self) -> int:
-        """Remove finished queue history; retain completed rows referenced by media."""
+        """Remove finished queue history while preserving media catalogue records."""
         with self.connect() as conn:
+            # The media catalogue intentionally survives queue-history cleanup.
+            # Its job_id FK is restrictive, so detach references to failed/cancelled
+            # jobs before deleting those queue rows.
+            conn.execute("""
+                UPDATE tmjdlc_media
+                SET job_id=NULL
+                WHERE job_id IN (
+                    SELECT id FROM tmjdlc_bot_jobs
+                    WHERE status IN ('failed','cancelled')
+                )
+            """)
             rows = conn.execute("""
                 DELETE FROM tmjdlc_bot_jobs
                 WHERE status IN ('failed','cancelled')
