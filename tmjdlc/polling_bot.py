@@ -1554,7 +1554,7 @@ async def render_processes(target, *, edit: bool = False):
         f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
         f"⬇️ Download workers: <b>{len(downloading)}/{parallel}</b>",
         f"⬆️ Upload workers: <b>{len(uploading)}/{upload_concurrency}</b>",
-        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * upload_backlog}</b>",
+        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured buffer <b>{upload_backlog}/worker</b>",
         f"🕒 Waiting downloads: <b>{counts.get('queued', 0)}</b>",
         f"💽 Free disk: <b>{free_gb:.1f} GiB</b>",
         "",
