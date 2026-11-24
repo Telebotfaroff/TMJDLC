@@ -13,14 +13,14 @@ Use the private repository:
 
 On first startup, TMJDLC creates:
 
-- `config/secrets.json` — Telegram bot token, API ID/hash, admin IDs, optional helper bot tokens, and optional GoFile token.
+- `config/secrets.json` — primary Telegram credentials, optional secondary upload-only bot credentials, admin IDs, optional helper bot tokens, and optional GoFile token.
 - `config/bot.json` — default worker and runtime settings.
 - `config/commands.json` — customizable Telegram menu labels, visibility, and order.
 - `catalogue/channels.json` — saved Javtiful channel catalogue.
 - `database/tmjdlc.sqlite3.gz` — compressed durable SQLite snapshot.
 - `uploads/records/<job-id>.json` — complete per-upload receipts and metadata.
 
-After first startup, open `config/secrets.json` in the private repository and enter your Telegram credentials. Do not add `GITHUB_TOKEN` to the repository.
+After first startup, open `config/secrets.json` in the private repository and enter your Telegram credentials. For the secondary uploader, fill all three fields: `TG_SECONDARY_BOT_TOKEN`, `TG_SECONDARY_API_ID`, and `TG_SECONDARY_API_HASH`. Add both the primary and secondary bots as administrators in the destination channel with permission to post messages. The secondary bot is upload-only; it does not need to be a control bot. Do not add `GITHUB_TOKEN` to the repository.
 
 Only one Colab runtime should write to this data repository at a time. SQLite handles concurrent workers inside that runtime; GitHub snapshots are synchronized periodically and after critical upload receipts.
 
@@ -54,8 +54,8 @@ The main bot token receives updates and handles every upload. Videos larger than
 
 ## Worker behavior
 
-- Hard maximum: two download workers and two upload workers.
-- Download and upload concurrency can be selected independently in Telegram.
+- Hard maximum: two download workers and four upload workers.
+- Download and upload concurrency can be selected independently in Telegram (1–4 upload workers).
 - Upload backlog allowance is configurable from Settings: 0, 1, or 2 waiting videos per active upload worker.
 - Download claims stop when active uploads plus the configured pending-upload capacity is full.
 - Worker leases and retry state are persisted in SQLite and synchronized to GitHub.
