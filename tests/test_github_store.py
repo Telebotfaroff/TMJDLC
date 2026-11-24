@@ -52,3 +52,17 @@ def test_github_store_requires_token():
         assert "GITHUB_TOKEN" in str(exc)
     else:
         raise AssertionError("Expected missing token error")
+
+
+def test_github_store_fetches_large_blob_when_contents_api_omits_inline_data():
+    class LargeBlobSession(FakeSession):
+        def get(self, url, params=None, timeout=30):
+            if "/git/blobs/" in url:
+                return FakeResponse(200, {
+                    "encoding": "base64",
+                    "content": base64.b64encode(b"large-snapshot").decode("ascii"),
+                })
+            return FakeResponse(200, {"type": "file", "sha": "large-sha", "content": ""})
+
+    store = GitHubDataStore("token", session=LargeBlobSession())
+    assert store.read_bytes("database/tmjdlc.sqlite3.gz") == b"large-snapshot"
