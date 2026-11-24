@@ -13,7 +13,7 @@ Use the private repository:
 
 On first startup, TMJDLC creates:
 
-- `config/secrets.json` — Telegram bot token, API ID/hash, admin IDs, optional helper bot tokens, and optional GoFile token.
+- `config/secrets.json` — Telegram bot token, API ID/hash, Premium user session string, admin IDs, optional helper bot tokens, and optional GoFile token.
 - `config/bot.json` — default worker and runtime settings.
 - `catalogue/channels.json` — saved Javtiful channel catalogue.
 - `database/tmjdlc.sqlite3.gz` — compressed durable SQLite snapshot.
@@ -34,7 +34,7 @@ python -m playwright install --with-deps chromium
 python -m tmjdlc.bot
 ```
 
-The bot does not require a personal-user login or session string. Uploads use the configured MTProto client; the actual upload account and its Telegram file-size allowance determine the maximum supported file size.
+The main bot token receives updates. For Premium uploads up to 4GB, put your Premium account's MTProto session string in `TG_SESSION_STRING` in `config/secrets.json` and keep `TG_PREMIUM_UPLOAD` set to `true`. The separate upload client uses that user session; without it, the uploader falls back to the bot token and the smaller file limit.
 
 ## Commands
 
