@@ -1,83 +1,160 @@
-"""Durable PostgreSQL queue with leases, resumable stages and cooperative cancellation."""
+"""Durable local SQLite queue with GitHub-backed snapshots and upload history."""
 from __future__ import annotations
 
+import json
+import logging
 import os
+import sqlite3
+import threading
+import time
+from pathlib import Path
 from typing import Any
 
-import psycopg
-from psycopg.rows import dict_row
+from tmjdlc.github_store import GitHubDataStore
 
-DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
+log = logging.getLogger("tmjdlc.queue")
 
 
 class QueueNotConfigured(RuntimeError):
     pass
 
 
-class JobQueue:
-    """Neon-backed queue. A worker may mutate a job only while it owns its lease."""
+def _sqlite_sql(query: str) -> str:
+    """Translate the small PostgreSQL SQL subset used by the queue to SQLite."""
+    query = query.replace("now()+(%s*interval '1 second')",
+                          "datetime('now', printf('%+d seconds', %s))")
+    query = query.replace("pg_advisory_xact_lock(734821)", "1")
+    query = query.replace("RETURNING j.*", "RETURNING *")
+    query = query.replace(" FOR UPDATE SKIP LOCKED", "")
+    query = query.replace(" FOR UPDATE", "")
+    query = query.replace("::jsonb", "")
+    query = query.replace("now()", "CURRENT_TIMESTAMP")
+    return query.replace("%s", "?")
 
-    def __init__(self, dsn: str | None = None, *, max_attempts: int = 3) -> None:
-        self.dsn = (dsn or DATABASE_URL).strip()
-        if not self.dsn:
-            raise QueueNotConfigured("DATABASE_URL is required for the durable queue.")
+
+class _SQLiteSession:
+    """One serialized SQLite transaction, safe for the bot's threaded workers."""
+
+    def __init__(self, path: Path, lock: threading.RLock, owner: "JobQueue"):
+        self.path = path
+        self.lock = lock
+        self.owner = owner
+        self.connection: sqlite3.Connection | None = None
+
+    def __enter__(self):
+        self.lock.acquire()
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.connection = sqlite3.connect(str(self.path), timeout=30)
+            self.connection.row_factory = sqlite3.Row
+            self.connection.execute("PRAGMA foreign_keys=ON")
+            self.connection.execute("PRAGMA busy_timeout=30000")
+            self.connection.execute("BEGIN IMMEDIATE")
+            return self
+        except Exception:
+            if self.connection is not None:
+                self.connection.close()
+            self.lock.release()
+            raise
+
+    def execute(self, query: str, params=()):
+        if self.connection is None:
+            raise RuntimeError("SQLite session is not active.")
+        return self.connection.execute(_sqlite_sql(query), params)
+
+    def __exit__(self, exc_type, exc, traceback):
+        changed = False
+        try:
+            if self.connection is not None:
+                changed = self.connection.total_changes > 0
+                if exc_type is None:
+                    self.connection.commit()
+                else:
+                    self.connection.rollback()
+                self.connection.close()
+        finally:
+            self.connection = None
+            self.lock.release()
+        if exc_type is None and changed:
+            self.owner._maybe_sync_snapshot()
+        return False
+
+
+class JobQueue:
+    """SQLite queue with GitHub snapshots; one active Colab runtime is supported."""
+
+    def __init__(
+        self,
+        dsn: str | None = None,
+        *,
+        store: GitHubDataStore | None = None,
+        max_attempts: int = 3,
+    ) -> None:
+        # dsn remains accepted for a clearer migration error for old notebooks.
+        if dsn:
+            raise QueueNotConfigured("DATABASE_URL is no longer used; configure GITHUB_TOKEN.")
+        self.store = store or GitHubDataStore.from_env()
+        self.db_path = Path(os.getenv("TMJDLC_DB_PATH", "/content/tmjdlc.sqlite3"))
         self.max_attempts = max(1, max_attempts)
+        self._db_lock = threading.RLock()
+        self._sync_lock = threading.Lock()
+        self._last_sync = 0.0
+        if not self.db_path.exists():
+            self.store.restore_database(self.db_path)
 
     def connect(self):
-        return psycopg.connect(self.dsn, row_factory=dict_row, connect_timeout=15)
+        return _SQLiteSession(self.db_path, self._db_lock, self)
+
+    def _maybe_sync_snapshot(self, *, force: bool = False) -> None:
+        if not force and time.monotonic() - self._last_sync < 30:
+            return
+        if not self._sync_lock.acquire(blocking=False):
+            return
+        try:
+            if not force and time.monotonic() - self._last_sync < 30:
+                return
+            self.store.save_database(self.db_path)
+            self._last_sync = time.monotonic()
+        except Exception:
+            # The local transaction is already committed. Keep the queue live and retry
+            # on the next mutation/forced flush; completed records are also written separately.
+            log.exception("Could not synchronize SQLite snapshot to the GitHub data repository")
+        finally:
+            self._sync_lock.release()
+
+    def flush_snapshot(self) -> None:
+        """Force a durable GitHub snapshot after critical events or at shutdown."""
+        self._maybe_sync_snapshot(force=True)
 
     def initialize(self) -> None:
         with self.connect() as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_bot_jobs (
-                    id BIGSERIAL PRIMARY KEY, video_id TEXT NOT NULL UNIQUE,
-                    post_url TEXT NOT NULL, quality INTEGER,
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    video_id TEXT NOT NULL UNIQUE,
+                    post_url TEXT NOT NULL,
+                    quality INTEGER,
                     status TEXT NOT NULL DEFAULT 'queued'
-                      CHECK (status IN ('queued','downloading','uploading','completed','failed','cancelled')),
-                    attempts INTEGER NOT NULL DEFAULT 0, max_attempts INTEGER NOT NULL DEFAULT 3,
-                    priority INTEGER NOT NULL DEFAULT 100, requested_by BIGINT,
-                    status_chat_id BIGINT, status_message_id BIGINT, output_path TEXT,
-                    last_error TEXT, worker_id TEXT, lease_until TIMESTAMPTZ,
-                    cancel_requested BOOLEAN NOT NULL DEFAULT FALSE,
-                    current_stage TEXT, progress_percent INTEGER NOT NULL DEFAULT 0,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    started_at TIMESTAMPTZ, completed_at TIMESTAMPTZ
+                      CHECK (status IN ('queued','downloading','ready','uploading','completed','failed','cancelled')),
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    max_attempts INTEGER NOT NULL DEFAULT 3,
+                    priority INTEGER NOT NULL DEFAULT 100,
+                    requested_by INTEGER,
+                    status_chat_id INTEGER,
+                    status_message_id INTEGER,
+                    output_path TEXT,
+                    last_error TEXT,
+                    worker_id TEXT,
+                    lease_until TEXT,
+                    cancel_requested INTEGER NOT NULL DEFAULT 0,
+                    current_stage TEXT,
+                    progress_percent INTEGER NOT NULL DEFAULT 0,
+                    batch_id TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    started_at TEXT,
+                    completed_at TEXT
                 )
-            """)
-            conn.execute("ALTER TABLE tmjdlc_bot_jobs DROP COLUMN IF EXISTS upload_screenshots")
-            # Apply additive columns before any migration query references them.
-            # This is important for databases created by older bot versions.
-            for definition in (
-                "cancel_requested BOOLEAN NOT NULL DEFAULT FALSE",
-                "current_stage TEXT",
-                "progress_percent INTEGER NOT NULL DEFAULT 0",
-                "batch_id TEXT",
-            ):
-                conn.execute(f"ALTER TABLE tmjdlc_bot_jobs ADD COLUMN IF NOT EXISTS {definition}")
-
-            # Older batch jobs shared one Telegram status message. Clear only
-            # duplicated IDs on unfinished batch jobs so workers recreate
-            # one dedicated notification per video after restart.
-            conn.execute("""
-                UPDATE tmjdlc_bot_jobs
-                SET status_chat_id=NULL,status_message_id=NULL
-                WHERE batch_id IS NOT NULL
-                  AND status IN ('queued','downloading','ready','uploading')
-                  AND status_message_id IN (
-                    SELECT status_message_id FROM tmjdlc_bot_jobs
-                    WHERE batch_id IS NOT NULL AND status_message_id IS NOT NULL
-                    GROUP BY status_message_id HAVING count(*) > 1
-                  )
-            """)
-            conn.execute("""
-                ALTER TABLE tmjdlc_bot_jobs
-                DROP CONSTRAINT IF EXISTS tmjdlc_bot_jobs_status_check
-            """)
-            conn.execute("""
-                ALTER TABLE tmjdlc_bot_jobs
-                ADD CONSTRAINT tmjdlc_bot_jobs_status_check
-                CHECK (status IN ('queued','downloading','ready','uploading','completed','failed','cancelled'))
             """)
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS tmjdlc_bot_jobs_queue_idx
@@ -93,44 +170,73 @@ class JobQueue:
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_bot_settings (
-                    key TEXT PRIMARY KEY, value TEXT NOT NULL,
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_job_stages (
-                    job_id BIGINT NOT NULL REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
-                    stage TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
-                    result JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+                    job_id INTEGER NOT NULL REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
+                    stage TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    result JSONB NOT NULL DEFAULT '{}',
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY(job_id, stage)
                 )
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_job_events (
-                    id BIGSERIAL PRIMARY KEY,
-                    job_id BIGINT REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
-                    event TEXT NOT NULL, details JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    job_id INTEGER REFERENCES tmjdlc_bot_jobs(id) ON DELETE CASCADE,
+                    event TEXT NOT NULL,
+                    details JSONB NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_media (
-                    video_id TEXT PRIMARY KEY, job_id BIGINT REFERENCES tmjdlc_bot_jobs(id),
-                    file_path TEXT, file_size BIGINT, duration_seconds DOUBLE PRECISION,
-                    width INTEGER, height INTEGER, video_chat_id BIGINT,
-                    video_message_id BIGINT, metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+                    video_id TEXT PRIMARY KEY,
+                    job_id INTEGER REFERENCES tmjdlc_bot_jobs(id),
+                    file_path TEXT,
+                    file_size INTEGER,
+                    duration_seconds REAL,
+                    width INTEGER,
+                    height INTEGER,
+                    video_chat_id INTEGER,
+                    video_message_id INTEGER,
+                    metadata JSONB NOT NULL DEFAULT '{}',
+                    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
             """)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS tmjdlc_workers (
-                    worker_id TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'online',
-                    last_heartbeat TIMESTAMPTZ NOT NULL DEFAULT now(),
-                    details JSONB NOT NULL DEFAULT '{}'::jsonb
+                    worker_id TEXT PRIMARY KEY,
+                    status TEXT NOT NULL DEFAULT 'online',
+                    last_heartbeat TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    details JSONB NOT NULL DEFAULT '{}'
                 )
             """)
-
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tmjdlc_upload_records (
+                    job_id INTEGER PRIMARY KEY,
+                    video_id TEXT NOT NULL,
+                    source_url TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    file_size INTEGER NOT NULL DEFAULT 0,
+                    duration_seconds REAL NOT NULL DEFAULT 0,
+                    width INTEGER,
+                    height INTEGER,
+                    upload_destination TEXT NOT NULL,
+                    telegram_chat_id INTEGER,
+                    telegram_message_id INTEGER,
+                    telegram_file_id TEXT,
+                    gofile_file_id TEXT,
+                    gofile_download_url TEXT,
+                    metadata JSONB NOT NULL DEFAULT '{}',
+                    uploaded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
     def enqueue(self, video_id: str, post_url: str, quality: int | None = None, *,
                 requested_by: int | None = None, status_chat_id: int | None = None,
                 status_message_id: int | None = None, priority: int = 100) -> tuple[dict[str, Any], bool]:
