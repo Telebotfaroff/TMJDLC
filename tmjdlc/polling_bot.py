@@ -1191,26 +1191,26 @@ async def commands_cmd(client, message):
 async def help_cmd(client, message):
     if await deny(message): return
     body = (
-        "🎬 <b>TMJDLC Help</b>\\n\\n"
-        "<b>Downloads</b>\\n"
-        "• /dl URL — download one Javtiful video\\n"
-        "• /batch URL — start a channel batch\\n"
-        "• /channels — scan and browse saved channels\\n\\n"
-        "<b>Queue</b>\\n"
-        "• /queue — view jobs and queue controls\\n"
-        "• /cancel JOB_ID — cancel a job\\n"
-        "• /retry JOB_ID — retry a failed job\\n"
-        "• /processes — live download/upload status\\n\\n"
-        "<b>Settings</b>\\n"
-        "• /settings — workers, upload concurrency, backlog and notifications\\n"
-        "• /setupload — set the Telegram upload channel\\n"
-        "• /setup — guided destination setup\\n"
-        "• /cancelsetup — cancel channel setup\\n"
-        "• /commands — customize menu buttons\\n\\n"
-        "<b>System</b>\\n"
-        "• /panel — overview\\n"
-        "• /storage — available runtime storage\\n"
-        "• /start — open the main menu\\n\\n"
+        "🎬 <b>TMJDLC Help</b>\n\n"
+        "<b>Downloads</b>\n"
+        "• /dl URL — download one Javtiful video\n"
+        "• /batch URL — start a channel batch\n"
+        "• /channels — scan and browse saved channels\n\n"
+        "<b>Queue</b>\n"
+        "• /queue — view jobs and queue controls\n"
+        "• /cancel JOB_ID — cancel a job\n"
+        "• /retry JOB_ID — retry a failed job\n"
+        "• /processes — live download/upload status\n\n"
+        "<b>Settings</b>\n"
+        "• /settings — workers, upload concurrency, backlog and notifications\n"
+        "• /setupload — set the Telegram upload channel\n"
+        "• /setup — guided destination setup\n"
+        "• /cancelsetup — cancel channel setup\n"
+        "• /commands — customize menu buttons\n\n"
+        "<b>System</b>\n"
+        "• /panel — overview\n"
+        "• /storage — available runtime storage\n"
+        "• /start — open the main menu\n\n"
         "Send a Javtiful video URL directly to enqueue it. Large videos are split into Telegram-safe parts automatically."
     )
     await message.reply_text(body, parse_mode=ParseMode.HTML)
@@ -1222,16 +1222,16 @@ async def start_cmd(client, message):
     if not configured_video:
         setup_state[message.from_user.id] = "upload_channel"
         await message.reply_text(
-            "🎞 <b>First-time setup · Video upload channel</b>\\n"
+            "🎞 <b>First-time setup · Video upload channel</b>\n"
             "Send <code>@channelusername</code> for a public channel, or forward a recent post "
             "from your private channel to this bot. "
-            "I will verify that this bot is an administrator with posting permission, then save it in the private GitHub data repository.\\n"
+            "I will verify that this bot is an administrator with posting permission, then save it in the private GitHub data repository.\n"
             "Use /cancelsetup to stop.",
             parse_mode=ParseMode.HTML,
         )
     else:
         await message.reply_text(
-            f"✅ Video upload channel is configured: <code>{html.escape(configured_video)}</code>\\n"
+            f"✅ Video upload channel is configured: <code>{html.escape(configured_video)}</code>\n"
             "Use /setupload to change it.",
             parse_mode=ParseMode.HTML,
         )
@@ -1662,12 +1662,12 @@ async def destination_cmd(client, message, *, edit=False):
     )
     video_channel = await asyncio.to_thread(queue.get_setting, "upload_channel", "Not set")
     body = (
-        "☁️ <b>Upload Destination</b>\\n\\n"
-        f"Delivery mode: <b>{html.escape(mode.upper())}</b>\\n"
-        f"🎞 Telegram video channel: <code>{html.escape(str(video_channel))}</code>\\n"
-        "Choose where completed downloads should be delivered. Use the channel button below to change the Telegram upload channel.\\n\\n"
-        f"Current GoFile folder: {folder_label}\\n"
-        f"Batch: <b>#{html.escape(str(folder_number))}</b> · Videos: <b>{int(folder_count or 0)}/20</b>\\n"
+        "☁️ <b>Upload Destination</b>\n\n"
+        f"Delivery mode: <b>{html.escape(mode.upper())}</b>\n"
+        f"🎞 Telegram video channel: <code>{html.escape(str(video_channel))}</code>\n"
+        "Choose where completed downloads should be delivered. Use the channel button below to change the Telegram upload channel.\n\n"
+        f"Current GoFile folder: {folder_label}\n"
+        f"Batch: <b>#{html.escape(str(folder_number))}</b> · Videos: <b>{int(folder_count or 0)}/20</b>\n"
         "Each public folder holds up to 20 videos. Completed folder links are sent to admins."
     )
     markup = InlineKeyboardMarkup([
@@ -1701,15 +1701,15 @@ async def settings_cmd(client, message, check_access=True):
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     body = (
-        "⚙️ <b>Settings</b>\\n\\n"
-        f"🎞 Video destination: <code>{html.escape(str(video))}</code>\\n"
+        "⚙️ <b>Settings</b>\n\n"
+        f"🎞 Video destination: <code>{html.escape(str(video))}</code>\n"
         f"☁️ Delivery mode: <b>{html.escape(str(upload_destination).upper())}</b>\n"
-        "🎥 Quality: <b>720p automatic</b>\\n"
-        f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\\n"
-        f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\\n"
-        f"📥 Waiting uploads per worker: <b>{upload_backlog}</b>\\n"
-        f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\\n"
-        f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\\n"
+        "🎥 Quality: <b>720p automatic</b>\n"
+        f"⚡ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\n"
+        f"📤 Simultaneous uploads: <b>{upload_concurrency}</b>\n"
+        f"📥 Waiting uploads per worker: <b>{upload_backlog}</b>\n"
+        f"📥 Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
+        f"🔔 Download/upload notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
         f"⏱ Lease: <b>{LEASE}s</b>"
     )
     markup = InlineKeyboardMarkup([
@@ -1801,7 +1801,7 @@ async def forwarded_destination_handler(client, message):
     await asyncio.to_thread(queue.set_setting, key, str(verified.id))
     setup_state.pop(message.from_user.id, None)
     await message.reply_text(
-        f"✅ Video channel verified and saved: <code>{verified.id}</code>\\n"
+        f"✅ Video channel verified and saved: <code>{verified.id}</code>\n"
         f"Title: {html.escape(verified.title or 'Private channel')}",
         parse_mode=ParseMode.HTML,
     )
@@ -1838,7 +1838,7 @@ async def queue_single_url(message, url: str):
         status_message_id=status.id,
     )
     await status.edit_text(
-        f"{'🕒 Added to queue' if created else '⏭ Already exists'} · <code>{match.group(1)}</code>\\n"
+        f"{'🕒 Added to queue' if created else '⏭ Already exists'} · <code>{match.group(1)}</code>\n"
         f"Job #{job['id']} · {html.escape(str(job['status']))} · 720p automatic",
         parse_mode=ParseMode.HTML,
     )
@@ -1891,8 +1891,8 @@ async def text_handler(client, message):
             active_downloads = counts.get("downloading", 0)
             active_uploads = counts.get("uploading", 0)
             return await message.reply_text(
-                f"🖥 Worker Status\\nDownload workers: {active_downloads}/{parallel}\\n"
-                f"Upload workers: {active_uploads}/2\\nQueue polling: {POLL_SECONDS}s\\n"
+                f"🖥 Worker Status\nDownload workers: {active_downloads}/{parallel}\n"
+                f"Upload workers: {active_uploads}/2\nQueue polling: {POLL_SECONDS}s\n"
                 f"Free disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
             )
     if uid in download_state:
@@ -2028,10 +2028,10 @@ async def callback_handler(client, callback):
         counts = await asyncio.to_thread(queue.counts)
         free = shutil.disk_usage(WORK).free / (1024 ** 3)
         running = counts.get("downloading", 0) + counts.get("uploading", 0)
-        body = ("🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
-                f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
-                f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
-                f"💽 Free storage: <b>{free:.1f} GiB</b>\\n"
+        body = ("🎬 <b>TMJDLC · Javtiful Downloader</b>\n\n"
+                f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\n"
+                f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\n"
+                f"💽 Free storage: <b>{free:.1f} GiB</b>\n"
                 f"⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>")
         markup = build_panel_keyboard()
         await callback.answer()
@@ -2105,8 +2105,8 @@ async def callback_handler(client, callback):
         usage = shutil.disk_usage(WORK)
         await callback.answer()
         return await callback.message.edit_text(
-            f"💽 <b>Storage</b>\\nTotal: {usage.total/1024**3:.1f} GiB\\n"
-            f"Used: {usage.used/1024**3:.1f} GiB\\nFree: {usage.free/1024**3:.1f} GiB\\n"
+            f"💽 <b>Storage</b>\nTotal: {usage.total/1024**3:.1f} GiB\n"
+            f"Used: {usage.used/1024**3:.1f} GiB\nFree: {usage.free/1024**3:.1f} GiB\n"
             f"New downloads pause below {MIN_FREE_DISK_GB:.1f} GiB free.",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
@@ -2116,8 +2116,8 @@ async def callback_handler(client, callback):
         active_uploads = counts.get("uploading", 0)
         await callback.answer()
         return await callback.message.edit_text(
-            f"🖥 <b>Worker Status</b>\\nDownload workers: {active_downloads}/{parallel}\\n"
-            f"Upload workers: {active_uploads}/2\\nQueue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
+            f"🖥 <b>Worker Status</b>\nDownload workers: {active_downloads}/{parallel}\n"
+            f"Upload workers: {active_uploads}/2\nQueue polling: {POLL_SECONDS}s\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
     if data.startswith("settings:destination:"):
@@ -2143,10 +2143,10 @@ async def callback_handler(client, callback):
         await callback.answer()
         current = await asyncio.to_thread(queue.get_setting, "upload_channel", "Not set")
         return await callback.message.reply_text(
-            "🎞 <b>Set Telegram video upload channel</b>\\n\\n"
-            f"Current channel: <code>{html.escape(str(current))}</code>\\n"
+            "🎞 <b>Set Telegram video upload channel</b>\n\n"
+            f"Current channel: <code>{html.escape(str(current))}</code>\n"
             "Send the public channel @username, or forward a recent post from a private channel. "
-            "I will verify that the bot is an administrator with posting permission and save the channel in the private GitHub Database repository.\\n"
+            "I will verify that the bot is an administrator with posting permission and save the channel in the private GitHub Database repository.\n"
             "Send CANCEL to stop.",
             parse_mode=ParseMode.HTML,
         )
@@ -2201,10 +2201,10 @@ async def callback_handler(client, callback):
         counts = await asyncio.to_thread(queue.counts)
         await callback.answer()
         return await callback.message.edit_text(
-            "🚨 <b>Cancel ALL unfinished tasks?</b>\\n"
-            f"Queued: <b>{counts.get('queued', 0)}</b>\\n"
-            f"Downloading: <b>{counts.get('downloading', 0)}</b>\\n"
-            f"Uploading: <b>{counts.get('uploading', 0)}</b>\\n\\n"
+            "🚨 <b>Cancel ALL unfinished tasks?</b>\n"
+            f"Queued: <b>{counts.get('queued', 0)}</b>\n"
+            f"Downloading: <b>{counts.get('downloading', 0)}</b>\n"
+            f"Uploading: <b>{counts.get('uploading', 0)}</b>\n\n"
             "This affects every batch and individual job. Active transfers will stop at their next safe checkpoint. "
             "Completed jobs will not be changed.",
             reply_markup=InlineKeyboardMarkup([
@@ -2217,9 +2217,9 @@ async def callback_handler(client, callback):
         result = await asyncio.to_thread(queue.cancel_all)
         await callback.answer("All unfinished tasks cancellation requested.", show_alert=True)
         return await callback.message.edit_text(
-            "🛑 <b>Cancel all requested</b>\\n"
-            f"Queued cancelled: <b>{result['cancelled']}</b>\\n"
-            f"Active tasks stopping: <b>{result['stopping']}</b>\\n"
+            "🛑 <b>Cancel all requested</b>\n"
+            f"Queued cancelled: <b>{result['cancelled']}</b>\n"
+            f"Active tasks stopping: <b>{result['stopping']}</b>\n"
             "Completed tasks were left untouched.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("📋 Open queue", callback_data="home:queue"),
@@ -2230,7 +2230,7 @@ async def callback_handler(client, callback):
     if data == "queue:clear:ask":
         await callback.answer()
         return await callback.message.edit_text(
-            "🧹 <b>Clear completed history?</b>\\nCompleted jobs still referenced by the media catalogue will be retained.",
+            "🧹 <b>Clear completed history?</b>\nCompleted jobs still referenced by the media catalogue will be retained.",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("Yes, clear history", callback_data="queue:clear:confirm"),
                  InlineKeyboardButton("No, go back", callback_data="home:queue")]]),
