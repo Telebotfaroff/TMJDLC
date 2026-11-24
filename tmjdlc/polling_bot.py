@@ -397,7 +397,12 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
     async with video_upload_semaphore:
         chat_id = int(kwargs["chat_id"])
         candidates = [upload_client]
-        if chat_id < 0 and _helper_upload_clients:
+        video_path = Path(str(kwargs.get("video") or ""))
+        premium_large_file = (
+            TG_SESSION_STRING and TG_PREMIUM_UPLOAD and video_path.is_file()
+            and video_path.stat().st_size > 1_950_000_000
+        )
+        if chat_id < 0 and _helper_upload_clients and not premium_large_file:
             eligible = []
             for helper in _helper_upload_clients:
                 if await _helper_can_post(helper, chat_id):
@@ -1828,8 +1833,14 @@ async def text_handler(client, message):
         if action == "destination":
             return await destination_cmd(client, message)
         return await message.reply_text(
-            f"🖥 Worker Status\\nWorkers: {parallel}/{MAX_WORKERS}\\nActive: {active}\\n"
-            f"Queue polling: {POLL_SECONDS}s\\nFree disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
+            counts = await asyncio.to_thread(queue.counts)
+            active_downloads = counts.get("downloading", 0)
+            active_uploads = counts.get("uploading", 0)
+            return await message.reply_text(
+                f"🖥 Worker Status\\nDownload workers: {active_downloads}/{parallel}\\n"
+                f"Upload workers: {active_uploads}/2\\nQueue polling: {POLL_SECONDS}s\\n"
+                f"Free disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
+            )
         )
     if uid in download_state:
         download_state.discard(uid)
@@ -2014,10 +2025,13 @@ async def callback_handler(client, callback):
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
     if data == "home:worker":
+        counts = await asyncio.to_thread(queue.counts)
+        active_downloads = counts.get("downloading", 0)
+        active_uploads = counts.get("uploading", 0)
         await callback.answer()
         return await callback.message.edit_text(
-            f"🖥 <b>Worker Status</b>\\nWorkers: {parallel}/{MAX_WORKERS}\\nActive: {active}\\n"
-            f"Queue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
+            f"🖥 <b>Worker Status</b>\\nDownload workers: {active_downloads}/{parallel}\\n"
+            f"Upload workers: {active_uploads}/2\\nQueue polling: {POLL_SECONDS}s\\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
     if data.startswith("settings:destination:"):
@@ -2316,26 +2330,21 @@ async def run_bot():
         await upload_client.start()
         _upload_client_loads[id(upload_client)] = 0
         await start_helper_upload_clients()
-    except Exception:
-        await stop_helper_upload_clients()
-        if upload_client.is_connected:
-            await upload_client.stop()
-        await app.stop()
-        raise
-    await on_start(app)
-    log.info(
-        "TMJDLC started | update=tmjdlc_bot | WZGram primary uploader=tmjdlc_upload "
-        "| helper_uploaders=%s "
-        "| max_concurrent_transmissions=%s",
-        len(_helper_upload_clients), UPLOAD_WORKERS,
-    )
-    try:
+        await on_start(app)
+        log.info(
+            "TMJDLC started | update=tmjdlc_bot | primary_upload_auth=%s "
+            "| helper_uploaders=%s | max_concurrent_transmissions=%s",
+            "premium_user_session" if TG_SESSION_STRING and TG_PREMIUM_UPLOAD else "bot_token",
+            len(_helper_upload_clients), UPLOAD_WORKERS,
+        )
         await idle()
     finally:
         await on_stop(app)
         await stop_helper_upload_clients()
-        await upload_client.stop()
-        await app.stop()
+        if upload_client.is_connected:
+            await upload_client.stop()
+        if app.is_connected:
+            await app.stop()
 
 
 def main():
