@@ -162,6 +162,10 @@ progress_notifications_enabled = True
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
 _chat_status_edit_locks: dict[int, asyncio.Lock] = {}
 _chat_status_edit_last_sent: dict[int, float] = {}
+# One consolidated progress message per admin chat; original per-job message IDs
+# are retained only as keys for their individual progress blocks.
+_universal_status_message_ids: dict[int, int] = {}
+_universal_status_entries: dict[int, dict[int, tuple[str, float]]] = {}
 _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
@@ -461,28 +465,75 @@ async def deny(message) -> bool:
 
 
 async def status_edit(chat_id, message_id, text):
-    if not progress_notifications_enabled or not chat_id or not message_id:
+    """Update one shared live-progress message with a block for every active job."""
+    if not progress_notifications_enabled or not chat_id:
         return
-    chat_id, message_id = int(chat_id), int(message_id)
-    key = (chat_id, message_id)
+    chat_id = int(chat_id)
+    source_message_id = int(message_id) if message_id else 0
+    key = (chat_id, source_message_id)
     message_lock = _status_edit_locks.setdefault(key, asyncio.Lock())
     chat_lock = _chat_status_edit_locks.setdefault(chat_id, asyncio.Lock())
     async with message_lock:
         async with chat_lock:
-            # Keep edits to separate job messages from bursting into the same chat.
             now = time.monotonic()
             wait_for = CHAT_EDIT_INTERVAL_SECONDS - (now - _chat_status_edit_last_sent.get(chat_id, 0.0))
             if wait_for > 0:
                 await asyncio.sleep(wait_for)
-            _chat_status_edit_last_sent[chat_id] = time.monotonic()
+
+            canonical_id = _universal_status_message_ids.get(chat_id)
+            if not canonical_id and source_message_id:
+                canonical_id = source_message_id
+                _universal_status_message_ids[chat_id] = canonical_id
+            elif canonical_id and source_message_id and source_message_id != canonical_id:
+                # Remove the old per-job placeholder so the chat keeps only one
+                # progress message. Its progress remains represented in the
+                # consolidated message below.
+                try:
+                    await app.delete_messages(chat_id, source_message_id)
+                except Exception:
+                    pass
+
+            if source_message_id:
+                entries = _universal_status_entries.setdefault(chat_id, {})
+                entries[source_message_id] = (str(text), now)
+                # Keep all live tasks and only the three most recent terminal
+                # results, preventing the single message from growing forever.
+                terminal_words = ("job completed", "completed ", "cancelled ", "failed ", "requeued ")
+                terminal = [
+                    (entry_id, value) for entry_id, value in entries.items()
+                    if value[0].strip().lower().startswith(terminal_words)
+                ]
+                terminal.sort(key=lambda item: item[1][1], reverse=True)
+                for entry_id, _ in terminal[3:]:
+                    entries.pop(entry_id, None)
+            else:
+                _universal_status_entries.setdefault(chat_id, {})[int(now * 1000)] = (str(text), now)
+
+            blocks = [
+                value[0] for _, value in sorted(
+                    _universal_status_entries.get(chat_id, {}).items(),
+                    key=lambda item: item[1][1], reverse=True
+                )
+            ]
+            body = "⚡ <b>TMJDLC · LIVE TRANSFERS</b>\n\n" + "\n\n──────────────\n\n".join(blocks)
+            body = body[:3900]
             try:
-                await app.edit_message_text(chat_id, message_id, text[:4000],
-                                            parse_mode=ParseMode.HTML)
+                if canonical_id:
+                    await app.edit_message_text(
+                        chat_id, canonical_id, body, parse_mode=ParseMode.HTML
+                    )
+                else:
+                    sent = await app.send_message(
+                        chat_id, body, parse_mode=ParseMode.HTML
+                    )
+                    _universal_status_message_ids[chat_id] = sent.id
             except Exception as exc:
-                if "MESSAGE_NOT_MODIFIED" in str(exc):
-                    return
-                log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
-                            chat_id, message_id, exc)
+                if "MESSAGE_NOT_MODIFIED" not in str(exc):
+                    log.warning(
+                        "Could not update consolidated status message chat_id=%s message_id=%s: %s",
+                        chat_id, canonical_id, exc
+                    )
+            _chat_status_edit_last_sent[chat_id] = time.monotonic()
 
 
 async def resolve_destination_cached(value: str, client: Client = app):
