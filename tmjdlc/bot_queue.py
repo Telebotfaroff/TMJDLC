@@ -114,7 +114,8 @@ class JobQueue:
         try:
             if not force and time.monotonic() - self._last_sync < 30:
                 return
-            self.store.save_database(self.db_path)
+            with self._db_lock:
+                self.store.save_database(self.db_path)
             self._last_sync = time.monotonic()
         except Exception:
             # The local transaction is already committed. Keep the queue live and retry
