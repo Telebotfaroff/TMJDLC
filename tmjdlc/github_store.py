@@ -173,7 +173,20 @@ class GitHubDataStore:
             if self.read_bytes(path) is None:
                 self.write_json(path, value, f"Initialize TMJDLC data: {path}")
 
+    def ensure_private_repository(self) -> None:
+        response = self.session.get(self.base_url, timeout=self.timeout)
+        if not response.ok:
+            raise GitHubStoreError(
+                f"Cannot verify data repository {self.repo}: HTTP {response.status_code}."
+            )
+        metadata = response.json()
+        if not metadata.get("private", False):
+            raise GitHubStoreError(
+                f"Repository {self.repo} is public. Make it private before TMJDLC stores credentials."
+            )
+
     def load_runtime_config(self) -> tuple[dict[str, Any], dict[str, Any]]:
+        self.ensure_private_repository()
         self.bootstrap()
         secrets = self.read_json("config/secrets.json", {})
         settings = self.read_json("config/bot.json", {})
