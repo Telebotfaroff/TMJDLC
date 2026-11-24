@@ -52,8 +52,8 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(2, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(100, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "100"))))
-HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
+UPLOAD_WORKERS = max(1, min(32, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
+HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
 UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
@@ -101,9 +101,12 @@ def probe_video(path: Path) -> dict:
 
 
 
+TG_SESSION_STRING = os.getenv("TG_SESSION_STRING", "").strip()
+TG_PREMIUM_UPLOAD = os.getenv("TG_PREMIUM_UPLOAD", "true").strip().lower() in {"1", "true", "yes", "on"}
+DEFAULT_TELEGRAM_FILE_BYTES = 4_000_000_000 if TG_SESSION_STRING and TG_PREMIUM_UPLOAD else 1_950_000_000
 TELEGRAM_MAX_FILE_BYTES = max(
     256 * 1024 * 1024,
-    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(1_950_000_000))),
+    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(DEFAULT_TELEGRAM_FILE_BYTES))),
 )
 
 
@@ -230,17 +233,19 @@ app = Client(
     sleep_threshold=60,
 )
 
-# Keep media transfers off the update/command session. Both clients authenticate
-# as the same bot, but maintain separate Pyrogram peer caches.
+# Keep media transfers off the update/command session. When a Premium user
+# session is configured, the uploader uses that account for its larger file limit;
+# otherwise it falls back to the main bot token. Both sessions maintain peer caches.
+upload_auth = {"session_string": TG_SESSION_STRING} if TG_SESSION_STRING else {"bot_token": TOKEN}
 upload_client = Client(
     "tmjdlc_upload",
     api_id=API_ID,
     api_hash=API_HASH,
-    bot_token=TOKEN,
     no_updates=True,
     workers=4,
     max_concurrent_transmissions=UPLOAD_WORKERS,
     sleep_threshold=60,
+    **upload_auth,
 )
 
 
