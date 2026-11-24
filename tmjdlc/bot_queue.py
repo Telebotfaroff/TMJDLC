@@ -551,6 +551,31 @@ class JobQueue:
             """, (job_id, json.dumps({"stage": stage})))
             return True
 
+    def recover_orphaned_jobs(self, stale_after_seconds: int = 90) -> int:
+        """Fail active jobs whose owning worker has stopped heartbeating.
+
+        This prevents abandoned DB leases from appearing as live downloads/uploads
+        or consuming worker capacity after a Colab/runtime restart.
+        """
+        stale_after_seconds = max(60, int(stale_after_seconds))
+        with self.connect() as conn:
+            rows = conn.execute("""
+                UPDATE tmjdlc_bot_jobs AS j
+                SET status='failed',worker_id=NULL,lease_until=NULL,
+                    cancel_requested=TRUE,
+                    last_error='Orphaned task: owning worker heartbeat is no longer active',
+                    updated_at=now()
+                WHERE j.status IN ('downloading','uploading')
+                  AND NOT EXISTS (
+                    SELECT 1 FROM tmjdlc_workers w
+                    WHERE w.worker_id=j.worker_id
+                      AND w.status='online'
+                      AND w.last_heartbeat > now()-(%s*interval '1 second')
+                  )
+                RETURNING j.id
+            """, (stale_after_seconds,)).fetchall()
+            return len(rows)
+
     def recover_expired(self) -> int:
         with self.connect() as conn:
             rows = conn.execute("""
