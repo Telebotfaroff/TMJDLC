@@ -55,6 +55,16 @@ ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.
 MAX_WORKERS = max(1, min(2, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 UPLOAD_TRANSMISSION_SLOTS = max(1, min(32, int(os.getenv("TMJDLC_UPLOAD_TRANSMISSION_SLOTS", os.getenv("TMJDLC_UPLOAD_WORKERS", "8")))))
 HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
+SECONDARY_BOT_TOKEN = os.getenv("TG_SECONDARY_BOT_TOKEN", "").strip()
+SECONDARY_API_ID = int(os.getenv("TG_SECONDARY_API_ID", "0") or 0)
+SECONDARY_API_HASH = os.getenv("TG_SECONDARY_API_HASH", "").strip()
+SECONDARY_CONFIGURED = bool(SECONDARY_BOT_TOKEN or SECONDARY_API_ID or SECONDARY_API_HASH)
+MAX_UPLOAD_WORKERS = 4
+if SECONDARY_CONFIGURED and not (SECONDARY_BOT_TOKEN and SECONDARY_API_ID and SECONDARY_API_HASH):
+    raise RuntimeError(
+        "Secondary uploader requires TG_SECONDARY_BOT_TOKEN, "
+        "TG_SECONDARY_API_ID and TG_SECONDARY_API_HASH in config/secrets.json."
+    )
 UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
@@ -142,7 +152,7 @@ active = 0
 condition = asyncio.Condition()
 # Two MTProto uploads are supported. The Settings menu controls whether one or
 # both upload workers may claim jobs; the semaphore is the hard in-process cap.
-video_upload_semaphore = asyncio.Semaphore(2)
+video_upload_semaphore = asyncio.Semaphore(MAX_UPLOAD_WORKERS)
 setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
@@ -210,13 +220,26 @@ async def sync_upload_peer(peer_id: int) -> None:
 
 
 async def start_helper_upload_clients() -> None:
-    """Start optional WZML-X-style helper bot clients for channel upload routing."""
+    """Start optional upload-only bot clients; downloads and control stay on the primary bot."""
+    client_configs = []
+    if SECONDARY_CONFIGURED:
+        client_configs.append((
+            "secondary", "tmjdlc_secondary_upload",
+            SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN,
+        ))
     for index, token in enumerate(HELPER_BOT_TOKENS, start=1):
-        if token == TOKEN:
-            log.warning("Skipping helper bot %s because its token duplicates a configured bot", index)
+        client_configs.append((
+            f"helper-{index}", f"tmjdlc_helper_{index}", API_ID, API_HASH, token,
+        ))
+
+    seen_tokens = {TOKEN}
+    for label, session_name, api_id, api_hash, token in client_configs:
+        if token in seen_tokens:
+            log.warning("Skipping %s because its token is already configured", label)
             continue
+        seen_tokens.add(token)
         client = Client(
-            f"tmjdlc_helper_{index}", api_id=API_ID, api_hash=API_HASH,
+            session_name, api_id=api_id, api_hash=api_hash,
             bot_token=token, no_updates=True, workers=4,
             max_concurrent_transmissions=UPLOAD_TRANSMISSION_SLOTS, sleep_threshold=60,
         )
@@ -224,14 +247,17 @@ async def start_helper_upload_clients() -> None:
             await client.start()
             _helper_upload_clients.append(client)
             _upload_client_loads[id(client)] = 0
-            log.info("WZML-X helper uploader started | helper=%s | bot_id=%s", index, client.me.id)
+            log.info(
+                "Upload-only Telegram client started | client=%s | bot_id=%s | api_id=%s",
+                label, client.me.id, api_id,
+            )
         except Exception:
-            log.exception("Could not start helper uploader %s; continuing without it", index)
+            log.exception("Could not start %s; continuing without that uploader", label)
             try:
                 if client.is_connected:
                     await client.stop()
             except Exception:
-                log.debug("Helper client cleanup failed", exc_info=True)
+                log.debug("Upload client cleanup failed | client=%s", label, exc_info=True)
 
 
 async def stop_helper_upload_clients() -> None:
@@ -1053,9 +1079,9 @@ async def download_worker_loop(slot: int = 1):
                 log.warning("Download paused: free disk %.2f GiB is below %.2f GiB", free_gb, MIN_FREE_DISK_GB)
                 await asyncio.sleep(max(POLL_SECONDS, 15))
                 continue
-            upload_concurrency = max(1, min(2, int(await asyncio.to_thread(
-                queue.get_setting, "upload_concurrency", "1"
-            ) or 1)))
+            upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(await asyncio.to_thread(
+                queue.get_setting, "upload_concurrency", str(MAX_UPLOAD_WORKERS)
+            ) or MAX_UPLOAD_WORKERS)))
             upload_backlog = max(0, min(2, int(await asyncio.to_thread(
                 queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)
             ) or MAX_PENDING_UPLOADS)))
@@ -1089,9 +1115,9 @@ async def upload_worker_loop(slot: int = 1):
     identity = f"{worker_id}-upload-{slot}"
     while True:
         try:
-            max_uploads = max(1, min(2, int(await asyncio.to_thread(
-                queue.get_setting, "upload_concurrency", "1"
-            ) or 1)))
+            max_uploads = max(1, min(MAX_UPLOAD_WORKERS, int(await asyncio.to_thread(
+                queue.get_setting, "upload_concurrency", str(MAX_UPLOAD_WORKERS)
+            ) or MAX_UPLOAD_WORKERS)))
             if slot > max_uploads:
                 await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
                 continue
@@ -1556,7 +1582,7 @@ async def render_processes(target, *, edit: bool = False):
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
     )
-    upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
+    upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(upload_concurrency or MAX_UPLOAD_WORKERS)))
     upload_backlog = max(0, min(2, int(upload_backlog or 0)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     downloading = [job for job in jobs if job.get("status") == "downloading"]
@@ -1782,7 +1808,7 @@ async def settings_cmd(client, message, check_access=True):
         asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
     )
-    upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
+    upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(upload_concurrency or MAX_UPLOAD_WORKERS)))
     upload_backlog = max(0, min(2, int(upload_backlog or 0)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
@@ -1804,8 +1830,10 @@ async def settings_cmd(client, message, check_access=True):
         [InlineKeyboardButton("➖ Worker", callback_data="settings:workers:down"),
          InlineKeyboardButton(f"Workers {parallel}", callback_data="settings:workers:show"),
          InlineKeyboardButton("➕ Worker", callback_data="settings:workers:up")],
-        [InlineKeyboardButton("1 upload" + (" ✓" if upload_concurrency == 1 else ""), callback_data="settings:uploads:1"),
-         InlineKeyboardButton("2 uploads" + (" ✓" if upload_concurrency == 2 else ""), callback_data="settings:uploads:2")],
+        [InlineKeyboardButton(f"{n} uploads" + (" ✓" if upload_concurrency == n else ""), callback_data=f"settings:uploads:{n}")
+          for n in (1, 2)],
+         [InlineKeyboardButton(f"{n} uploads" + (" ✓" if upload_concurrency == n else ""), callback_data=f"settings:uploads:{n}")
+          for n in (3, 4)],
         [InlineKeyboardButton(f"Backlog 0" + (" ✓" if upload_backlog == 0 else ""), callback_data="settings:backlog:0"),
          InlineKeyboardButton(f"Backlog 1" + (" ✓" if upload_backlog == 1 else ""), callback_data="settings:backlog:1"),
          InlineKeyboardButton(f"Backlog 2" + (" ✓" if upload_backlog == 2 else ""), callback_data="settings:backlog:2")],
@@ -2236,8 +2264,8 @@ async def callback_handler(client, callback):
         return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:uploads:"):
         value = int(data.rsplit(":", 1)[-1])
-        if value not in {1, 2}:
-            return await callback.answer("Choose 1 or 2 uploads.", show_alert=True)
+        if value not in {1, 2, 3, 4}:
+            return await callback.answer("Choose between 1 and 4 uploads.", show_alert=True)
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer(f"Simultaneous uploads set to {value}.")
@@ -2526,8 +2554,13 @@ async def on_start(client):
     if not await asyncio.to_thread(queue.get_setting, "download_concurrency", ""):
         await asyncio.to_thread(queue.set_setting, "download_concurrency", str(MAX_WORKERS))
     if not await asyncio.to_thread(queue.get_setting, "upload_concurrency", ""):
-        configured_uploads = max(1, min(2, int(os.getenv("TMJDLC_UPLOAD_CONCURRENCY", "1"))))
+        configured_uploads = max(1, min(MAX_UPLOAD_WORKERS, int(os.getenv("TMJDLC_UPLOAD_CONCURRENCY", str(MAX_UPLOAD_WORKERS)))))
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(configured_uploads))
+    # One-time migration: existing installations previously capped at two upload workers.
+    if await asyncio.to_thread(queue.get_setting, "upload_concurrency_v2", "false") != "true":
+        await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(MAX_UPLOAD_WORKERS))
+        await asyncio.to_thread(queue.set_setting, "upload_concurrency_v2", "true")
+        await asyncio.to_thread(queue.flush_snapshot)
     if not await asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", ""):
         await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS))
     if not await asyncio.to_thread(queue.get_setting, "menu_items", ""):
@@ -2555,8 +2588,10 @@ async def on_start(client):
             asyncio.create_task(download_worker_loop(slot), name=f"tmjdlc-download-worker-{slot}")
             for slot in range(1, MAX_WORKERS + 1)
         ],
-        asyncio.create_task(upload_worker_loop(1), name="tmjdlc-upload-worker-1"),
-        asyncio.create_task(upload_worker_loop(2), name="tmjdlc-upload-worker-2"),
+        *[
+            asyncio.create_task(upload_worker_loop(slot), name=f"tmjdlc-upload-worker-{slot}")
+            for slot in range(1, MAX_UPLOAD_WORKERS + 1)
+        ],
     ]
     me = await client.get_me()
     log.info("WZGram MTProto bot started | bot_id=%s | username=@%s | admins=%s",
@@ -2605,9 +2640,9 @@ async def run_bot():
         await on_start(app)
         log.info(
             "TMJDLC started | update=tmjdlc_bot | primary_upload_auth=%s "
-            "| helper_uploaders=%s | max_concurrent_transmissions=%s",
+            "| helper_uploaders=%s | upload_workers=%s | max_concurrent_transmissions=%s",
             "bot_token",
-            len(_helper_upload_clients), UPLOAD_TRANSMISSION_SLOTS,
+            len(_helper_upload_clients), MAX_UPLOAD_WORKERS, UPLOAD_TRANSMISSION_SLOTS,
         )
         await idle()
     finally:
