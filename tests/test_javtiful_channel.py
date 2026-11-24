@@ -92,3 +92,22 @@ def test_parse_channel_links_normalizes_and_deduplicates():
         "https://javtiful.com/channel/alpha",
         "https://javtiful.com/channel/beta",
     ]
+
+
+def test_discover_channels_follows_listing_pagination():
+    class DiscoverySession:
+        headers = {}
+
+        def get(self, url: str, timeout: int):
+            if "page=2" in url:
+                return FakeResponse('<a href="/channel/beta">Beta</a>')
+            return FakeResponse(
+                '<a href="/channel/alpha">Alpha</a>'
+                '<a href="/channels?page=2">Next</a>'
+                '<a href="/video/123/example">Video</a>'
+            )
+
+    channels = JavtifulChannelScraper(session=DiscoverySession()).discover_channels(
+        seed_urls=["https://javtiful.com/"], max_pages=5
+    )
+    assert [item["slug"] for item in channels] == ["alpha", "beta"]
