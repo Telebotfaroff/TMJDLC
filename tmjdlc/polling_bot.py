@@ -1178,22 +1178,21 @@ def save_menu_items(items: list[dict]) -> None:
 
 
 def build_panel_keyboard() -> InlineKeyboardMarkup:
+    # The configurable menu already contains the default quick actions.
+    # Do not append a second hard-coded shortcut row, or actions such as
+    # Live Processes appear twice on /start and /panel.
     visible = [item for item in get_menu_items() if item["enabled"]]
     rows = [
-        [InlineKeyboardButton(item["label"], callback_data=f"home:{item['action']}") for item in visible[index:index + 2]]
+        [
+            InlineKeyboardButton(
+                item["label"],
+                callback_data=f"home:{item['action']}",
+            )
+            for item in visible[index:index + 2]
+        ]
         for index in range(0, len(visible), 2)
     ]
-    rows.extend([
-        [
-            InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
-            InlineKeyboardButton("📚 Batch", callback_data="home:batch"),
-        ],
-        [
-            InlineKeyboardButton("📋 Queue", callback_data="home:queue"),
-            InlineKeyboardButton("⚡ Live processes", callback_data="home:processes"),
-        ],
-        [InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")],
-    ])
+    rows.append([InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")])
     return InlineKeyboardMarkup(rows)
 
 
