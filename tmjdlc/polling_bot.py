@@ -2690,6 +2690,9 @@ async def run_bot():
     try:
         await upload_client.start()
         _upload_client_loads[id(upload_client)] = 0
+        # Initialize the shared queue before the secondary bot begins listening
+        # for channel posts used to populate its own peer cache.
+        await asyncio.to_thread(queue.initialize)
         await start_helper_upload_clients()
         await on_start(app)
         log.info(
