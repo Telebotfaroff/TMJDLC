@@ -111,18 +111,22 @@ class JobQueue:
             return
         if not self._sync_lock.acquire(blocking=False):
             return
+        if not force and time.monotonic() - self._last_sync < 30:
+            self._sync_lock.release()
+            return
+        self._db_lock.acquire()
         try:
-            if not force and time.monotonic() - self._last_sync < 30:
-                return
-            with self._db_lock:
-                self.store.save_database(self.db_path)
+            self.store.save_database(self.db_path)
             self._last_sync = time.monotonic()
         except Exception:
             # The local transaction is already committed. Keep the queue live and retry
             # on the next mutation/forced flush; completed records are also written separately.
             log.exception("Could not synchronize SQLite snapshot to the GitHub data repository")
         finally:
+            # Release the sync lock before the DB lock so the next writer can immediately
+            # schedule a follow-up snapshot after its transaction commits.
             self._sync_lock.release()
+            self._db_lock.release()
 
     def flush_snapshot(self) -> None:
         """Force a durable GitHub snapshot after critical events or at shutdown."""
