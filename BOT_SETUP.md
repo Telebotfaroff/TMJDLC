@@ -35,7 +35,7 @@ python -m playwright install --with-deps chromium
 python -m tmjdlc.bot
 ```
 
-The main bot token receives updates and handles every upload. Videos larger than 1,950,000,000 bytes are automatically split by FFmpeg into sequential, independently playable MP4 parts. Each part is uploaded below Telegram's 2 GB limit, with part numbering in its caption and separate upload receipts so interrupted jobs can resume without re-uploading completed parts.
+The primary bot token receives updates and handles control commands. Telegram uploads are distributed across the primary upload client and any eligible upload-only helper clients, including the optional secondary bot configured with its own API ID/hash. Videos larger than 1,950,000,000 bytes are automatically split by FFmpeg into sequential, independently playable MP4 parts. Each part is uploaded below Telegram's 2 GB limit, with part numbering in its caption and separate upload receipts so interrupted jobs can resume without re-uploading completed parts.
 
 ## Commands
 
