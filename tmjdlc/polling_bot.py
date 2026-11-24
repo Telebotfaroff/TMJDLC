@@ -281,7 +281,7 @@ async def start_helper_upload_clients() -> None:
         client = Client(
             f"tmjdlc_helper_{index}", api_id=API_ID, api_hash=API_HASH,
             bot_token=token, no_updates=True, workers=4,
-            max_concurrent_transmissions=UPLOAD_WORKERS, sleep_threshold=60,
+            max_concurrent_transmissions=UPLOAD_TRANSMISSION_SLOTS, sleep_threshold=60,
         )
         try:
             await client.start()
