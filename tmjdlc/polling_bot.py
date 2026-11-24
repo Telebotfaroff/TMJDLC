@@ -448,21 +448,21 @@ def _progress_text(stage: str, video_id: str, title: str, percent: int, done: fl
 
     if not is_upload:
         return (
-            f"📥 <b>DOWNLOAD</b> · <b>{safe_title}</b>\\n"
-            f"🎬 <code>ID {safe_id}</code>\\n"
-            f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\\n"
-            f"💾 <b>{_fmt_bytes(done)}</b> / {size}\\n"
-            f"🚀 {speed_label}  ·  ⏳ {eta_label}\\n"
+            f"📥 <b>DOWNLOAD</b> · <b>{safe_title}</b>\n"
+            f"🎬 <code>ID {safe_id}</code>\n"
+            f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
+            f"💾 <b>{_fmt_bytes(done)}</b> / {size}\n"
+            f"🚀 {speed_label}  ·  ⏳ {eta_label}\n"
             f"🔄 Attempt {attempt}"
         )
 
     return (
-        f"{icon} <b>{heading}</b>\\n"
-        f"<b>{safe_title}</b>\\n"
-        f"<code>VIDEO ID  {safe_id}</code>\\n"
-        f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\\n"
-        f"📦 <b>{_fmt_bytes(done)}</b> / {size}\\n"
-        f"⚡ {speed_label}  ·  ⏳ {eta_label}\\n"
+        f"{icon} <b>{heading}</b>\n"
+        f"<b>{safe_title}</b>\n"
+        f"<code>VIDEO ID  {safe_id}</code>\n"
+        f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
+        f"📦 <b>{_fmt_bytes(done)}</b> / {size}\n"
+        f"⚡ {speed_label}  ·  ⏳ {eta_label}\n"
         f"🔁 {attempt_label}"
     )
 
