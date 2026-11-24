@@ -289,9 +289,13 @@ async def start_helper_upload_clients() -> None:
         seen_tokens.add(token)
         client = Client(
             session_name, api_id=api_id, api_hash=api_hash,
-            bot_token=token, no_updates=True, workers=4,
+            bot_token=token, no_updates=(label != "secondary"), workers=4,
             max_concurrent_transmissions=UPLOAD_TRANSMISSION_SLOTS, sleep_threshold=60,
         )
+        if label == "secondary":
+            # The secondary bot only consumes channel-post updates to learn its
+            # own private-channel peer/access hash; it has no control commands.
+            client.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
         try:
             await client.start()
             _helper_upload_clients.append(client)
@@ -1972,11 +1976,11 @@ async def forwarded_destination_handler(client, message):
 
 
 async def channel_post_peer_cache(client, message):
-    # Incoming channel_post updates seed Pyrogram's local peer/access-hash cache.
+    # Incoming channel_post updates seed each bot account's own peer/access-hash cache.
     try:
-        await app.get_chat(message.chat.id)
+        await client.get_chat(message.chat.id)
         await sync_upload_peer(message.chat.id)
-        log.info("Channel peer cached in both sessions | channel_id=%s | title=%s",
+        log.info("Channel peer cached for upload clients | channel_id=%s | title=%s",
                  message.chat.id, getattr(message.chat, "title", None))
     except Exception:
         log.exception("Could not cache peer from channel post | channel_id=%s", message.chat.id)
