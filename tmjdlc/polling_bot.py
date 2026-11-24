@@ -435,16 +435,26 @@ def _progress_bar(percent: int, width: int = 12) -> str:
 def _progress_text(stage: str, video_id: str, title: str, percent: int, done: float,
                    total: float | None, speed: float | None, eta: float | None,
                    attempt: int) -> str:
-    icon = "⬇️" if stage == "Download" else "📤"
+    is_upload = stage == "Upload"
+    icon = "📤" if is_upload else "⬇️"
+    heading = "UPLOAD IN PROGRESS" if is_upload else "DOWNLOAD IN PROGRESS"
     size = _fmt_bytes(total) if total else "size unknown"
     safe_title = html.escape(title or video_id)
-    return (f"{icon} <b>{stage}</b> · <b>{safe_title}</b>\n"
-            f"🎬 ID: <code>{html.escape(video_id)}</code>\n"
-            f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
-            f"📦 {_fmt_bytes(done)} / {size}\n"
-            f"⚡ {_fmt_bytes(speed)}/s   ⏳ {_fmt_eta(eta)}\n"
-            f"🔁 Attempt {attempt}")
+    safe_id = html.escape(str(video_id))
+    percent = max(0, min(100, int(percent)))
+    eta_label = f"{_fmt_eta(eta)} left" if eta is not None and eta >= 0 else "calculating…"
+    speed_label = f"{_fmt_bytes(speed)}/s" if speed is not None and speed > 0 else "—"
+    attempt_label = f"Retry {attempt - 1}" if attempt > 1 else "First attempt"
 
+    return (
+        f"{icon} <b>{heading}</b>\n"
+        f"<b>{safe_title}</b>\n"
+        f"<code>VIDEO ID  {safe_id}</code>\n"
+        f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
+        f"📦 <b>{_fmt_bytes(done)}</b> / {size}\n"
+        f"⚡ {speed_label}  ·  ⏳ {eta_label}\n"
+        f"🔁 {attempt_label}"
+    )
 
 async def _heartbeat(job_id: int, identity: str, lost: asyncio.Event, stop: asyncio.Event):
     while not stop.is_set():
