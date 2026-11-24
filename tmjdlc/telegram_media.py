@@ -7,9 +7,8 @@ from pathlib import Path
 
 log = logging.getLogger("tmjdlc.telegram_media")
 
-# Keep every Telegram video part safely below the 2 GB upload ceiling.
-# A small margin avoids boundary failures caused by multipart/container overhead.
-TELEGRAM_MAX_FILE_BYTES = 1_950_000_000
+# Split only when a video exceeds the configured 2,000,000,000-byte limit.
+TELEGRAM_MAX_FILE_BYTES = 2_000_000_000
 
 
 def _fmt_bytes(value: float) -> str:
@@ -27,7 +26,7 @@ def prepare_telegram_parts(
     *,
     max_file_bytes: int = TELEGRAM_MAX_FILE_BYTES,
 ) -> list[Path]:
-    """Return the original file or split it into playable MP4 parts below Telegram's limit."""
+    """Return the original file or split it into playable MP4 parts below the configured limit."""
     path = Path(path)
     max_file_bytes = min(TELEGRAM_MAX_FILE_BYTES, max(1, int(max_file_bytes)))
     if path.stat().st_size <= max_file_bytes:
