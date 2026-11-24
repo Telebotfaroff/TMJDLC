@@ -29,6 +29,7 @@ from tmjdlc.providers.javtiful.channel import JavtifulChannelScraper
 from tmjdlc.gofile import (
     ensure_guest_folder, finalize_current_folder, upload_file as gofile_upload_file,
 )
+from tmjdlc.telegram_media import prepare_telegram_parts, TELEGRAM_MAX_FILE_BYTES
 
 load_dotenv()
 from tmjdlc.github_store import GitHubDataStore, GitHubStoreError
@@ -99,68 +100,6 @@ def probe_video(path: Path) -> dict:
         "height": int(stream.get("height") or 0),
     }
 
-
-
-# Keep every Telegram video part safely below the 2 GB upload ceiling.
-# A small margin avoids boundary failures caused by multipart/container overhead.
-TELEGRAM_MAX_FILE_BYTES = 1_950_000_000
-
-
-def prepare_telegram_parts(path: Path, video_id: str) -> list[Path]:
-    """Split oversized videos into independently playable MP4 segments below Telegram's limit."""
-    if path.stat().st_size <= TELEGRAM_MAX_FILE_BYTES:
-        return [path]
-
-    probe = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration",
-         "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
-        capture_output=True, text=True, check=True,
-    )
-    duration = float((probe.stdout or "0").strip() or 0)
-    if duration <= 0:
-        raise RuntimeError("Cannot split oversized video: ffprobe could not read its duration.")
-
-    pattern = path.parent / f"javtiful-{video_id}-part-%03d.mp4"
-    target = TELEGRAM_MAX_FILE_BYTES
-    segment_seconds = max(10.0, duration * (target / path.stat().st_size) * 0.78)
-
-    for attempt in range(1, 7):
-        for old_part in path.parent.glob(f"javtiful-{video_id}-part-*.mp4"):
-            old_part.unlink(missing_ok=True)
-        subprocess.run(
-            [
-                "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
-                "-i", str(path), "-map", "0", "-c", "copy",
-                "-f", "segment", "-segment_time", f"{segment_seconds:.3f}",
-                "-reset_timestamps", "1", "-segment_format", "mp4",
-                str(pattern),
-            ],
-            capture_output=True, check=True,
-        )
-        parts = sorted(path.parent.glob(f"javtiful-{video_id}-part-*.mp4"))
-        if len(parts) < 2:
-            raise RuntimeError(
-                "FFmpeg could not split this video into multiple parts. "
-                "The source may not contain suitable keyframes for stream-copy splitting."
-            )
-        oversized = [part for part in parts if part.stat().st_size > target]
-        if not oversized:
-            log.info(
-                "Oversized video split | video_id=%s original_size=%s parts=%s max_part_size=%s",
-                video_id, _fmt_bytes(path.stat().st_size), len(parts),
-                _fmt_bytes(max(part.stat().st_size for part in parts)),
-            )
-            return parts
-        segment_seconds *= 0.65
-        log.warning(
-            "Split attempt %s produced %s oversized part(s); retrying with shorter segments",
-            attempt, len(oversized),
-        )
-
-    raise RuntimeError(
-        "Could not create Telegram-safe video parts below "
-        f"{_fmt_bytes(TELEGRAM_MAX_FILE_BYTES)}. Try a lower split-size setting."
-    )
 
 
 def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -> Path | None:
