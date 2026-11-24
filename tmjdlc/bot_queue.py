@@ -681,12 +681,13 @@ class JobQueue:
             return counts
 
     def clear_completed_history(self) -> int:
-        """Remove completed queue rows that are not referenced by retained media records."""
+        """Remove finished queue history; retain completed rows referenced by media."""
         with self.connect() as conn:
             rows = conn.execute("""
                 DELETE FROM tmjdlc_bot_jobs j
-                WHERE j.status='completed'
-                  AND NOT EXISTS (SELECT 1 FROM tmjdlc_media m WHERE m.job_id=j.id)
+                WHERE j.status IN ('failed','cancelled')
+                   OR (j.status='completed'
+                       AND NOT EXISTS (SELECT 1 FROM tmjdlc_media m WHERE m.job_id=j.id))
                 RETURNING id
             """).fetchall()
             return len(rows)
