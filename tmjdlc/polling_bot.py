@@ -166,6 +166,7 @@ _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
 _secondary_upload_client: Client | None = None
+_upload_clients_reconfiguring = False
 _upload_client_loads: dict[int, int] = {}
 _helper_permission_cache: dict[tuple[int, int], tuple[float, bool]] = {}
 _destination_cache: dict[tuple[int, str], tuple[float, object]] = {}
@@ -327,6 +328,22 @@ async def stop_helper_upload_clients() -> None:
         await asyncio.gather(*(client.stop() for client in clients), return_exceptions=True)
 
 
+async def reconfigure_helper_upload_clients() -> None:
+    """Drain in-flight helper uploads before reconnecting upload-only clients."""
+    global _upload_clients_reconfiguring
+    _upload_clients_reconfiguring = True
+    try:
+        deadline = time.monotonic() + 180
+        while any(_upload_client_loads.get(id(client), 0) for client in _helper_upload_clients):
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Upload-only clients are still busy. Credentials were saved; retry reconnect after active uploads finish.")
+            await asyncio.sleep(0.5)
+        await stop_helper_upload_clients()
+        await start_helper_upload_clients()
+    finally:
+        _upload_clients_reconfiguring = False
+
+
 
 async def secondary_account_menu(message, edit=False):
     """Show secondary account status without displaying credentials."""
@@ -387,8 +404,7 @@ async def save_secondary_credentials(api_id: int, api_hash: str, token: str) -> 
     os.environ["TG_SECONDARY_API_ID"] = str(api_id)
     os.environ["TG_SECONDARY_API_HASH"] = api_hash
     os.environ["TG_SECONDARY_BOT_TOKEN"] = token
-    await stop_helper_upload_clients()
-    await start_helper_upload_clients()
+    await reconfigure_helper_upload_clients()
 
 
 async def remove_secondary_credentials() -> None:
@@ -406,8 +422,7 @@ async def remove_secondary_credentials() -> None:
     )
     SECONDARY_API_ID, SECONDARY_API_HASH, SECONDARY_BOT_TOKEN = 0, "", ""
     SECONDARY_CONFIGURED = False
-    await stop_helper_upload_clients()
-    await start_helper_upload_clients()
+    await reconfigure_helper_upload_clients()
 
 
 async def _helper_can_post(client: Client, chat_id: int) -> bool:
@@ -513,7 +528,7 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
     async with video_upload_semaphore:
         chat_id = int(kwargs["chat_id"])
         candidates = [upload_client]
-        if chat_id < 0 and _helper_upload_clients:
+        if chat_id < 0 and _helper_upload_clients and not _upload_clients_reconfiguring:
             eligible = []
             for helper in _helper_upload_clients:
                 if await _helper_can_post(helper, chat_id):
