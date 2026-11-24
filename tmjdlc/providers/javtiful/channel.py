@@ -123,8 +123,13 @@ class JavtifulChannelScraper:
             BASE_URL,
             f"{BASE_URL}/channels",
             f"{BASE_URL}/channels/",
+            f"{BASE_URL}/channel",
+            f"{BASE_URL}/channel/",
             f"{BASE_URL}/models",
             f"{BASE_URL}/models/",
+            f"{BASE_URL}/creators",
+            f"{BASE_URL}/pornstars",
+            f"{BASE_URL}/categories",
         ]
         pending = list(dict.fromkeys(seeds))
         visited: set[str] = set()
