@@ -1329,11 +1329,15 @@ def batch_summary(info, state: dict) -> str:
 
 async def show_batch_menu(message, uid: int):
     state = channel_state[uid]
-    await message.edit_text(
-        batch_summary(state["info"], state),
-        reply_markup=batch_keyboard(uid),
-        parse_mode=ParseMode.HTML,
-    )
+    try:
+        await message.edit_text(
+            batch_summary(state["info"], state),
+            reply_markup=batch_keyboard(uid),
+            parse_mode=ParseMode.HTML,
+        )
+    except Exception as exc:
+        if "MESSAGE_NOT_MODIFIED" not in str(exc):
+            raise
 
 
 async def batch_cmd(client, message):
