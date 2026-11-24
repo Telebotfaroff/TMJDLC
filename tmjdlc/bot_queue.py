@@ -350,6 +350,11 @@ class JobQueue:
                 WITH candidate AS (
                   SELECT id FROM tmjdlc_bot_jobs
                   WHERE status='queued' AND attempts < max_attempts AND cancel_requested=FALSE
+                    AND TRIM(COALESCE(video_id,'')) <> ''
+                    AND (LOWER(TRIM(COALESCE(post_url,''))) LIKE 'https://javtiful.com/%'
+                         OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'https://www.javtiful.com/%'
+                         OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'http://javtiful.com/%'
+                         OR LOWER(TRIM(COALESCE(post_url,''))) LIKE 'http://www.javtiful.com/%')
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='downloading') < %s
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='uploading') < %s
                     AND (SELECT count(*) FROM tmjdlc_bot_jobs WHERE status='ready') < %s
@@ -625,11 +630,18 @@ class JobQueue:
             return {row["status"]: row["total"] for row in rows}
 
     def list_jobs(self, limit: int = 10, offset: int = 0) -> list[dict[str, Any]]:
+        """List only work that can still run; completed/failed/cancelled history is not queue UI."""
         with self.connect() as conn:
             rows = conn.execute("""
                 SELECT id,video_id,post_url,quality,status,attempts,max_attempts,
                        last_error,created_at,current_stage,progress_percent
-                FROM tmjdlc_bot_jobs ORDER BY id DESC LIMIT %s OFFSET %s
+                FROM tmjdlc_bot_jobs
+                WHERE status IN ('queued','downloading','ready','uploading')
+                ORDER BY CASE status
+                    WHEN 'downloading' THEN 0 WHEN 'uploading' THEN 1
+                    WHEN 'ready' THEN 2 ELSE 3 END,
+                    created_at ASC,id ASC
+                LIMIT %s OFFSET %s
             """, (max(1, min(50, limit)), max(0, offset))).fetchall()
             return [dict(row) for row in rows]
 
