@@ -1164,17 +1164,105 @@ async def upload_worker_loop(slot: int = 1):
             log.exception("Upload worker loop error")
             await asyncio.sleep(POLL_SECONDS)
 
+DEFAULT_MENU_ITEMS = [
+    {"key": "download", "action": "download", "label": "⬇️ Download Video", "enabled": True, "order": 0},
+    {"key": "batch", "action": "batch", "label": "📚 Batch Download", "enabled": True, "order": 1},
+    {"key": "queue", "action": "queue", "label": "📋 Queue", "enabled": True, "order": 2},
+    {"key": "settings", "action": "settings", "label": "⚙️ Settings", "enabled": True, "order": 3},
+    {"key": "destination", "action": "destination", "label": "☁️ Upload Destination", "enabled": True, "order": 4},
+    {"key": "storage", "action": "storage", "label": "💽 Storage", "enabled": True, "order": 5},
+    {"key": "worker", "action": "worker", "label": "🖥 Worker Status", "enabled": True, "order": 6},
+    {"key": "processes", "action": "processes", "label": "⚡ Live Processes", "enabled": True, "order": 7},
+    {"key": "catalogue", "action": "catalogue", "label": "📚 Channel Catalogue", "enabled": True, "order": 8},
+]
+command_edit_state: dict[int, str] = {}
+
+
+def get_menu_items() -> list[dict]:
+    raw = queue.get_setting("menu_items", "")
+    try:
+        stored = json.loads(raw) if raw else []
+    except (TypeError, json.JSONDecodeError):
+        stored = []
+    by_key = {
+        str(item.get("key")): item for item in stored
+        if isinstance(item, dict) and item.get("key")
+    }
+    items = []
+    for default in DEFAULT_MENU_ITEMS:
+        item = {**default, **by_key.get(default["key"], {})}
+        item["label"] = str(item.get("label") or default["label"])[:40]
+        item["enabled"] = bool(item.get("enabled", True))
+        item["order"] = int(item.get("order", default["order"]))
+        items.append(item)
+    return sorted(items, key=lambda item: item["order"])
+
+
+def save_menu_items(items: list[dict]) -> None:
+    ordered = []
+    for index, item in enumerate(sorted(items, key=lambda value: int(value.get("order", 0)))):
+        ordered.append({**item, "order": index})
+    queue.set_setting("menu_items", json.dumps(ordered, ensure_ascii=False))
+
+
+def build_reply_keyboard() -> ReplyKeyboardMarkup:
+    visible = [item for item in get_menu_items() if item["enabled"]]
+    rows = [
+        [KeyboardButton(item["label"]) for item in visible[index:index + 2]]
+        for index in range(0, len(visible), 2)
+    ]
+    if not rows:
+        rows = [[KeyboardButton("/panel"), KeyboardButton("/commands")]]
+    return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True)
+
+
+def build_panel_keyboard() -> InlineKeyboardMarkup:
+    visible = [item for item in get_menu_items() if item["enabled"]]
+    rows = [
+        [InlineKeyboardButton(item["label"], callback_data=f"home:{item['action']}") for item in visible[index:index + 2]]
+        for index in range(0, len(visible), 2)
+    ]
+    rows.append([InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")])
+    return InlineKeyboardMarkup(rows)
+
+
+async def render_menu_settings(target, *, edit: bool = False):
+    items = get_menu_items()
+    rows = []
+    for item in items:
+        state = "🟢 On" if item["enabled"] else "⚪ Off"
+        rows.append([
+            InlineKeyboardButton(item["label"][:24], callback_data="menu:noop"),
+            InlineKeyboardButton(state, callback_data=f"menu:toggle:{item['key']}"),
+            InlineKeyboardButton("✏️ Rename", callback_data=f"menu:rename:{item['key']}"),
+        ])
+        rows.append([
+            InlineKeyboardButton("⬆️", callback_data=f"menu:move:{item['key']}:up"),
+            InlineKeyboardButton("⬇️", callback_data=f"menu:move:{item['key']}:down"),
+        ])
+    rows.extend([
+        [InlineKeyboardButton("♻️ Reset defaults", callback_data="menu:reset")],
+        [InlineKeyboardButton("🏠 Home", callback_data="home:show")],
+    ])
+    body = (
+        "🎛 <b>Customise Telegram Menu</b>\n\n"
+        "Turn buttons on/off, rename their labels, or change their order. "
+        "Changes are saved to the private GitHub data repository."
+    )
+    markup = InlineKeyboardMarkup(rows)
+    if edit:
+        return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+async def commands_cmd(client, message):
+    if await deny(message): return
+    return await render_menu_settings(message)
+
+
 async def start_cmd(client, message):
     if await deny(message): return
-    keyboard = ReplyKeyboardMarkup(
-        [[KeyboardButton("⬇️ Download Video"), KeyboardButton("📚 Batch Download")],
-         [KeyboardButton("📋 Queue"), KeyboardButton("⚙️ Settings")],
-         [KeyboardButton("☁️ Upload Destination")],
-         [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")],
-         [KeyboardButton("⚡ Live Processes")],
-         [KeyboardButton("📚 Channel Catalogue")]],
-        resize_keyboard=True, is_persistent=True,
-    )
+    keyboard = build_reply_keyboard()
     configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
     if not configured_video:
         setup_state[message.from_user.id] = "upload_channel"
@@ -1212,17 +1300,7 @@ async def panel_cmd(client, message):
         f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
         f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>up to 2 downloads + 2 uploads</b>"
     )
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
-         InlineKeyboardButton("📚 Batch", callback_data="home:batch")],
-        [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
-         InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
-        [InlineKeyboardButton("☁️ Upload destination", callback_data="home:destination")],
-        [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
-         InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
-        [InlineKeyboardButton("⚡ Live Processes", callback_data="home:processes")],
-        [InlineKeyboardButton("📚 Channel Catalogue", callback_data="home:catalogue")],
-    ])
+    markup = build_panel_keyboard()
     await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
@@ -1802,17 +1880,7 @@ async def text_handler(client, message):
     if await deny(message): return
     text = (message.text or "").strip()
     uid = message.from_user.id
-    menu = {
-        "⬇️ Download Video": "download",
-        "📚 Batch Download": "batch",
-        "📋 Queue": "queue",
-        "⚙️ Settings": "settings",
-        "💽 Storage": "storage",
-        "🖥 Worker Status": "worker",
-        "⚡ Live Processes": "processes",
-        "📚 Channel Catalogue": "catalogue",
-        "☁️ Upload Destination": "destination",
-    }
+    menu = {item["label"]: item["action"] for item in get_menu_items() if item["enabled"]}
     if text in menu:
         action = menu[text]
         if action == "download":
@@ -1939,15 +2007,7 @@ async def callback_handler(client, callback):
                 f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
                 f"💽 Free storage: <b>{free:.1f} GiB</b>\\n"
                 f"⚙️ Workers: <b>{parallel}/{MAX_WORKERS}</b>")
-        markup = InlineKeyboardMarkup([
-            [InlineKeyboardButton("⬇️ Download", callback_data="home:download"),
-             InlineKeyboardButton("📚 Batch", callback_data="home:batch")],
-            [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
-             InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
-            [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
-             InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
-            [InlineKeyboardButton("⚡ Live Processes", callback_data="home:processes")],
-        ])
+        markup = build_panel_keyboard()
         await callback.answer()
         return await callback.message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
     if data == "home:processes":
@@ -2311,6 +2371,7 @@ app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.pri
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
 app.add_handler(MessageHandler(processes_cmd, filters.command("processes") & filters.private))
 app.add_handler(MessageHandler(channels_cmd, filters.command(["channels", "catalogue"]) & filters.private))
+app.add_handler(MessageHandler(commands_cmd, filters.command("commands") & filters.private))
 app.add_handler(MessageHandler(batch_cmd, filters.command("batch") & filters.private))
 app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filters.private))
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
@@ -2320,7 +2381,7 @@ app.add_handler(MessageHandler(cancelsetup_cmd, filters.command("cancelsetup") &
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
-app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:|processes:|catalogue:)")))
+app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:|processes:|catalogue:|menu:)")))
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 
