@@ -1,64 +1,60 @@
 # TMJDLC Telegram Bot
 
-The bot uses **Pyrogram (MTProto) for every Telegram operation**: receiving updates, commands, callbacks, sending messages, and uploading large videos. It does not use Bot API long polling or webhooks. A Neon PostgreSQL database stores the durable queue and channel settings.
+TMJDLC uses **Pyrogram/MTProto** for Telegram updates, commands, callbacks, and video uploads. The durable queue runs on local SQLite for transactional worker coordination and synchronizes compressed snapshots to the private GitHub data repository.
 
-## Environment
+## GitHub data repository
 
-Keep these values in Colab Secrets or deployment environment variables; never commit credentials:
+Use the private repository:
 
-```env
-TG_BOT_TOKEN=123456:your_bot_token
-TG_API_ID=123456
-TG_API_HASH=your_api_hash
-TG_ADMIN_IDS=123456789
-DATABASE_URL=postgresql://USER:PASSWORD@HOST/DB?sslmode=require
-TMJDLC_MAX_PARALLEL=2
-TMJDLC_JOB_MAX_ATTEMPTS=3
-TMJDLC_JOB_LEASE_SECONDS=3600
-TMJDLC_WORK_DIR=/content/tmjdlc-bot
-```
+- Repository: `gitroff/Database`
+- Branch: `main`
+- Colab environment: only `GITHUB_TOKEN`
+- Required token permission: **Contents — Read and write**
 
-Use the Neon connection string for the dedicated `Javtiful-uploader` database in the `Javtiful` project for `DATABASE_URL`. Keep it private.
+On first startup, TMJDLC creates:
+
+- `config/secrets.json` — Telegram bot token, API ID/hash, admin IDs, optional helper bot tokens, and optional GoFile token.
+- `config/bot.json` — default worker and runtime settings.
+- `catalogue/channels.json` — saved Javtiful channel catalogue.
+- `database/tmjdlc.sqlite3.gz` — compressed durable SQLite snapshot.
+- `uploads/YYYY/MM/<job-id>.json` — complete per-upload receipts and metadata.
+
+After first startup, open `config/secrets.json` in the private repository and enter your Telegram credentials. Do not add `GITHUB_TOKEN` to the repository.
+
+Only one Colab runtime should write to this data repository at a time. SQLite handles concurrent workers inside that runtime; GitHub snapshots are synchronized periodically and after critical upload receipts.
 
 ## Install and run in Colab
 
+Open the repository notebook and add `GITHUB_TOKEN` to Colab Secrets. Then run the cells in order.
+
 ```bash
 pip install -e .
-sudo apt-get update -qq && sudo apt-get install -y ffmpeg
+sudo apt-get update -qq && sudo apt-get install -y ffmpeg aria2
 python -m playwright install --with-deps chromium
 python -m tmjdlc.bot
 ```
 
-The bot uses a Pyrogram bot session created from `TG_API_ID`, `TG_API_HASH`, and `TG_BOT_TOKEN`. It does not require a personal-user login or session string. Pyrogram handles updates and uploads through MTProto; no `getUpdates` polling or webhook endpoint is used.
-
-The bot initializes `tmjdlc_bot_jobs` and `tmjdlc_bot_settings`. The same additive schema is in `sql/001_tmjdlc_bot_queue.sql`; existing unrelated tables are not modified.
+The bot does not require a personal-user login or session string. Uploads use the configured MTProto client; the actual upload account and its Telegram file-size allowance determine the maximum supported file size.
 
 ## Commands
 
-- Send a Javtiful channel URL to inspect it and queue all pages.
-- `/dl POST_URL` — enqueue one Javtiful post at 720p.
+- Send a Javtiful channel URL or use `/batch CHANNEL_URL` to inspect pages and select video counts.
+- `/dl POST_URL` — enqueue one video.
 - `/queue` — show queue counts and recent jobs.
-- `/cancel JOB_ID` — cancel a queued or failed job.
+- `/processes` — live download/upload workers, progress, and upload backlog.
+- `/cancel JOB_ID` — cancel a job.
 - `/retry JOB_ID` — requeue a failed job.
-- `/setup` — guided setup for the video destination channel.
-- `/setupload CHANNEL_ID` — configure the video destination manually.
-- `/settings` — show saved destinations and worker settings.
+- `/setup` and `/setupload CHANNEL_ID` — configure the destination.
+- `/settings` — configure worker counts and upload settings.
 
-## Queue behavior
+## Worker behavior
 
-- PostgreSQL is the source of truth; jobs survive bot process/runtime restarts.
-- Workers claim jobs with PostgreSQL `FOR UPDATE SKIP LOCKED`.
-- Unique `video_id` prevents duplicate queue entries.
-- Failed jobs retry up to `TMJDLC_JOB_MAX_ATTEMPTS`; `/retry` can manually requeue failed jobs.
-- Worker leases recover abandoned jobs after a runtime restart.
-- `TMJDLC_MAX_PARALLEL` controls concurrent download jobs (1–4).
-- Settings lets an admin choose one or two simultaneous Telegram video uploads. It defaults to one; the second upload worker stays idle until two-upload mode is selected.
-- Downloaded media and generated video thumbnails remain on local worker disk; Colab resets remove local files, but Neon retains job history.
+- Hard maximum: two download workers and two upload workers.
+- Download and upload concurrency can be selected independently in Telegram.
+- Upload backlog allowance is applied per active upload worker.
+- Download claims stop when active uploads plus the configured pending-upload capacity is full.
+- Worker leases and retry state are persisted in SQLite and synchronized to GitHub.
+- Complete Telegram and GoFile upload metadata is saved as individual JSON records.
+- Downloaded media stays on Colab storage and is cleaned after successful delivery when enabled.
 
-## Telegram permissions
-
-Add the bot as an administrator to the video destination channel with permission to post. Only IDs listed in `TG_ADMIN_IDS` can use the private bot.
-
-## Operational note
-
-Keep the Colab runtime running while jobs process. The queue is durable, but Colab is an ephemeral worker host.
+Keep the Colab runtime running while jobs process. Colab media storage is temporary; queue state, settings, channel catalogue, and completed upload records are stored in the private GitHub data repository.
