@@ -40,13 +40,13 @@ TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
 API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
-MAX_WORKERS = max(2, min(4, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
+MAX_WORKERS = max(1, min(2, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
 UPLOAD_WORKERS = max(1, min(100, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "100"))))
 HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
 UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
 POLL_SECONDS = max(2, int(os.getenv("TMJDLC_QUEUE_POLL_SECONDS", "4")))
-MAX_PENDING_UPLOADS = max(0, min(4, int(os.getenv("TMJDLC_MAX_PENDING_UPLOADS", "1"))))
+MAX_PENDING_UPLOADS = max(0, min(2, int(os.getenv("TMJDLC_MAX_PENDING_UPLOADS", "1"))))
 UPLOAD_QUEUE_POLL_SECONDS = max(1, int(os.getenv("TMJDLC_UPLOAD_QUEUE_POLL_SECONDS", "2")))
 LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
@@ -855,6 +855,7 @@ async def process_job(job: dict, identity: str):
                             eta = (total - current) / speed if speed else None
                             overall_done = uploaded_bytes_before + current
                             overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
+                            await asyncio.to_thread(queue.update_progress, jid, identity, "uploading", overall_percent)
                             log.info(
                                 "Telegram upload progress | job_id=%s video_id=%s part=%s/%s "
                                 "part_progress=%s%% overall=%s%% speed=%s/s sent=%s/%s",
@@ -1042,7 +1043,7 @@ async def download_worker_loop(slot: int = 1):
             ) or 1)))
             job = await asyncio.to_thread(
                 queue.claim, identity, LEASE,
-                max_downloading=min(parallel, upload_concurrency),
+                max_downloading=parallel
                 max_uploads=upload_concurrency,
                 max_pending_uploads=MAX_PENDING_UPLOADS,
             )
@@ -1120,7 +1121,8 @@ async def start_cmd(client, message):
         [[KeyboardButton("⬇️ Download Video"), KeyboardButton("📚 Batch Download")],
          [KeyboardButton("📋 Queue"), KeyboardButton("⚙️ Settings")],
          [KeyboardButton("☁️ Upload Destination")],
-         [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")]],
+         [KeyboardButton("💽 Storage"), KeyboardButton("🖥 Worker Status")],
+         [KeyboardButton("⚡ Live Processes")]],
         resize_keyboard=True, is_persistent=True,
     )
     configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
@@ -1168,6 +1170,7 @@ async def panel_cmd(client, message):
         [InlineKeyboardButton("☁️ Upload destination", callback_data="home:destination")],
         [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
          InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
+        [InlineKeyboardButton("⚡ Live Processes", callback_data="home:processes")],
     ])
     await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
@@ -1380,6 +1383,69 @@ async def render_queue(target, offset: int = 0, edit: bool = False):
 async def queue_cmd(client, message):
     if await deny(message): return
     return await render_queue(message)
+
+
+async def render_processes(target, *, edit: bool = False):
+    counts, jobs, paused, upload_concurrency = await asyncio.gather(
+        asyncio.to_thread(queue.counts),
+        asyncio.to_thread(queue.list_active_jobs, 20),
+        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
+        asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
+    )
+    upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
+    paused = str(paused).lower() in {"1", "true", "yes", "on"}
+    downloading = [job for job in jobs if job.get("status") == "downloading"]
+    uploading = [job for job in jobs if job.get("status") == "uploading"]
+    ready = [job for job in jobs if job.get("status") == "ready"]
+    free_gb = shutil.disk_usage(WORK).free / (1024 ** 3)
+    lines = [
+        "⚡ <b>TMJDLC · Live Processes</b>",
+        f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
+        f"⬇️ Download workers: <b>{len(downloading)}/{parallel}</b>",
+        f"⬆️ Upload workers: <b>{len(uploading)}/{upload_concurrency}</b>",
+        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * MAX_PENDING_UPLOADS}</b>",
+        f"🕒 Waiting downloads: <b>{counts.get('queued', 0)}</b>",
+        f"💽 Free disk: <b>{free_gb:.1f} GiB</b>",
+        "",
+    ]
+    def add_jobs(label: str, items: list[dict], include_progress: bool = True):
+        lines.append(f"<b>{label}</b>")
+        if not items:
+            lines.append("  None")
+            return
+        for job in items:
+            title = html.escape(str(job.get("video_id") or "unknown"))
+            stage = html.escape(str(job.get("current_stage") or job.get("status") or "working"))
+            percent = int(job.get("progress_percent") or 0)
+            worker = html.escape(str(job.get("worker_id") or "unassigned").split("-")[-1])
+            progress = f" · <b>{percent}%</b>" if include_progress else ""
+            lines.append(f"  • #{job['id']} <code>{title}</code> · {stage}{progress}")
+            lines.append(f"    Worker: <code>{worker}</code> · Attempt {job.get('attempts', 0)}/{job.get('max_attempts', 0)}")
+    add_jobs("⬇️ Downloading", downloading)
+    lines.append("")
+    add_jobs("⬆️ Uploading", uploading)
+    lines.append("")
+    add_jobs("⏳ Waiting for upload", ready, include_progress=False)
+    body = "\n".join(lines)[:3900]
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("🔄 Refresh", callback_data="processes:refresh"),
+         InlineKeyboardButton("📋 Queue", callback_data="home:queue")],
+        [InlineKeyboardButton("⚙️ Settings", callback_data="home:settings"),
+         InlineKeyboardButton("🏠 Home", callback_data="home:show")],
+    ])
+    if edit:
+        try:
+            return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+        except Exception as exc:
+            if "MESSAGE_NOT_MODIFIED" in str(exc):
+                return target
+            raise
+    return await target.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
+
+async def processes_cmd(client, message):
+    if await deny(message): return
+    return await render_processes(message)
 
 
 async def ensure_gofile_ready() -> dict[str, str]:
@@ -1619,6 +1685,7 @@ async def text_handler(client, message):
         "⚙️ Settings": "settings",
         "💽 Storage": "storage",
         "🖥 Worker Status": "worker",
+        "⚡ Live Processes": "processes",
         "☁️ Upload Destination": "destination",
     }
     if text in menu:
@@ -1634,6 +1701,8 @@ async def text_handler(client, message):
             return await settings_cmd(client, message)
         if action == "storage":
             return await storage_cmd(client, message)
+        if action == "processes":
+            return await render_processes(message)
         if action == "destination":
             return await destination_cmd(client, message)
         return await message.reply_text(
@@ -1746,6 +1815,12 @@ async def callback_handler(client, callback):
         ])
         await callback.answer()
         return await callback.message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    if data == "home:processes":
+        await callback.answer()
+        return await render_processes(callback.message, edit=True)
+    if data == "processes:refresh":
+        await callback.answer("Refreshing live process data…")
+        return await render_processes(callback.message, edit=True)
     if data == "home:queue":
         await callback.answer()
         return await render_queue(callback.message, edit=True)
@@ -1822,7 +1897,8 @@ async def callback_handler(client, callback):
         if direction == "up":
             parallel = min(MAX_WORKERS, parallel + 1)
         elif direction == "down":
-            parallel = max(2, parallel - 1)
+            parallel = max(1, parallel - 1)
+        await asyncio.to_thread(queue.set_setting, "download_concurrency", str(parallel))
         async with condition:
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
@@ -2006,6 +2082,10 @@ async def log_update(client, message):
 
 async def on_start(client):
     await asyncio.to_thread(queue.initialize)
+    global parallel
+    parallel = max(1, min(MAX_WORKERS, int(await asyncio.to_thread(
+        queue.get_setting, "download_concurrency", str(MAX_WORKERS)
+    ) or MAX_WORKERS)))
     global progress_notifications_enabled
     notification_setting = await asyncio.to_thread(
         queue.get_setting, "progress_notifications", "true"
@@ -2042,6 +2122,7 @@ app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & 
 app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
 app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
+app.add_handler(MessageHandler(processes_cmd, filters.command("processes") & filters.private))
 app.add_handler(MessageHandler(batch_cmd, filters.command("batch") & filters.private))
 app.add_handler(MessageHandler(settings_cmd, filters.command("settings") & filters.private))
 app.add_handler(MessageHandler(queue_cmd, filters.command("queue") & filters.private))
@@ -2051,7 +2132,7 @@ app.add_handler(MessageHandler(cancelsetup_cmd, filters.command("cancelsetup") &
 app.add_handler(MessageHandler(dl_cmd, filters.command("dl") & filters.private))
 app.add_handler(MessageHandler(cancel_cmd, filters.command("cancel") & filters.private))
 app.add_handler(MessageHandler(retry_cmd, filters.command("retry") & filters.private))
-app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:)")))
+app.add_handler(CallbackQueryHandler(callback_handler, filters.regex(r"^(home:|settings:|queue:|job:|channel:|batch:cancel:|processes:)")))
 app.add_handler(MessageHandler(text_handler, filters.text & filters.private & ~filters.regex(r"^/")))
 
 
