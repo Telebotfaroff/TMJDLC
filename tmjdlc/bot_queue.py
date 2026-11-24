@@ -684,10 +684,13 @@ class JobQueue:
         """Remove finished queue history; retain completed rows referenced by media."""
         with self.connect() as conn:
             rows = conn.execute("""
-                DELETE FROM tmjdlc_bot_jobs j
-                WHERE j.status IN ('failed','cancelled')
-                   OR (j.status='completed'
-                       AND NOT EXISTS (SELECT 1 FROM tmjdlc_media m WHERE m.job_id=j.id))
+                DELETE FROM tmjdlc_bot_jobs
+                WHERE status IN ('failed','cancelled')
+                   OR (status='completed'
+                       AND NOT EXISTS (
+                           SELECT 1 FROM tmjdlc_media m
+                           WHERE m.job_id=tmjdlc_bot_jobs.id
+                       ))
                 RETURNING id
             """).fetchall()
             return len(rows)
