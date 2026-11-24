@@ -1181,7 +1181,11 @@ command_edit_state: dict[int, str] = {}
 def get_menu_items() -> list[dict]:
     raw = queue.get_setting("menu_items", "")
     try:
-        stored = json.loads(raw) if raw else []
+        if raw:
+            stored = json.loads(raw)
+        else:
+            config = github_store.read_json("config/commands.json", {"items": []})
+            stored = config.get("items", []) if isinstance(config, dict) else []
     except (TypeError, json.JSONDecodeError):
         stored = []
     if not isinstance(stored, list):
@@ -1205,6 +1209,7 @@ def save_menu_items(items: list[dict]) -> None:
     for index, item in enumerate(sorted(items, key=lambda value: int(value.get("order", 0)))):
         ordered.append({**item, "order": index})
     queue.set_setting("menu_items", json.dumps(ordered, ensure_ascii=False))
+    github_store.write_json("config/commands.json", {"items": ordered}, "Update TMJDLC Telegram menu layout")
 
 
 def build_reply_keyboard() -> ReplyKeyboardMarkup:
