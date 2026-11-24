@@ -138,6 +138,8 @@ class GitHubDataStore:
                 "TG_BOT_TOKEN": "",
                 "TG_API_ID": "",
                 "TG_API_HASH": "",
+                "TG_SESSION_STRING": "",
+                "TG_PREMIUM_UPLOAD": "true",
                 "TG_ADMIN_IDS": "",
                 "TG_HELPER_BOT_TOKENS": "",
                 "GOFILE_API_TOKEN": "",
