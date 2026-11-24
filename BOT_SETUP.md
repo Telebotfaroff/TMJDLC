@@ -56,6 +56,7 @@ The primary bot token receives updates and handles control commands. Telegram up
 
 - Hard maximum: two download workers and four upload workers.
 - Download and upload concurrency can be selected independently in Telegram (1–4 upload workers).
+- Background Download is enabled by default. Download workers can resolve Playwright streams and prepare upcoming videos while all upload slots are busy; the ready-to-upload backlog remains bounded by the configured per-worker backlog setting.
 - Upload backlog allowance is configurable from Settings: 0, 1, or 2 waiting videos per active upload worker.
 - Download claims stop when active uploads plus the configured pending-upload capacity is full.
 - Worker leases and retry state are persisted in SQLite and synchronized to GitHub.
