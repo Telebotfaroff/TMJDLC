@@ -159,6 +159,7 @@ class GitHubDataStore:
                 "TG_HELPER_BOT_TOKENS": "",
                 "GOFILE_API_TOKEN": "",
             },
+            "config/commands.json": {"items": []},
             "config/bot.json": {
                 "TMJDLC_MAX_PARALLEL": 2,
                 "TMJDLC_MAX_PENDING_UPLOADS": 1,
