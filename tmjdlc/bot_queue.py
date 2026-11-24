@@ -256,23 +256,27 @@ class JobQueue:
             """, (video_id, post_url, quality, requested_by, status_chat_id,
                   status_message_id, priority, self.max_attempts)).fetchone()
             if row:
-                return dict(row), True
-            existing = conn.execute(
-                "SELECT * FROM tmjdlc_bot_jobs WHERE video_id=%s", (video_id,)
-            ).fetchone()
-            if existing and existing["status"] in {"failed", "cancelled"}:
-                row = conn.execute("""
-                    UPDATE tmjdlc_bot_jobs SET post_url=%s,quality=%s,status='queued',
-                      attempts=0,last_error=NULL,worker_id=NULL,lease_until=NULL,
-                      cancel_requested=FALSE,current_stage=NULL,progress_percent=0,
-                      requested_by=%s,status_chat_id=%s,status_message_id=%s,
-                      priority=%s,updated_at=now()
-                    WHERE video_id=%s RETURNING *
-                """, (post_url, quality, requested_by, status_chat_id, status_message_id,
-                      priority, video_id)).fetchone()
-                conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (row["id"],))
-                return dict(row), True
-            return dict(existing), False
+                result = (dict(row), True)
+            else:
+                existing = conn.execute(
+                    "SELECT * FROM tmjdlc_bot_jobs WHERE video_id=%s", (video_id,)
+                ).fetchone()
+                if existing and existing["status"] in {"failed", "cancelled"}:
+                    row = conn.execute("""
+                        UPDATE tmjdlc_bot_jobs SET post_url=%s,quality=%s,status='queued',
+                          attempts=0,last_error=NULL,worker_id=NULL,lease_until=NULL,
+                          cancel_requested=FALSE,current_stage=NULL,progress_percent=0,
+                          requested_by=%s,status_chat_id=%s,status_message_id=%s,
+                          priority=%s,updated_at=now()
+                        WHERE video_id=%s RETURNING *
+                    """, (post_url, quality, requested_by, status_chat_id, status_message_id,
+                          priority, video_id)).fetchone()
+                    conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (row["id"],))
+                    result = (dict(row), True)
+                else:
+                    result = (dict(existing), False)
+        self.flush_snapshot()
+        return result
 
     def set_status_message(self, job_id: int, chat_id: int, message_id: int) -> bool:
         """Persist the dedicated Telegram progress message for one job."""
@@ -320,6 +324,7 @@ class JobQueue:
                     added += 1
                 else:
                     skipped += 1
+        self.flush_snapshot()
         return added, skipped
 
     def claim(self, worker_id: str, lease_seconds: int = 900, *,
