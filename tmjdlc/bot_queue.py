@@ -336,7 +336,7 @@ class JobQueue:
         upload_limit = max(1, int(max_uploads))
         # The waiting queue is separate from active upload slots. For one uploader
         # and a backlog of one, the next download stops as soon as one video is ready.
-        upload_backlog_limit = upload_limit * max(0, int(max_pending_uploads))
+        upload_backlog_limit = max(1, upload_limit * max(0, int(max_pending_uploads)))
         with self.connect() as conn:
             conn.execute("SELECT pg_advisory_xact_lock(734821)")
             row = conn.execute("""
