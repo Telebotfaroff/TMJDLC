@@ -1199,6 +1199,34 @@ async def commands_cmd(client, message):
     return await render_menu_settings(message)
 
 
+async def help_cmd(client, message):
+    if await deny(message): return
+    body = (
+        "🎬 <b>TMJDLC Help</b>\\n\\n"
+        "<b>Downloads</b>\\n"
+        "• /dl URL — download one Javtiful video\\n"
+        "• /batch URL — start a channel batch\\n"
+        "• /channels — scan and browse saved channels\\n\\n"
+        "<b>Queue</b>\\n"
+        "• /queue — view jobs and queue controls\\n"
+        "• /cancel JOB_ID — cancel a job\\n"
+        "• /retry JOB_ID — retry a failed job\\n"
+        "• /processes — live download/upload status\\n\\n"
+        "<b>Settings</b>\\n"
+        "• /settings — workers, upload concurrency, backlog and notifications\\n"
+        "• /setupload — set the Telegram upload channel\\n"
+        "• /setup — guided destination setup\\n"
+        "• /cancelsetup — cancel channel setup\\n"
+        "• /commands — customize menu buttons\\n\\n"
+        "<b>System</b>\\n"
+        "• /panel — overview\\n"
+        "• /storage — available runtime storage\\n"
+        "• /start — open the main menu\\n\\n"
+        "Send a Javtiful video URL directly to enqueue it. Large videos are split into Telegram-safe parts automatically."
+    )
+    await message.reply_text(body, parse_mode=ParseMode.HTML)
+
+
 async def start_cmd(client, message):
     if await deny(message): return
     keyboard = build_reply_keyboard()
@@ -2395,7 +2423,8 @@ async def on_stop(client):
 app.add_handler(MessageHandler(log_update, filters.all), group=-1)
 app.add_handler(MessageHandler(channel_post_peer_cache, filters.channel))
 app.add_handler(MessageHandler(forwarded_destination_handler, filters.private & filters.forwarded))
-app.add_handler(MessageHandler(start_cmd, filters.command(["start", "help"]) & filters.private))
+app.add_handler(MessageHandler(start_cmd, filters.command("start") & filters.private))
+app.add_handler(MessageHandler(help_cmd, filters.command("help") & filters.private))
 app.add_handler(MessageHandler(panel_cmd, filters.command("panel") & filters.private))
 app.add_handler(MessageHandler(storage_cmd, filters.command("storage") & filters.private))
 app.add_handler(MessageHandler(processes_cmd, filters.command("processes") & filters.private))
