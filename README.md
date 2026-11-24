@@ -15,8 +15,10 @@ Use `/start` to open the persistent menu:
 - **Settings** — configure the Telegram video destination, download workers, and 1- or 2-video simultaneous uploads.
 - **Storage** and **Worker Status** — inspect runtime health.
 - **Live Processes** (`/processes`) — inspect active downloads, uploads, waiting upload backlog, worker IDs, progress, and free disk; use Refresh for an updated snapshot.
+- **Channel Catalogue** (`/channels`) — scan Javtiful listing pages, save discovered channel URLs, and browse saved channels.
+- **Custom Menu** (`/commands`) — hide/show, rename, and reorder Telegram menu buttons.
 
-The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/storage`, `/cancel`, and `/retry`.
+The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/setupload`, `/panel`, `/queue`, `/settings`, `/commands`, `/channels`, `/processes`, `/storage`, `/cancel`, and `/retry`.
 
 ## Run in Google Colab
 
