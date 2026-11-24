@@ -1553,33 +1553,45 @@ async def render_processes(target, *, edit: bool = False):
     ready = [job for job in jobs if job.get("status") == "ready"]
     free_gb = shutil.disk_usage(WORK).free / (1024 ** 3)
     lines = [
-        "⚡ <b>TMJDLC · Live Processes</b>",
-        f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
-        f"⬇️ Download workers: <b>{len(downloading)}/{parallel}</b>",
-        f"⬆️ Upload workers: <b>{len(uploading)}/{upload_concurrency}</b>",
-        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured buffer <b>{upload_backlog}/worker</b>",
-        f"🕒 Waiting downloads: <b>{counts.get('queued', 0)}</b>",
-        f"💽 Free disk: <b>{free_gb:.1f} GiB</b>",
+        "⚡ <b>TMJDLC  |  LIVE CONTROL CENTER</b>",
+        f"{'⏸️' if paused else '🟢'} Queue status: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
+        "",
+        "📊 <b>WORKER OVERVIEW</b>",
+        f"⬇️ Downloads   <b>{len(downloading)}/{parallel}</b> active",
+        f"⬆️ Uploads       <b>{len(uploading)}/{upload_concurrency}</b> active",
+        f"📦 Upload buffer  <b>{len(ready)}</b> ready  ·  limit {upload_backlog}/worker",
+        f"🕒 Queued downloads  <b>{counts.get('queued', 0)}</b>",
+        f"💽 Available storage  <b>{free_gb:.1f} GiB</b>",
         "",
     ]
-    def add_jobs(label: str, items: list[dict], include_progress: bool = True):
-        lines.append(f"<b>{label}</b>")
+
+    def add_jobs(label: str, items: list[dict], kind: str):
+        lines.append(f"<b>{label}</b>  <code>{len(items)}</code>")
         if not items:
-            lines.append("  None")
+            lines.append("<i>Nothing here right now</i>")
             return
         for job in items:
             title = html.escape(str(job.get("video_id") or "unknown"))
-            stage = html.escape(str(job.get("current_stage") or job.get("status") or "working"))
-            percent = int(job.get("progress_percent") or 0)
+            stage = html.escape(str(job.get("current_stage") or job.get("status") or "working")).replace("_", " ").title()
+            percent = max(0, min(100, int(job.get("progress_percent") or 0)))
             worker = html.escape(str(job.get("worker_id") or "unassigned").split("-")[-1])
-            progress = f" · <b>{percent}%</b>" if include_progress else ""
-            lines.append(f"  • #{job['id']} <code>{title}</code> · {stage}{progress}")
-            lines.append(f"    Worker: <code>{worker}</code> · Attempt {job.get('attempts', 0)}/{job.get('max_attempts', 0)}")
-    add_jobs("⬇️ Downloading", downloading)
+            attempt = int(job.get("attempts") or 0)
+            max_attempts = int(job.get("max_attempts") or 0)
+            lines.append(f"  <b>#{job['id']}</b>  ·  <code>{title}</code>")
+            if kind == "ready":
+                lines.append(f"  🟡 <b>Ready for upload</b>  ·  Worker slot pending")
+            else:
+                bar = _progress_bar(percent, 14)
+                icon = "⬇️" if kind == "download" else "⬆️"
+                lines.append(f"  {icon} {stage}  ·  <b>{percent}%</b>")
+                lines.append(f"  <code>{bar}</code>")
+            lines.append(f"  👷 Worker <code>{worker}</code>  ·  🔁 Attempt <b>{attempt}/{max_attempts}</b>")
+
+    add_jobs("⬇️ ACTIVE DOWNLOADS", downloading, "download")
     lines.append("")
-    add_jobs("⬆️ Uploading", uploading)
+    add_jobs("⬆️ ACTIVE UPLOADS", uploading, "upload")
     lines.append("")
-    add_jobs("⏳ Waiting for upload", ready, include_progress=False)
+    add_jobs("⏳ READY FOR UPLOAD", ready, "ready")
     body = "\n".join(lines)[:3900]
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔄 Refresh", callback_data="processes:refresh"),
