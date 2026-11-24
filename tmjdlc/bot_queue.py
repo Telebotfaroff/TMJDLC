@@ -23,6 +23,7 @@ def _sqlite_sql(query: str) -> str:
     """Translate the small PostgreSQL SQL subset used by the queue to SQLite."""
     query = query.replace("now()+(%s*interval '1 second')",
                           "datetime('now', printf('%+d seconds', %s))")
+    query = query.replace("UPDATE tmjdlc_bot_jobs j SET", "UPDATE tmjdlc_bot_jobs AS j SET")
     query = query.replace("pg_advisory_xact_lock(734821)", "1")
     query = query.replace("RETURNING j.*", "RETURNING *")
     query = query.replace(" FOR UPDATE SKIP LOCKED", "")
