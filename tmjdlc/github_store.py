@@ -161,17 +161,32 @@ class GitHubDataStore:
             },
             "config/commands.json": {"items": []},
             "config/bot.json": {
+                "TMJDLC_TELEGRAM_LOG_LEVEL": "INFO",
                 "TMJDLC_MAX_PARALLEL": 2,
+                "TMJDLC_UPLOAD_WORKERS": 8,
+                "TMJDLC_UPLOAD_FLOOD_RETRIES": 5,
+                "TMJDLC_DOWNLOAD_FRAGMENTS": 8,
+                "TMJDLC_QUEUE_POLL_SECONDS": 4,
                 "TMJDLC_MAX_PENDING_UPLOADS": 1,
+                "TMJDLC_UPLOAD_QUEUE_POLL_SECONDS": 2,
+                "TMJDLC_JOB_LEASE_SECONDS": 3600,
+                "TMJDLC_JOB_MAX_ATTEMPTS": 3,
                 "TMJDLC_UPLOAD_CONCURRENCY": 1,
+                "TMJDLC_WORK_DIR": "/content/tmjdlc-bot",
                 "TMJDLC_AUTO_CLEAN": True,
                 "TMJDLC_MIN_FREE_DISK_GB": 3,
+                "TMJDLC_NOTIFY_PROGRESS_STEP": 2,
             },
             "catalogue/channels.json": {"channels": [], "updated_at": None},
         }
         for path, value in defaults.items():
-            if self.read_bytes(path) is None:
+            current = self.read_json(path, None)
+            if current is None:
                 self.write_json(path, value, f"Initialize TMJDLC data: {path}")
+            elif isinstance(current, dict) and isinstance(value, dict):
+                merged = {**value, **current}
+                if merged != current:
+                    self.write_json(path, merged, f"Add TMJDLC defaults: {path}")
 
     def ensure_private_repository(self) -> None:
         response = self.session.get(self.base_url, timeout=self.timeout)
