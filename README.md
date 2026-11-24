@@ -20,7 +20,7 @@ The original command shortcuts remain available: `/dl`, `/batch`, `/setup`, `/se
 
 ## Run in Google Colab
 
-Open the [TMJDLC notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add `TG_BOT_TOKEN`, `TG_API_ID`, `TG_API_HASH`, `TG_ADMIN_IDS`, and Neon `DATABASE_URL` to Colab Secrets, then run the notebook cells.
+Open the [TMJDLC notebook](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb). Add only `GITHUB_TOKEN` to Colab Secrets, then run the notebook cells.
 
 The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates and large media uploads. The upload client uses WZGram's concurrent-transmission setting. Optional WZML-X-style helper bot tokens can distribute channel uploads across eligible bot clients; each helper bot must be an administrator in the configured video channel. The main bot remains responsible for private-chat fallback. A local SQLite queue provides transactional worker coordination; compressed database snapshots, configuration, channel catalogue, and completed upload records are stored in the private GitHub data repository. Keep the Colab runtime running while jobs are processing. A single active Colab runtime should write to the data repository at a time.
 
@@ -54,10 +54,10 @@ The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK
 
 ## GoFile uploads
 
-Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. Set `GOFILE_API_TOKEN` in Colab Secrets or the runtime environment to use your own GoFile account token. If it is not supplied, TMJDLC creates one persistent guest account automatically. The token and account root folder are stored in the local SQLite database and synchronized to the private GitHub data repository.
+Choose **Upload Destination** from the Telegram menu and select Telegram, GoFile, or Both. Set `GOFILE_API_TOKEN` in the private repository's `config/secrets.json` to use your own GoFile account token. If it is blank, TMJDLC creates one persistent guest account automatically. The token and account root folder are stored in the local SQLite database and synchronized to the private GitHub data repository.
 
 TMJDLC creates public folders named **TMJDLC Batch 001**, **TMJDLC Batch 002**, and so on. Each folder receives up to **20 successfully uploaded videos**. After video 20, the bot creates the next public folder and sends the completed folder link to every configured admin in Telegram. When the queue becomes fully idle, a final folder containing 1–19 videos is also sent and a fresh folder is prepared for the next queue run. Empty folders are not announced.
 
-Uploads use streaming multipart requests. Folder IDs, share codes, counts, and notification receipts are persisted in Neon so worker restarts do not reset the batch counter. Every folder is created with `public: true`.
+Uploads use streaming multipart requests. Folder IDs, share codes, counts, and notification receipts are persisted in the GitHub-backed SQLite database so worker restarts do not reset the batch counter. Every folder is created with `public: true`.
 
 Keep `GOFILE_API_TOKEN` private: anyone holding it has full access to the GoFile account. Do not commit it to GitHub or include it in logs.
