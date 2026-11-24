@@ -31,6 +31,17 @@ from tmjdlc.gofile import (
 )
 
 load_dotenv()
+from tmjdlc.github_store import GitHubDataStore, GitHubStoreError
+
+github_store = GitHubDataStore.from_env()
+github_secrets, github_settings = github_store.load_runtime_config()
+for _key, _value in github_secrets.items():
+    if _value not in (None, ""):
+        os.environ[str(_key)] = str(_value)
+for _key, _value in github_settings.items():
+    if _value is not None:
+        os.environ.setdefault(str(_key), str(_value).lower() if isinstance(_value, bool) else str(_value))
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(name)s | %(message)s")
 TELEGRAM_LOG_LEVEL = os.getenv("TMJDLC_TELEGRAM_LOG_LEVEL", "INFO").strip().upper()
 logging.getLogger("pyrogram").setLevel(getattr(logging, TELEGRAM_LOG_LEVEL, logging.INFO))
@@ -182,7 +193,7 @@ def create_video_thumbnail(path: Path, video_id: str, width: int, height: int) -
 if not TOKEN or not API_ID or not API_HASH or not ADMINS:
     raise RuntimeError("Set TG_BOT_TOKEN, TG_API_ID, TG_API_HASH and TG_ADMIN_IDS.")
 
-queue = JobQueue(max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
+queue = JobQueue(store=github_store, max_attempts=int(os.getenv("TMJDLC_JOB_MAX_ATTEMPTS", "3")))
 WORK.mkdir(parents=True, exist_ok=True)
 worker_id = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 workers: list[asyncio.Task] = []
@@ -1132,7 +1143,7 @@ async def start_cmd(client, message):
             "🎞 <b>First-time setup · Video upload channel</b>\\n"
             "Send <code>@channelusername</code> for a public channel, or forward a recent post "
             "from your private channel to this bot. "
-            "I will verify that this bot is an administrator with posting permission, then save it in Neon.\\n"
+            "I will verify that this bot is an administrator with posting permission, then save it in the private GitHub data repository.\\n"
             "Use /cancelsetup to stop.",
             parse_mode=ParseMode.HTML,
         )
@@ -1570,7 +1581,7 @@ async def set_channel(message, key):
         setup_state[message.from_user.id] = key
         return await message.reply_text(
             f"Send @channelusername for a public channel, or forward a recent post from your private video upload channel here. "
-            "The bot will resolve the channel, verify posting rights, and save it in Neon. Send CANCEL to stop."
+            "The bot will resolve the channel, verify posting rights, and save it in the private GitHub data repository. Send CANCEL to stop."
         )
     value = parts[1].strip()
     try:
@@ -1769,7 +1780,7 @@ async def text_handler(client, message):
         await asyncio.to_thread(queue.set_setting, "upload_channel", value)
         await sync_upload_peer(chat.id)
         setup_state.pop(uid, None)
-        return await message.reply_text("✅ Video upload channel saved and verified in Neon.")
+        return await message.reply_text("✅ Video upload channel saved and verified in the private GitHub data repository.")
     if CHANNEL_URL.fullmatch(text):
         status = await message.reply_text("🔎 Inspecting Javtiful channel…")
         try:
@@ -2093,7 +2104,7 @@ async def on_start(client):
     )
     progress_notifications_enabled = str(notification_setting).lower() in {"1", "true", "yes", "on"}
     recovered = await asyncio.to_thread(queue.recover_expired)
-    log.info("Neon queue ready; recovered expired jobs=%s", recovered)
+    log.info("GitHub-backed SQLite queue ready; recovered expired jobs=%s", recovered)
     global workers
     workers = [
         *[
