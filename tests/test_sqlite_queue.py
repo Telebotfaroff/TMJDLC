@@ -91,3 +91,23 @@ def test_completed_upload_record_is_saved_to_github_store(tmp_path):
 
     assert saved_path == "uploads/test.json"
     assert store.upload_records == [record]
+
+
+def test_downloads_stop_when_one_video_is_waiting_for_single_uploader(tmp_path):
+    queue = JobQueue(store=FakeGitHubStore())
+    queue.db_path = tmp_path / "tmjdlc.sqlite3"
+    queue.initialize()
+    for index in range(3):
+        queue.enqueue(str(index), f"https://javtiful.com/video/{index}", 720)
+
+    first = queue.claim("download-1", 60, max_downloading=2, max_uploads=1, max_pending_uploads=1)
+    assert first is not None
+    assert queue.set_status(first["id"], "download-1", "ready") is True
+
+    # One waiting upload already occupies the single-uploader backlog.
+    assert queue.claim("download-2", 60, max_downloading=2, max_uploads=1, max_pending_uploads=1) is None
+
+    uploading = queue.claim_upload("upload-1", 60)
+    assert uploading is not None
+    # The active uploader is full and there is no free ready slot.
+    assert queue.claim("download-2", 60, max_downloading=2, max_uploads=1, max_pending_uploads=1) is None
