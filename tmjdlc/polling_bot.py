@@ -2053,7 +2053,7 @@ async def callback_handler(client, callback):
             if item["key"] == key:
                 item["enabled"] = not item["enabled"]
                 break
-        save_menu_items(items)
+        await asyncio.to_thread(save_menu_items, items)
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer("Menu visibility updated.")
         return await render_menu_settings(callback.message, edit=True)
