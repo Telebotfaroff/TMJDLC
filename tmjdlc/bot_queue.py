@@ -559,20 +559,25 @@ class JobQueue:
         """
         stale_after_seconds = max(60, int(stale_after_seconds))
         with self.connect() as conn:
+            # This queue runs on SQLite (not PostgreSQL). Keep this recovery
+            # statement SQLite-native instead of passing PostgreSQL interval,
+            # boolean, and UPDATE-alias syntax through the generic translator.
             rows = conn.execute("""
-                UPDATE tmjdlc_bot_jobs AS j
+                UPDATE tmjdlc_bot_jobs
                 SET status='failed',worker_id=NULL,lease_until=NULL,
-                    cancel_requested=TRUE,
+                    cancel_requested=1,
                     last_error='Orphaned task: owning worker heartbeat is no longer active',
-                    updated_at=now()
-                WHERE j.status IN ('downloading','uploading')
+                    updated_at=CURRENT_TIMESTAMP
+                WHERE status IN ('downloading','uploading')
                   AND NOT EXISTS (
                     SELECT 1 FROM tmjdlc_workers w
-                    WHERE w.worker_id=j.worker_id
+                    WHERE w.worker_id=tmjdlc_bot_jobs.worker_id
                       AND w.status='online'
-                      AND w.last_heartbeat > now()-(%s*interval '1 second')
+                      AND w.last_heartbeat > datetime(
+                          'now', printf('-%d seconds', ?)
+                      )
                   )
-                RETURNING j.id
+                RETURNING id
             """, (stale_after_seconds,)).fetchall()
             return len(rows)
 
