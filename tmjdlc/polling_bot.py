@@ -1184,6 +1184,8 @@ def get_menu_items() -> list[dict]:
         stored = json.loads(raw) if raw else []
     except (TypeError, json.JSONDecodeError):
         stored = []
+    if not isinstance(stored, list):
+        stored = []
     by_key = {
         str(item.get("key")): item for item in stored
         if isinstance(item, dict) and item.get("key")
