@@ -163,7 +163,7 @@ class GitHubDataStore:
             "config/bot.json": {
                 "TMJDLC_TELEGRAM_LOG_LEVEL": "INFO",
                 "TMJDLC_MAX_PARALLEL": 2,
-                "TMJDLC_UPLOAD_WORKERS": 8,
+                "TMJDLC_UPLOAD_TRANSMISSION_SLOTS": 8,
                 "TMJDLC_UPLOAD_FLOOD_RETRIES": 5,
                 "TMJDLC_DOWNLOAD_FRAGMENTS": 8,
                 "TMJDLC_QUEUE_POLL_SECONDS": 4,
