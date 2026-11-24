@@ -111,3 +111,54 @@ def test_downloads_stop_when_one_video_is_waiting_for_single_uploader(tmp_path):
     assert uploading is not None
     # The active uploader is full and there is no free ready slot.
     assert queue.claim("download-2", 60, max_downloading=2, max_uploads=1, max_pending_uploads=1) is None
+
+def test_background_download_continues_while_upload_is_active(tmp_path):
+    queue = JobQueue(store=FakeGitHubStore())
+    queue.db_path = tmp_path / "tmjdlc.sqlite3"
+    queue.initialize()
+    first, _ = queue.enqueue("100", "https://javtiful.com/video/100", 720)
+    second, _ = queue.enqueue("200", "https://javtiful.com/video/200", 720)
+
+    downloading = queue.claim(
+        "download-1", 60, max_downloading=1, max_uploads=1, max_pending_uploads=1
+    )
+    assert downloading is not None and downloading["id"] == first["id"]
+    assert queue.set_status(first["id"], "download-1", "ready") is True
+    uploading = queue.claim_upload("upload-1", 60)
+    assert uploading is not None and uploading["id"] == first["id"]
+
+    # Legacy mode waits for the active upload to finish.
+    assert queue.claim(
+        "download-2", 60, max_downloading=1, max_uploads=1, max_pending_uploads=1
+    ) is None
+
+    # Background mode keeps the next download running while upload 1 is active.
+    next_job = queue.claim(
+        "download-2", 60, max_downloading=1, max_uploads=1,
+        max_pending_uploads=1, background_download=True,
+    )
+    assert next_job is not None
+    assert next_job["id"] == second["id"]
+    assert next_job["status"] == "downloading"
+
+
+def test_background_download_still_respects_ready_backlog_limit(tmp_path):
+    queue = JobQueue(store=FakeGitHubStore())
+    queue.db_path = tmp_path / "tmjdlc.sqlite3"
+    queue.initialize()
+    first, _ = queue.enqueue("101", "https://javtiful.com/video/101", 720)
+    queue.enqueue("202", "https://javtiful.com/video/202", 720)
+
+    downloading = queue.claim(
+        "download-1", 60, max_downloading=1, max_uploads=1,
+        max_pending_uploads=1, background_download=True,
+    )
+    assert downloading is not None and downloading["id"] == first["id"]
+    assert queue.set_status(first["id"], "download-1", "ready") is True
+
+    # Prefetch does not grow without bound: one ready item fills this backlog.
+    assert queue.claim(
+        "download-2", 60, max_downloading=1, max_uploads=1,
+        max_pending_uploads=1, background_download=True,
+    ) is None
+
