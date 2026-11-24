@@ -402,6 +402,13 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
             TG_SESSION_STRING and TG_PREMIUM_UPLOAD and video_path.is_file()
             and video_path.stat().st_size > 1_950_000_000
         )
+        if premium_large_file and chat_id < 0:
+            premium_me = await upload_client.get_me()
+            premium_member = await upload_client.get_chat_member(chat_id, premium_me.id)
+            if premium_member.status not in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER}:
+                raise RuntimeError("The Premium upload account must also be an administrator in the destination channel.")
+            if getattr(premium_member, "can_post_messages", True) is False:
+                raise RuntimeError("The Premium upload account does not have permission to post in the destination channel.")
         if chat_id < 0 and _helper_upload_clients and not premium_large_file:
             eligible = []
             for helper in _helper_upload_clients:
