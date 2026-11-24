@@ -54,7 +54,7 @@ The main bot token receives updates. For Premium uploads up to 4GB, put your Pre
 
 - Hard maximum: two download workers and two upload workers.
 - Download and upload concurrency can be selected independently in Telegram.
-- Upload backlog allowance is applied per active upload worker.
+- Upload backlog allowance is configurable from Settings: 0, 1, or 2 waiting videos per active upload worker.
 - Download claims stop when active uploads plus the configured pending-upload capacity is full.
 - Worker leases and retry state are persisted in SQLite and synchronized to GitHub.
 - Complete Telegram and GoFile upload metadata is saved as individual JSON records.
