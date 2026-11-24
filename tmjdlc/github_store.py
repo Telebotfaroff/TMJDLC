@@ -222,8 +222,7 @@ class GitHubDataStore:
         job_id = str(record.get("job_id") or record.get("video_id") or "").strip()
         if not job_id:
             raise ValueError("Upload record requires job_id or video_id.")
-        now = datetime.now(timezone.utc)
-        path = f"uploads/{now:%Y/%m}/{quote(job_id, safe='-_.')}.json"
+        path = f"uploads/records/{quote(job_id, safe='-_.')}.json"
         self.write_json(path, record, f"Save completed TMJDLC upload {job_id}")
         return path
 
