@@ -608,6 +608,7 @@ async def download_job(job: dict, identity: str):
             if not await asyncio.to_thread(queue.complete_stage, jid, identity, "download",
                                            {"path": str(path), "size": path.stat().st_size}):
                 raise RuntimeError("Could not persist download stage; worker ownership was lost.")
+            await asyncio.to_thread(queue.flush_snapshot)
 
         check_stop()
         media_stage = await asyncio.to_thread(queue.stage_done, jid, "media_probe")
@@ -705,6 +706,8 @@ async def process_job(job: dict, identity: str):
                 unused_warm_task.cancel()
         fallback_used = False
         delivery_links = []
+        video_stage = None
+        gofile_receipt = None
 
         download_stage = await asyncio.to_thread(queue.stage_done, jid, "download")
         path = Path(download_stage["path"]) if download_stage and download_stage.get("path") else None
@@ -914,9 +917,14 @@ async def process_job(job: dict, identity: str):
                         upload_chat_id = fallback_chat_id
                         fallback_used = True
 
+                    sent_media = getattr(sent, "video", None)
                     receipt = {
                         "chat_id": sent.chat.id, "message_id": sent.id,
                         "part": part_index, "parts": part_count, "fallback": fallback_used,
+                        "file_id": getattr(sent_media, "file_id", None),
+                        "file_unique_id": getattr(sent_media, "file_unique_id", None),
+                        "file_size": getattr(sent_media, "file_size", part_size),
+                        "file_name": getattr(sent_media, "file_name", part_path.name),
                     }
                     if not await asyncio.to_thread(
                         queue.complete_stage, jid, identity, part_stage_name, receipt
@@ -924,6 +932,7 @@ async def process_job(job: dict, identity: str):
                         raise RuntimeError(
                             f"Part {part_index}/{part_count} was sent but its receipt could not be saved."
                         )
+                    await asyncio.to_thread(queue.flush_snapshot)
                     part_receipts.append(receipt)
                     uploaded_bytes_before += part_size
                     elapsed = max(time.monotonic() - part_started_at, 0.001)
@@ -967,6 +976,7 @@ async def process_job(job: dict, identity: str):
                     queue.complete_stage, jid, identity, "gofile_upload", gofile_receipt
                 ):
                     raise RuntimeError("GoFile upload finished but its receipt could not be saved.")
+                await asyncio.to_thread(queue.flush_snapshot)
             completed_folder = gofile_receipt.get("folder_completed")
             if completed_folder:
                 await notify_gofile_folder(completed_folder, "completed")
@@ -982,6 +992,24 @@ async def process_job(job: dict, identity: str):
                 )
 
         check_stop()
+        if video_stage is None and upload_mode in {"telegram", "both"}:
+            video_stage = await asyncio.to_thread(queue.stage_done, jid, "video_upload")
+        if gofile_receipt is None and upload_mode in {"gofile", "both"}:
+            gofile_receipt = await asyncio.to_thread(queue.stage_done, jid, "gofile_upload")
+        await asyncio.to_thread(queue.save_upload_record, {
+            "job_id": jid,
+            "video_id": vid,
+            "source_url": url,
+            "filename": path.name,
+            "file_size": path.stat().st_size,
+            "duration_seconds": float(media_info.get("duration") or 0),
+            "width": media_info.get("width"),
+            "height": media_info.get("height"),
+            "upload_destination": upload_mode,
+            "telegram": video_stage or {},
+            "gofile": gofile_receipt or {},
+            "uploaded_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        })
         if not await asyncio.to_thread(queue.set_status, jid, identity, "completed",
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
@@ -2124,6 +2152,7 @@ async def on_stop(client):
         task.cancel()
     if workers:
         await asyncio.gather(*workers, return_exceptions=True)
+    await asyncio.to_thread(queue.flush_snapshot)
     log.info("TMJDLC workers stopped.")
 
 
