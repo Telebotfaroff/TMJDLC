@@ -150,8 +150,7 @@ workers: list[asyncio.Task] = []
 parallel = MAX_WORKERS
 active = 0
 condition = asyncio.Condition()
-# Two MTProto uploads are supported. The Settings menu controls whether one or
-# both upload workers may claim jobs; the semaphore is the hard in-process cap.
+# Four upload workers share one queue and one global in-process transfer cap.
 video_upload_semaphore = asyncio.Semaphore(MAX_UPLOAD_WORKERS)
 setup_state: dict[int, str] = {}
 channel_state: dict[int, dict] = {}
@@ -196,27 +195,76 @@ upload_client = Client(
 )
 
 
+async def _resolve_client_upload_peer(client: Client, peer_id: int):
+    """Resolve a destination using that bot's own Telegram account/access hash."""
+    try:
+        return await client.resolve_peer(int(peer_id))
+    except Exception:
+        pass
+
+    # Public @usernames let each bot acquire its own channel access hash.
+    # A private channel must already be visible in that bot's own dialogs.
+    raw_destination = str(await asyncio.to_thread(
+        queue.get_setting, "upload_channel", ""
+    ) or "").strip()
+    lookup_value = int(raw_destination) if raw_destination.lstrip("-").isdigit() else raw_destination
+    if lookup_value:
+        try:
+            chat = await client.get_chat(lookup_value)
+            if int(chat.id) == int(peer_id):
+                return await client.resolve_peer(int(peer_id))
+        except Exception:
+            log.debug(
+                "Uploader could not resolve configured destination | bot_id=%s | destination=%s",
+                getattr(getattr(client, "me", None), "id", None), raw_destination,
+                exc_info=True,
+            )
+
+    try:
+        async for dialog in client.get_dialogs():
+            if int(dialog.chat.id) == int(peer_id):
+                return await client.resolve_peer(int(peer_id))
+    except Exception:
+        log.debug("Could not inspect uploader dialogs for peer=%s", peer_id, exc_info=True)
+    raise RuntimeError(
+        f"Uploader bot cannot resolve Telegram destination {peer_id}. "
+        "For a public channel, configure its @username and add this bot as an administrator. "
+        "For a private channel, make this bot receive a channel post first."
+    )
+
+
 async def sync_upload_peer(peer_id: int) -> None:
-    """Seed the destination peer into the primary and helper upload clients."""
+    """Warm the destination separately for every bot account using its own peer hash."""
     peer_id = int(peer_id)
-    peer = await app.resolve_peer(peer_id)
-    peer_name = type(peer).__name__
-    if peer_name == "InputPeerChannel":
-        access_hash, peer_type = int(peer.access_hash), "channel"
-    elif peer_name == "InputPeerUser":
-        access_hash, peer_type = int(peer.access_hash), "user"
-    elif peer_name == "InputPeerChat":
-        access_hash, peer_type = 0, "group"
-    else:
-        raise RuntimeError(f"Unsupported Telegram peer type for upload: {peer_name}")
-    peer_record = [(peer_id, access_hash, peer_type, None)]
-    clients = [upload_client, *_helper_upload_clients]
-    for client in clients:
+    for client in [upload_client, *_helper_upload_clients]:
         key = (id(client), peer_id)
         if key in _synced_upload_peers:
             continue
-        await client.storage.update_peers(peer_record)
-        _synced_upload_peers.add(key)
+        try:
+            peer = (
+                await app.resolve_peer(peer_id)
+                if client is upload_client
+                else await _resolve_client_upload_peer(client, peer_id)
+            )
+            peer_name = type(peer).__name__
+            if peer_name == "InputPeerChannel":
+                access_hash, peer_type = int(peer.access_hash), "channel"
+            elif peer_name == "InputPeerUser":
+                access_hash, peer_type = int(peer.access_hash), "user"
+            elif peer_name == "InputPeerChat":
+                access_hash, peer_type = 0, "group"
+            else:
+                raise RuntimeError(f"Unsupported Telegram peer type for upload: {peer_name}")
+            await client.storage.update_peers([(peer_id, access_hash, peer_type, None)])
+            _synced_upload_peers.add(key)
+        except Exception:
+            if client is upload_client:
+                raise
+            log.warning(
+                "Upload client cannot resolve destination with its own account | bot_id=%s | peer=%s",
+                getattr(getattr(client, "me", None), "id", None), peer_id,
+                exc_info=True,
+            )
 
 
 async def start_helper_upload_clients() -> None:
@@ -277,6 +325,7 @@ async def _helper_can_post(client: Client, chat_id: int) -> bool:
     if cached and now - cached[0] < DESTINATION_CACHE_SECONDS:
         return cached[1]
     try:
+        await _resolve_client_upload_peer(client, chat_id)
         me = await client.get_me()
         member = await client.get_chat_member(chat_id, me.id)
         allowed = member.status in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER}
