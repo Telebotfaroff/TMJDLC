@@ -68,11 +68,13 @@ class _SQLiteSession:
         try:
             if self.connection is not None:
                 changed = self.connection.total_changes > 0
-                if exc_type is None:
-                    self.connection.commit()
-                else:
-                    self.connection.rollback()
-                self.connection.close()
+                try:
+                    if exc_type is None:
+                        self.connection.commit()
+                    else:
+                        self.connection.rollback()
+                finally:
+                    self.connection.close()
         finally:
             self.connection = None
             self.lock.release()
