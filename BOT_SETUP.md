@@ -15,6 +15,7 @@ On first startup, TMJDLC creates:
 
 - `config/secrets.json` — Telegram bot token, API ID/hash, Premium user session string, admin IDs, optional helper bot tokens, and optional GoFile token.
 - `config/bot.json` — default worker and runtime settings.
+- `config/commands.json` — customizable Telegram menu labels, visibility, and order.
 - `catalogue/channels.json` — saved Javtiful channel catalogue.
 - `database/tmjdlc.sqlite3.gz` — compressed durable SQLite snapshot.
 - `uploads/YYYY/MM/<job-id>.json` — complete per-upload receipts and metadata.
