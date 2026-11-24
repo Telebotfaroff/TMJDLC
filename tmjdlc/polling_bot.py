@@ -1535,13 +1535,15 @@ async def queue_cmd(client, message):
 
 
 async def render_processes(target, *, edit: bool = False):
-    counts, jobs, paused, upload_concurrency = await asyncio.gather(
+    counts, jobs, paused, upload_concurrency, upload_backlog = await asyncio.gather(
         asyncio.to_thread(queue.counts),
         asyncio.to_thread(queue.list_active_jobs, 20),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
+        asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
     )
     upload_concurrency = max(1, min(2, int(upload_concurrency or 1)))
+    upload_backlog = max(0, min(2, int(upload_backlog or 0)))
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     downloading = [job for job in jobs if job.get("status") == "downloading"]
     uploading = [job for job in jobs if job.get("status") == "uploading"]
@@ -1552,7 +1554,7 @@ async def render_processes(target, *, edit: bool = False):
         f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
         f"⬇️ Download workers: <b>{len(downloading)}/{parallel}</b>",
         f"⬆️ Upload workers: <b>{len(uploading)}/{upload_concurrency}</b>",
-        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * max(0, min(2, int(await asyncio.to_thread(queue.get_setting, \"upload_backlog_per_worker\", str(MAX_PENDING_UPLOADS)) or MAX_PENDING_UPLOADS)))}</b>",
+        f"📥 Upload backlog: <b>{len(ready)}</b> ready · configured limit <b>{upload_concurrency * upload_backlog}</b>",
         f"🕒 Waiting downloads: <b>{counts.get('queued', 0)}</b>",
         f"💽 Free disk: <b>{free_gb:.1f} GiB</b>",
         "",
