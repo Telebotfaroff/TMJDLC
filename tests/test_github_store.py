@@ -78,3 +78,19 @@ def test_database_snapshot_round_trip(tmp_path):
     store.save_database(source)
     assert store.restore_database(restored) is True
     assert restored.read_bytes() == source.read_bytes()
+
+
+def test_public_data_repository_is_rejected():
+    class PublicRepoSession(FakeSession):
+        def get(self, url, params=None, timeout=30):
+            if "/contents/" not in url and "/git/blobs/" not in url:
+                return FakeResponse(200, {"private": False})
+            return super().get(url, params=params, timeout=timeout)
+
+    store = GitHubDataStore("token", session=PublicRepoSession())
+    try:
+        store.ensure_private_repository()
+    except GitHubStoreError as exc:
+        assert "Make it private" in str(exc)
+    else:
+        raise AssertionError("Expected public repository to be rejected")
