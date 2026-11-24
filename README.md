@@ -12,7 +12,7 @@ Use `/start` to open the persistent menu:
 - **Batch Download** — send a Javtiful channel URL, then choose new videos, all videos, latest videos, or custom pages.
 - **Queue** — inspect recent jobs and use the existing cancellation/retry commands.
 - **Settings / Upload Destination** — choose Telegram, GoFile, or both; GoFile reuses one persistent guest account and shared folder.
-- **Settings** — configure the Telegram video destination, download workers, and 1- or 2-video simultaneous uploads.
+- **Settings** — configure the Telegram video destination, 1–2 download workers, 1–2 upload workers, and 0–2 waiting uploads per worker.
 - **Storage** and **Worker Status** — inspect runtime health.
 - **Live Processes** (`/processes`) — inspect active downloads, uploads, waiting upload backlog, worker IDs, progress, and free disk; use Refresh for an updated snapshot.
 - **Channel Catalogue** (`/channels`) — scan Javtiful listing pages, save discovered channel URLs, and browse saved channels.
@@ -40,7 +40,7 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 
 ## Configuration
 
-Set only `GITHUB_TOKEN` in Colab. The token must have Contents: Read and write access to the private `gitroff/Database` repository. On first startup, TMJDLC creates the repository layout; add Telegram credentials to `config/secrets.json` there. For Premium uploads up to 4GB, also add your Premium MTProto session string as `TG_SESSION_STRING` and keep `TG_PREMIUM_UPLOAD=true`. Bot settings are persisted through the data repository. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and video thumbnail generation.
+Set only `GITHUB_TOKEN` in Colab. The token must have Contents: Read and write access to the private `gitroff/Database` repository. On first startup, TMJDLC creates the repository layout; add Telegram credentials to `config/secrets.json` there. For Premium uploads up to 4GB, also add your Premium MTProto session string as `TG_SESSION_STRING` and keep `TG_PREMIUM_UPLOAD=true`. Bot settings are persisted through the data repository. Optional `TG_HELPER_BOT_TOKENS` in the private repository's `config/secrets.json` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload account. The `config/commands.json` file stores the customizable menu layout. FFmpeg and FFprobe are required for media validation and video thumbnail generation.
 
 The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK_GB` (default 3 GiB). Set `TMJDLC_AUTO_CLEAN=false` to disable local-file cleanup.
 
@@ -62,4 +62,4 @@ TMJDLC creates public folders named **TMJDLC Batch 001**, **TMJDLC Batch 002**, 
 
 Uploads use streaming multipart requests. Folder IDs, share codes, counts, and notification receipts are persisted in the GitHub-backed SQLite database so worker restarts do not reset the batch counter. Every folder is created with `public: true`.
 
-Keep `GOFILE_API_TOKEN` private: anyone holding it has full access to the GoFile account. Do not commit it to GitHub or include it in logs.
+Keep `gitroff/Database` private: `GOFILE_API_TOKEN` and Telegram credentials are stored in its `config/secrets.json`. Never copy those values into the public TMJDLC code repository or logs.
