@@ -2125,23 +2125,23 @@ async def text_handler(client, message):
             pass
         if secret_text.upper() == "CANCEL":
             secondary_setup_state.pop(uid, None)
-            return await message.reply_text("Secondary account setup cancelled. No credentials were changed.")
+            return await app.send_message(message.chat.id, "Secondary account setup cancelled. No credentials were changed.")
         step = secondary_stage.get("step")
         if step == "api_id":
             if not secret_text.isdigit() or int(secret_text) <= 0:
-                return await message.reply_text("API ID must be a positive number. Send it again, or CANCEL.")
+                return await app.send_message(message.chat.id, "API ID must be a positive number. Send it again, or CANCEL.")
             secondary_stage["api_id"] = int(secret_text)
             secondary_stage["step"] = "api_hash"
-            return await message.reply_text("🔐 Now send the secondary API HASH. It will be deleted after receipt.")
+            return await app.send_message(message.chat.id, "🔐 Now send the secondary API HASH. It will be deleted after receipt.")
         if step == "api_hash":
             if len(secret_text) < 20 or len(secret_text) > 128:
-                return await message.reply_text("That API hash does not look valid. Send it again, or CANCEL.")
+                return await app.send_message(message.chat.id, "That API hash does not look valid. Send it again, or CANCEL.")
             secondary_stage["api_hash"] = secret_text
             secondary_stage["step"] = "bot_token"
-            return await message.reply_text("🤖 Now send the secondary BOT TOKEN. It will be validated before saving.")
+            return await app.send_message(message.chat.id, "🤖 Now send the secondary BOT TOKEN. It will be validated before saving.")
         if step == "bot_token":
             try:
-                status_message = await message.reply_text("⏳ Validating Telegram credentials…")
+                status_message = await app.send_message(message.chat.id, "⏳ Validating Telegram credentials…")
                 username = await validate_secondary_credentials(
                     int(secondary_stage["api_id"]), str(secondary_stage["api_hash"]), secret_text
                 )
@@ -2152,13 +2152,13 @@ async def text_handler(client, message):
                 return await status_message.edit_text(
                     f"✅ <b>Secondary uploader connected</b>\nAccount: <b>{html.escape(username)}</b>\n"
                     "Credentials saved to the private GitHub Database repository.\n"
-                    "The main bot and active queue remain running.",
+                    "The main bot and active queue remain running. Check the account menu for live connection status.",
                     parse_mode=ParseMode.HTML,
                 )
             except Exception as exc:
                 log.warning("Secondary credential setup failed: %s", type(exc).__name__)
                 secondary_stage["step"] = "bot_token"
-                return await message.reply_text(
+                return await app.send_message(message.chat.id, 
                     f"❌ Could not validate or save the account: {html.escape(str(exc)[:250])}\n"
                     "Send the bot token again, or CANCEL.",
                     parse_mode=ParseMode.HTML,
