@@ -2216,6 +2216,14 @@ async def callback_handler(client, callback):
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
         await callback.answer(f"Simultaneous uploads set to {value}.")
         return await settings_cmd(client, callback.message, check_access=False)
+    if data.startswith("settings:backlog:"):
+        value = int(data.rsplit(":", 1)[-1])
+        if value not in {0, 1, 2}:
+            return await callback.answer("Choose a backlog of 0, 1, or 2 per worker.", show_alert=True)
+        await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(value))
+        await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer(f"Upload backlog set to {value} per worker.")
+        return await settings_cmd(client, callback.message, check_access=False)
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
         if direction == "up":
