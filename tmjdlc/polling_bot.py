@@ -330,7 +330,6 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
     async with video_upload_semaphore:
         chat_id = int(kwargs["chat_id"])
         candidates = [upload_client]
-        video_path = Path(str(kwargs.get("video") or ""))
         if chat_id < 0 and _helper_upload_clients:
             eligible = []
             for helper in _helper_upload_clients:
@@ -785,6 +784,11 @@ async def process_job(job: dict, identity: str):
                         "bytes": 0, "speed": 0.0,
                     }
                     part_size = part_path.stat().st_size
+                    if part_size > TELEGRAM_MAX_FILE_BYTES:
+                        raise RuntimeError(
+                            f"Split part {part_index}/{part_count} is still larger than the safe "
+                            f"Telegram limit ({part_size} > {TELEGRAM_MAX_FILE_BYTES} bytes)."
+                        )
                     log.info(
                         "Telegram upload started | job_id=%s video_id=%s part=%s/%s "
                         "size=%s destination=%s",
