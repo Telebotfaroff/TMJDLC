@@ -2056,7 +2056,7 @@ async def text_handler(client, message):
             active_uploads = counts.get("uploading", 0)
             return await message.reply_text(
                 f"🖥 Worker Status\nDownload workers: {active_downloads}/{parallel}\n"
-                f"Upload workers: {active_uploads}/2\nQueue polling: {POLL_SECONDS}s\n"
+                f"Upload workers: {active_uploads}/{MAX_UPLOAD_WORKERS}\nQueue polling: {POLL_SECONDS}s\n"
                 f"Free disk: {shutil.disk_usage(WORK).free / 1024**3:.1f} GiB"
             )
     if uid in download_state:
