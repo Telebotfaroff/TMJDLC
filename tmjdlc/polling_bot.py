@@ -1880,6 +1880,24 @@ async def text_handler(client, message):
     if await deny(message): return
     text = (message.text or "").strip()
     uid = message.from_user.id
+    editing_key = command_edit_state.pop(uid, None)
+    if editing_key:
+        if text.upper() == "CANCEL":
+            return await message.reply_text("Menu label change cancelled.")
+        label = text.strip()
+        if not label or len(label) > 40 or label.startswith("/"):
+            command_edit_state[uid] = editing_key
+            return await message.reply_text("Use a label of 1–40 characters (not a slash command), or send CANCEL.")
+        items = get_menu_items()
+        if any(item["key"] != editing_key and item["label"].casefold() == label.casefold() for item in items):
+            command_edit_state[uid] = editing_key
+            return await message.reply_text("That label is already used by another menu button. Choose a different label.")
+        for item in items:
+            if item["key"] == editing_key:
+                item["label"] = label
+        save_menu_items(items)
+        await asyncio.to_thread(queue.flush_snapshot)
+        return await render_menu_settings(message)
     menu = {item["label"]: item["action"] for item in get_menu_items() if item["enabled"]}
     if text in menu:
         action = menu[text]
@@ -1998,6 +2016,47 @@ async def callback_handler(client, callback):
         return await callback.answer("Not authorized.", show_alert=True)
     data = callback.data or ""
     global parallel
+    if data == "menu:show":
+        await callback.answer()
+        return await render_menu_settings(callback.message, edit=True)
+    if data == "menu:noop":
+        return await callback.answer()
+    if data == "menu:reset":
+        save_menu_items([dict(item) for item in DEFAULT_MENU_ITEMS])
+        await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer("Menu restored to defaults.")
+        return await render_menu_settings(callback.message, edit=True)
+    if data.startswith("menu:toggle:"):
+        key = data.rsplit(":", 1)[-1]
+        items = get_menu_items()
+        for item in items:
+            if item["key"] == key:
+                item["enabled"] = not item["enabled"]
+                break
+        save_menu_items(items)
+        await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer("Menu visibility updated.")
+        return await render_menu_settings(callback.message, edit=True)
+    if data.startswith("menu:rename:"):
+        key = data.rsplit(":", 1)[-1]
+        if key not in {item["key"] for item in DEFAULT_MENU_ITEMS}:
+            return await callback.answer("Unknown menu item.", show_alert=True)
+        command_edit_state[uid] = key
+        await callback.answer("Send the new label in chat.")
+        return await callback.message.reply_text("✏️ Send the new button label (1–40 characters). Send CANCEL to stop.")
+    if data.startswith("menu:move:"):
+        _, _, key, direction = data.split(":", 3)
+        items = get_menu_items()
+        index = next((i for i, item in enumerate(items) if item["key"] == key), -1)
+        target = index - 1 if direction == "up" else index + 1
+        if index >= 0 and 0 <= target < len(items):
+            items[index], items[target] = items[target], items[index]
+            for order, item in enumerate(items):
+                item["order"] = order
+            save_menu_items(items)
+            await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer("Menu order updated.")
+        return await render_menu_settings(callback.message, edit=True)
     if data == "home:show":
         counts = await asyncio.to_thread(queue.counts)
         free = shutil.disk_usage(WORK).free / (1024 ** 3)
