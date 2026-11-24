@@ -42,6 +42,8 @@ The main bot token receives updates. For Premium uploads up to 4GB, put your Pre
 - `/dl POST_URL` — enqueue one video.
 - `/queue` — show queue counts and recent jobs.
 - `/processes` — live download/upload workers, progress, and upload backlog.
+- `/channels` — scan Javtiful for channel URLs and browse the saved catalogue.
+- `/commands` — show/hide, rename, and reorder menu buttons.
 - `/cancel JOB_ID` — cancel a job.
 - `/retry JOB_ID` — requeue a failed job.
 - `/setup` and `/setupload CHANNEL_ID` — configure the destination.
