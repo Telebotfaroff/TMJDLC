@@ -1191,11 +1191,7 @@ command_edit_state: dict[int, str] = {}
 def get_menu_items() -> list[dict]:
     raw = queue.get_setting("menu_items", "")
     try:
-        if raw:
-            stored = json.loads(raw)
-        else:
-            config = github_store.read_json("config/commands.json", {"items": []})
-            stored = config.get("items", []) if isinstance(config, dict) else []
+        stored = json.loads(raw) if raw else []
     except (TypeError, json.JSONDecodeError):
         stored = []
     if not isinstance(stored, list):
@@ -1920,7 +1916,7 @@ async def text_handler(client, message):
         for item in items:
             if item["key"] == editing_key:
                 item["label"] = label
-        save_menu_items(items)
+        await asyncio.to_thread(save_menu_items, items)
         await asyncio.to_thread(queue.flush_snapshot)
         return await render_menu_settings(message)
     menu = {item["label"]: item["action"] for item in get_menu_items() if item["enabled"]}
@@ -2046,7 +2042,7 @@ async def callback_handler(client, callback):
     if data == "menu:noop":
         return await callback.answer()
     if data == "menu:reset":
-        save_menu_items([dict(item) for item in DEFAULT_MENU_ITEMS])
+        await asyncio.to_thread(save_menu_items, [dict(item) for item in DEFAULT_MENU_ITEMS])
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer("Menu restored to defaults.")
         return await render_menu_settings(callback.message, edit=True)
@@ -2421,6 +2417,10 @@ async def on_start(client):
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(configured_uploads))
     if not await asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", ""):
         await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS))
+    if not await asyncio.to_thread(queue.get_setting, "menu_items", ""):
+        menu_config = await asyncio.to_thread(github_store.read_json, "config/commands.json", {"items": []})
+        if isinstance(menu_config, dict) and menu_config.get("items"):
+            await asyncio.to_thread(queue.set_setting, "menu_items", json.dumps(menu_config["items"], ensure_ascii=False))
     global parallel
     parallel = max(1, min(MAX_WORKERS, int(await asyncio.to_thread(
         queue.get_setting, "download_concurrency", str(MAX_WORKERS)
