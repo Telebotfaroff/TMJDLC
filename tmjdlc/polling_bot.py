@@ -2364,6 +2364,7 @@ async def callback_handler(client, callback):
         job = await asyncio.to_thread(queue.get, job_id)
         if not job or job.get("status") not in {"queued", "downloading", "ready", "uploading"}:
             return await callback.answer("This task is no longer cancellable.", show_alert=True)
+        await callback.answer()
         return await callback.message.edit_text(
             f"✖ <b>Cancel task #{job_id}?</b>\n"
             f"Video ID: <code>{html.escape(str(job.get('video_id') or 'unknown'))}</code>\n"
