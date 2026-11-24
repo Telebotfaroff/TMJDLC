@@ -39,6 +39,8 @@ The main bot token receives updates and handles every upload. Videos larger than
 
 ## Commands
 
+- `/help` — show command and feature instructions.
+
 - Send a Javtiful channel URL or use `/batch CHANNEL_URL` to inspect pages and select video counts.
 - `/dl POST_URL` — enqueue one video.
 - `/queue` — show queue counts and recent jobs.
