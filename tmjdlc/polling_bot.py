@@ -21,7 +21,7 @@ from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
 from pyrogram.enums import ParseMode, ChatMemberStatus, ChatType
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from pyrogram.types import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup
 
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
@@ -2358,7 +2358,33 @@ async def log_update(client, message):
              bool(message.from_user and message.from_user.id in ADMINS))
 
 
+async def register_telegram_commands(client):
+    """Publish the supported bot commands in Telegram's Menu button."""
+    commands = [
+        BotCommand("start", "Open the main dashboard"),
+        BotCommand("help", "Show help and usage"),
+        BotCommand("panel", "Open the control panel"),
+        BotCommand("dl", "Download one Javtiful video"),
+        BotCommand("batch", "Download videos from a channel"),
+        BotCommand("queue", "Manage queued and active jobs"),
+        BotCommand("processes", "View live download and upload processes"),
+        BotCommand("storage", "Check available runtime storage"),
+        BotCommand("channels", "Browse the saved channel catalogue"),
+        BotCommand("catalogue", "Browse the saved channel catalogue"),
+        BotCommand("settings", "Configure workers and upload options"),
+        BotCommand("commands", "Customize the bot's inline menu"),
+        BotCommand("setup", "Configure the upload destination"),
+        BotCommand("setupload", "Set the Telegram upload channel"),
+        BotCommand("cancelsetup", "Cancel the current setup"),
+        BotCommand("cancel", "Cancel a job by its ID"),
+        BotCommand("retry", "Retry a failed job by its ID"),
+    ]
+    await client.set_bot_commands(commands)
+    log.info("Telegram command menu registered | commands=%s", len(commands))
+
+
 async def on_start(client):
+    await register_telegram_commands(client)
     await asyncio.to_thread(queue.initialize)
     if not await asyncio.to_thread(queue.get_setting, "download_concurrency", ""):
         await asyncio.to_thread(queue.set_setting, "download_concurrency", str(MAX_WORKERS))
