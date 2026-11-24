@@ -2073,7 +2073,7 @@ async def callback_handler(client, callback):
             items[index], items[target] = items[target], items[index]
             for order, item in enumerate(items):
                 item["order"] = order
-            save_menu_items(items)
+            await asyncio.to_thread(save_menu_items, items)
             await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer("Menu order updated.")
         return await render_menu_settings(callback.message, edit=True)
