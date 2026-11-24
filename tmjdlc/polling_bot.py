@@ -101,13 +101,9 @@ def probe_video(path: Path) -> dict:
 
 
 
-TG_SESSION_STRING = os.getenv("TG_SESSION_STRING", "").strip()
-TG_PREMIUM_UPLOAD = os.getenv("TG_PREMIUM_UPLOAD", "true").strip().lower() in {"1", "true", "yes", "on"}
-DEFAULT_TELEGRAM_FILE_BYTES = 4_000_000_000 if TG_SESSION_STRING and TG_PREMIUM_UPLOAD else 1_950_000_000
-TELEGRAM_MAX_FILE_BYTES = max(
-    256 * 1024 * 1024,
-    int(os.getenv("TMJDLC_TELEGRAM_MAX_FILE_BYTES", str(DEFAULT_TELEGRAM_FILE_BYTES))),
-)
+# Keep every Telegram video part safely below the 2 GB upload ceiling.
+# A small margin avoids boundary failures caused by multipart/container overhead.
+TELEGRAM_MAX_FILE_BYTES = 1_950_000_000
 
 
 def prepare_telegram_parts(path: Path, video_id: str) -> list[Path]:
@@ -233,10 +229,8 @@ app = Client(
     sleep_threshold=60,
 )
 
-# Keep media transfers off the update/command session. When a Premium user
-# session is configured, the uploader uses that account for its larger file limit;
-# otherwise it falls back to the main bot token. Both sessions maintain peer caches.
-upload_auth = {"session_string": TG_SESSION_STRING} if TG_SESSION_STRING else {"bot_token": TOKEN}
+# Use the bot token for every upload. Oversized videos are split into
+# independently playable parts below TELEGRAM_MAX_FILE_BYTES before sending.
 upload_client = Client(
     "tmjdlc_upload",
     api_id=API_ID,
@@ -245,7 +239,7 @@ upload_client = Client(
     workers=4,
     max_concurrent_transmissions=UPLOAD_TRANSMISSION_SLOTS,
     sleep_threshold=60,
-    **upload_auth,
+    bot_token=TOKEN,
 )
 
 
@@ -398,18 +392,7 @@ async def send_video_with_slot(status_chat_id, status_message_id, **kwargs):
         chat_id = int(kwargs["chat_id"])
         candidates = [upload_client]
         video_path = Path(str(kwargs.get("video") or ""))
-        premium_large_file = (
-            TG_SESSION_STRING and TG_PREMIUM_UPLOAD and video_path.is_file()
-            and video_path.stat().st_size > 1_950_000_000
-        )
-        if premium_large_file and chat_id < 0:
-            premium_me = await upload_client.get_me()
-            premium_member = await upload_client.get_chat_member(chat_id, premium_me.id)
-            if premium_member.status not in {ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.OWNER}:
-                raise RuntimeError("The Premium upload account must also be an administrator in the destination channel.")
-            if getattr(premium_member, "can_post_messages", True) is False:
-                raise RuntimeError("The Premium upload account does not have permission to post in the destination channel.")
-        if chat_id < 0 and _helper_upload_clients and not premium_large_file:
+        if chat_id < 0 and _helper_upload_clients:
             eligible = []
             for helper in _helper_upload_clients:
                 if await _helper_can_post(helper, chat_id):
@@ -2490,7 +2473,7 @@ async def run_bot():
         log.info(
             "TMJDLC started | update=tmjdlc_bot | primary_upload_auth=%s "
             "| helper_uploaders=%s | max_concurrent_transmissions=%s",
-            "premium_user_session" if TG_SESSION_STRING and TG_PREMIUM_UPLOAD else "bot_token",
+            "bot_token",
             len(_helper_upload_clients), UPLOAD_TRANSMISSION_SLOTS,
         )
         await idle()
