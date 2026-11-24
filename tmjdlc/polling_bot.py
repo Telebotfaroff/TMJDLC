@@ -52,7 +52,7 @@ API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
 MAX_WORKERS = max(1, min(2, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
-UPLOAD_WORKERS = max(1, min(32, int(os.getenv("TMJDLC_UPLOAD_WORKERS", "8"))))
+UPLOAD_TRANSMISSION_SLOTS = max(1, min(32, int(os.getenv("TMJDLC_UPLOAD_TRANSMISSION_SLOTS", os.getenv("TMJDLC_UPLOAD_WORKERS", "8")))))
 HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
 UPLOAD_FLOOD_RETRY_LIMIT = max(1, min(10, int(os.getenv("TMJDLC_UPLOAD_FLOOD_RETRIES", "5"))))
 DOWNLOAD_FRAGMENTS = max(1, min(16, int(os.getenv("TMJDLC_DOWNLOAD_FRAGMENTS", "8"))))
@@ -243,7 +243,7 @@ upload_client = Client(
     api_hash=API_HASH,
     no_updates=True,
     workers=4,
-    max_concurrent_transmissions=UPLOAD_WORKERS,
+    max_concurrent_transmissions=UPLOAD_TRANSMISSION_SLOTS,
     sleep_threshold=60,
     **upload_auth,
 )
@@ -2489,7 +2489,7 @@ async def run_bot():
             "TMJDLC started | update=tmjdlc_bot | primary_upload_auth=%s "
             "| helper_uploaders=%s | max_concurrent_transmissions=%s",
             "premium_user_session" if TG_SESSION_STRING and TG_PREMIUM_UPLOAD else "bot_token",
-            len(_helper_upload_clients), UPLOAD_WORKERS,
+            len(_helper_upload_clients), UPLOAD_TRANSMISSION_SLOTS,
         )
         await idle()
     finally:
