@@ -236,7 +236,8 @@ async def _resolve_client_upload_peer(client: Client, peer_id: int):
 async def sync_upload_peer(peer_id: int) -> None:
     """Warm the destination separately for every bot account using its own peer hash."""
     peer_id = int(peer_id)
-    for client in [upload_client, *_helper_upload_clients]:
+    clients = [upload_client] if peer_id > 0 else [upload_client, *_helper_upload_clients]
+    for client in clients:
         key = (id(client), peer_id)
         if key in _synced_upload_peers:
             continue
@@ -2271,7 +2272,7 @@ async def callback_handler(client, callback):
         await callback.answer()
         return await callback.message.edit_text(
             f"🖥 <b>Worker Status</b>\nDownload workers: {active_downloads}/{parallel}\n"
-            f"Upload workers: {active_uploads}/2\nQueue polling: {POLL_SECONDS}s\nLease: {LEASE}s",
+            f"Upload workers: {active_uploads}/{MAX_UPLOAD_WORKERS}\nQueue polling: {POLL_SECONDS}s\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
     if data.startswith("settings:destination:"):
