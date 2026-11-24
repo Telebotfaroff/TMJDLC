@@ -1241,6 +1241,7 @@ def batch_keyboard(uid: int) -> InlineKeyboardMarkup:
             InlineKeyboardButton("Latest 10" + (" ✓" if selection == "latest:10" else ""), callback_data="channel:select:latest:10"),
             InlineKeyboardButton("Latest 25" + (" ✓" if selection == "latest:25" else ""), callback_data="channel:select:latest:25"),
             InlineKeyboardButton("Latest 50" + (" ✓" if selection == "latest:50" else ""), callback_data="channel:select:latest:50"),
+            InlineKeyboardButton("Latest 100" + (" ✓" if selection == "latest:100" else ""), callback_data="channel:select:latest:100"),
         ],
         [InlineKeyboardButton("✍️ Custom pages", callback_data="channel:custom_pages")],
         [InlineKeyboardButton(f"⏭ Skip existing: {skip}", callback_data="channel:toggle:skip")],
@@ -1259,6 +1260,7 @@ def batch_summary(info, state: dict) -> str:
         "latest:10": "Latest 10 videos",
         "latest:25": "Latest 25 videos",
         "latest:50": "Latest 50 videos",
+        "latest:100": "Latest 100 videos",
         "custom": f"Pages {state.get('pages', [])}",
     }.get(selection, selection)
     return (
@@ -2168,7 +2170,7 @@ async def callback_handler(client, callback):
         value = data.removeprefix("channel:select:")
         if value in {"new", "all"}:
             state["selection"] = value
-        elif value in {"latest:10", "latest:25", "latest:50"}:
+        elif value in {"latest:10", "latest:25", "latest:50", "latest:100"}:
             state["selection"] = value
         else:
             return await callback.answer("Unknown selection.", show_alert=True)
