@@ -527,6 +527,49 @@ class JobQueue:
                   width=EXCLUDED.width,height=EXCLUDED.height,updated_at=now()
             """, (video_id, job_id, file_path, file_size, duration_seconds, width, height))
 
+    def save_upload_record(self, record: dict[str, Any]) -> str:
+        """Persist complete delivery metadata locally and as an individual GitHub JSON record."""
+        payload = dict(record)
+        telegram = payload.get("telegram") or {}
+        parts = telegram.get("parts") or []
+        last_part = parts[-1] if parts else {}
+        gofile = payload.get("gofile") or {}
+        metadata = json.dumps(payload, ensure_ascii=False, default=str)
+        job_id = int(payload["job_id"])
+        with self.connect() as conn:
+            conn.execute("""
+                INSERT INTO tmjdlc_upload_records (
+                    job_id,video_id,source_url,filename,file_size,duration_seconds,
+                    width,height,upload_destination,telegram_chat_id,
+                    telegram_message_id,telegram_file_id,gofile_file_id,
+                    gofile_download_url,metadata,uploaded_at
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT(job_id) DO UPDATE SET
+                    video_id=excluded.video_id,source_url=excluded.source_url,
+                    filename=excluded.filename,file_size=excluded.file_size,
+                    duration_seconds=excluded.duration_seconds,width=excluded.width,
+                    height=excluded.height,upload_destination=excluded.upload_destination,
+                    telegram_chat_id=excluded.telegram_chat_id,
+                    telegram_message_id=excluded.telegram_message_id,
+                    telegram_file_id=excluded.telegram_file_id,
+                    gofile_file_id=excluded.gofile_file_id,
+                    gofile_download_url=excluded.gofile_download_url,
+                    metadata=excluded.metadata,uploaded_at=excluded.uploaded_at
+            """, (
+                job_id, str(payload.get("video_id") or ""),
+                str(payload.get("source_url") or ""), str(payload.get("filename") or ""),
+                int(payload.get("file_size") or 0), float(payload.get("duration_seconds") or 0),
+                payload.get("width"), payload.get("height"),
+                str(payload.get("upload_destination") or "telegram"),
+                last_part.get("chat_id") or telegram.get("chat_id"),
+                last_part.get("message_id") or telegram.get("message_id"),
+                last_part.get("file_id"), gofile.get("id") or gofile.get("file_id"),
+                gofile.get("download_url"), metadata, payload.get("uploaded_at"),
+            ))
+        path = self.store.save_upload_record(payload)
+        self.flush_snapshot()
+        return path
+
     def clear_media_path(self, video_id: str) -> None:
         """Forget the temporary local path after its media has been uploaded and cleaned."""
         with self.connect() as conn:
