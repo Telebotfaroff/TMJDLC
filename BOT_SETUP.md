@@ -18,7 +18,7 @@ On first startup, TMJDLC creates:
 - `config/commands.json` — customizable Telegram menu labels, visibility, and order.
 - `catalogue/channels.json` — saved Javtiful channel catalogue.
 - `database/tmjdlc.sqlite3.gz` — compressed durable SQLite snapshot.
-- `uploads/YYYY/MM/<job-id>.json` — complete per-upload receipts and metadata.
+- `uploads/records/<job-id>.json` — complete per-upload receipts and metadata.
 
 After first startup, open `config/secrets.json` in the private repository and enter your Telegram credentials. Do not add `GITHUB_TOKEN` to the repository.
 
