@@ -424,7 +424,10 @@ class JobQueue:
                 RETURNING id
             """, (status, output_path, error, status, lease_seconds, status, status,
                   job_id, worker_id)).fetchone()
-            return row is not None
+            changed = row is not None
+        if changed and status in {"ready", "completed", "failed", "cancelled"}:
+            self.flush_snapshot()
+        return changed
 
     def request_cancel(self, job_id: int) -> str | None:
         """Immediately cancel queued jobs; request cooperative cancellation for active jobs."""
