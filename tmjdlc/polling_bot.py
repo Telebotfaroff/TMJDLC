@@ -1812,6 +1812,7 @@ async def callback_handler(client, callback):
              InlineKeyboardButton("⚙️ Settings", callback_data="home:settings")],
             [InlineKeyboardButton("💽 Storage", callback_data="home:storage"),
              InlineKeyboardButton("🖥 Worker status", callback_data="home:worker")],
+            [InlineKeyboardButton("⚡ Live Processes", callback_data="home:processes")],
         ])
         await callback.answer()
         return await callback.message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
