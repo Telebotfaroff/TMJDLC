@@ -84,7 +84,7 @@ def parse_channel_links(html: str, base_url: str = BASE_URL) -> list[dict[str, s
     for anchor in soup.select("a[href]"):
         absolute = urljoin(base_url, anchor.get("href", "").strip())
         parsed = urlsplit(absolute)
-        match = CHANNEL_RE.fullmatch(parsed.path)
+        match = CHANNEL_RE.fullmatch(parsed.path.rstrip("/"))
         if parsed.hostname not in {"javtiful.com", "www.javtiful.com"} or not match:
             continue
         url = f"{BASE_URL}/channel/{match.group(1)}"
@@ -163,7 +163,7 @@ class JavtifulChannelScraper:
                 parsed = urlsplit(absolute)
                 if parsed.hostname not in {"javtiful.com", "www.javtiful.com"}:
                     continue
-                if CHANNEL_RE.fullmatch(parsed.path) or VIDEO_RE.match(parsed.path):
+                if CHANNEL_RE.fullmatch(parsed.path.rstrip("/")) or VIDEO_RE.match(parsed.path.rstrip("/")):
                     continue
                 path = parsed.path.lower().rstrip("/") or "/"
                 query = parse_qs(parsed.query)
