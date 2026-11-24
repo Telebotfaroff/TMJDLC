@@ -51,6 +51,7 @@ The primary bot token receives updates and handles control commands. Telegram up
 - `/retry JOB_ID` — requeue a failed job.
 - `/setup` and `/setupload CHANNEL_ID` — configure the destination.
 - `/settings` — configure worker counts and upload settings.
+- `/settings` → **Manage secondary Telegram account** — add/update or disconnect the upload-only bot directly from Telegram. The bot validates the credentials, saves them to `config/secrets.json` in the private GitHub data repository, and reconnects upload-only clients without restarting the Colab runtime.
 
 ## Worker behavior
 
