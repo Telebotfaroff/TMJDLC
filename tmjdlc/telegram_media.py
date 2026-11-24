@@ -29,7 +29,7 @@ def prepare_telegram_parts(
 ) -> list[Path]:
     """Return the original file or split it into playable MP4 parts below Telegram's limit."""
     path = Path(path)
-    max_file_bytes = min(TELEGRAM_MAX_FILE_BYTES, max(256 * 1024 * 1024, int(max_file_bytes)))
+    max_file_bytes = min(TELEGRAM_MAX_FILE_BYTES, max(1, int(max_file_bytes)))
     if path.stat().st_size <= max_file_bytes:
         return [path]
 
