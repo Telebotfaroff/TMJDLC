@@ -185,6 +185,19 @@ class GitHubDataStore:
                 merged = {**value, **current}
                 if merged != current:
                     self.write_json(path, merged, f"Add TMJDLC defaults: {path}")
+        # Remove legacy Premium-user upload credentials/settings from old installs.
+        secrets = self.read_json("config/secrets.json", {})
+        if isinstance(secrets, dict):
+            changed = False
+            for obsolete_key in ("TG_SESSION_STRING", "TG_PREMIUM_UPLOAD"):
+                if obsolete_key in secrets:
+                    secrets.pop(obsolete_key, None)
+                    changed = True
+            if changed:
+                self.write_json(
+                    "config/secrets.json", secrets,
+                    "Remove deprecated Premium upload configuration",
+                )
 
     def ensure_private_repository(self) -> None:
         response = self.session.get(self.base_url, timeout=self.timeout)
