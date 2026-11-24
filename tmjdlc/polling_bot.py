@@ -21,7 +21,7 @@ from pyrogram import Client, filters, idle
 from pyrogram.errors import FloodWait
 from pyrogram.enums import ParseMode, ChatMemberStatus, ChatType
 from pyrogram.handlers import CallbackQueryHandler, MessageHandler
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from tmjdlc.bot_queue import JobQueue
 from tmjdlc.providers.javtiful import JavtifulProvider
@@ -1144,17 +1144,6 @@ def save_menu_items(items: list[dict]) -> None:
     github_store.write_json("config/commands.json", {"items": ordered}, "Update TMJDLC Telegram menu layout")
 
 
-def build_reply_keyboard() -> ReplyKeyboardMarkup:
-    visible = [item for item in get_menu_items() if item["enabled"]]
-    rows = [
-        [KeyboardButton(item["label"]) for item in visible[index:index + 2]]
-        for index in range(0, len(visible), 2)
-    ]
-    if not rows:
-        rows = [[KeyboardButton("/panel"), KeyboardButton("/commands")]]
-    return ReplyKeyboardMarkup(rows, resize_keyboard=True, is_persistent=True)
-
-
 def build_panel_keyboard() -> InlineKeyboardMarkup:
     visible = [item for item in get_menu_items() if item["enabled"]]
     rows = [
@@ -1229,7 +1218,6 @@ async def help_cmd(client, message):
 
 async def start_cmd(client, message):
     if await deny(message): return
-    keyboard = build_reply_keyboard()
     configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
     if not configured_video:
         setup_state[message.from_user.id] = "upload_channel"
@@ -1247,10 +1235,6 @@ async def start_cmd(client, message):
             "Use /setupload to change it.",
             parse_mode=ParseMode.HTML,
         )
-    await message.reply_text(
-        "🎬 <b>TMJDLC · Javtiful Downloader</b>\\nChoose an action or send a Javtiful video URL.",
-        reply_markup=keyboard, parse_mode=ParseMode.HTML,
-    )
     await panel_cmd(client, message)
 
 
@@ -1261,11 +1245,13 @@ async def panel_cmd(client, message):
     counts = await asyncio.to_thread(queue.counts)
     free = shutil.disk_usage(WORK).free / (1024 ** 3)
     running = counts.get("downloading", 0) + counts.get("ready", 0) + counts.get("uploading", 0)
+    download_workers = int(await asyncio.to_thread(queue.get_setting, "parallel_downloads", str(MAX_WORKERS)) or MAX_WORKERS)
+    upload_workers = int(await asyncio.to_thread(queue.get_setting, "upload_concurrency", "1") or 1)
     body = (
-        "🎬 <b>TMJDLC · Javtiful Downloader</b>\\n\\n"
-        f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\\n"
-        f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\\n"
-        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>up to 2 downloads + 2 uploads</b>"
+        "🎬 <b>TMJDLC · Javtiful Downloader</b>\n\n"
+        f"⚡ Active: <b>{running}</b> · 🕒 Queued: <b>{counts.get('queued', 0)}</b>\n"
+        f"✅ Completed: <b>{counts.get('completed', 0)}</b> · ❌ Failed: <b>{counts.get('failed', 0)}</b>\n"
+        f"💽 Free storage: <b>{free:.1f} GiB</b> · ⚙️ Pipeline: <b>{download_workers} downloads + {upload_workers} uploads</b>"
     )
     markup = build_panel_keyboard()
     await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
