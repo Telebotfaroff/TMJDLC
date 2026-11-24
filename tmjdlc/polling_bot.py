@@ -64,7 +64,9 @@ LEASE = max(900, int(os.getenv("TMJDLC_JOB_LEASE_SECONDS", "3600")))
 WORK = Path(os.getenv("TMJDLC_WORK_DIR", "/content/tmjdlc-bot"))
 MIN_FREE_DISK_GB = float(os.getenv("TMJDLC_MIN_FREE_DISK_GB", "3"))
 AUTO_CLEAN = os.getenv("TMJDLC_AUTO_CLEAN", "true").strip().lower() in {"1", "true", "yes", "on"}
-PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "2")))
+PROGRESS_STEP = max(1, int(os.getenv("TMJDLC_NOTIFY_PROGRESS_STEP", "5")))
+PROGRESS_INTERVAL_SECONDS = max(3.0, float(os.getenv("TMJDLC_NOTIFY_INTERVAL_SECONDS", "5")))
+CHAT_EDIT_INTERVAL_SECONDS = max(1.0, float(os.getenv("TMJDLC_CHAT_EDIT_INTERVAL_SECONDS", "1.2")))
 VIDEO_ID = re.compile(r"/video/(\d+)", re.I)
 CHANNEL_URL = re.compile(r"https?://(?:www\.)?javtiful\.com/channel/[\w-]+", re.I)
 
@@ -148,6 +150,8 @@ upload_ready_event = asyncio.Event()
 # Worker progress/completion messages can be paused independently of queue processing.
 progress_notifications_enabled = True
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
+_chat_status_edit_locks: dict[int, asyncio.Lock] = {}
+_chat_status_edit_last_sent: dict[int, float] = {}
 _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
@@ -274,17 +278,26 @@ async def deny(message) -> bool:
 async def status_edit(chat_id, message_id, text):
     if not progress_notifications_enabled or not chat_id or not message_id:
         return
-    key = (int(chat_id), int(message_id))
-    lock = _status_edit_locks.setdefault(key, asyncio.Lock())
-    async with lock:
-        try:
-            await app.edit_message_text(chat_id, message_id, text[:4000],
-                                        parse_mode=ParseMode.HTML)
-        except Exception as exc:
-            if "MESSAGE_NOT_MODIFIED" in str(exc):
-                return
-            log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
-                        chat_id, message_id, exc)
+    chat_id, message_id = int(chat_id), int(message_id)
+    key = (chat_id, message_id)
+    message_lock = _status_edit_locks.setdefault(key, asyncio.Lock())
+    chat_lock = _chat_status_edit_locks.setdefault(chat_id, asyncio.Lock())
+    async with message_lock:
+        async with chat_lock:
+            # Keep edits to separate job messages from bursting into the same chat.
+            now = time.monotonic()
+            wait_for = CHAT_EDIT_INTERVAL_SECONDS - (now - _chat_status_edit_last_sent.get(chat_id, 0.0))
+            if wait_for > 0:
+                await asyncio.sleep(wait_for)
+            _chat_status_edit_last_sent[chat_id] = time.monotonic()
+            try:
+                await app.edit_message_text(chat_id, message_id, text[:4000],
+                                            parse_mode=ParseMode.HTML)
+            except Exception as exc:
+                if "MESSAGE_NOT_MODIFIED" in str(exc):
+                    return
+                log.warning("Could not edit status message chat_id=%s message_id=%s: %s",
+                            chat_id, message_id, exc)
 
 
 async def resolve_destination_cached(value: str, client: Client = app):
@@ -542,8 +555,8 @@ async def download_job(job: dict, identity: str):
                 percent = min(100, int(done * 100 / total))
                 queue.update_progress(jid, identity, "downloading", percent)
                 now = time.monotonic()
-                if (percent >= last_notice["percent"] + PROGRESS_STEP
-                        or now - last_notice["time"] >= 2 or percent >= 100):
+                if (now - last_notice["time"] >= PROGRESS_INTERVAL_SECONDS
+                        and (percent >= last_notice["percent"] + PROGRESS_STEP or percent >= 100)):
                     last_notice.update(percent=percent, time=now)
                     if chat_id and message_id:
                         notice = _progress_text(
@@ -686,8 +699,8 @@ async def process_job(job: dict, identity: str):
                         percent = min(100, int(done * 100 / total))
                         queue.update_progress(jid, identity, "downloading", percent)
                         now = time.monotonic()
-                        if (percent >= last_download_notice["percent"] + PROGRESS_STEP
-                                or now - last_download_notice["time"] >= 2 or percent >= 100):
+                        if (now - last_download_notice["time"] >= PROGRESS_INTERVAL_SECONDS
+                                and (percent >= last_download_notice["percent"] + PROGRESS_STEP or percent >= 100)):
                             last_download_notice.update(percent=percent, time=now)
                             if chat_id and message_id:
                                 notice = _progress_text(
@@ -826,8 +839,8 @@ async def process_job(job: dict, identity: str):
                             else last_upload_notice["speed"] * 0.65 + instant_speed * 0.35
                         )
                         percent = min(100, int(current * 100 / total))
-                        if (percent >= last_upload_notice["percent"] + PROGRESS_STEP
-                                or elapsed >= 2 or percent >= 100):
+                        if (elapsed >= PROGRESS_INTERVAL_SECONDS
+                                and (percent >= last_upload_notice["percent"] + PROGRESS_STEP or percent >= 100)):
                             speed = last_upload_notice["speed"]
                             eta = (total - current) / speed if speed else None
                             overall_done = uploaded_bytes_before + current
