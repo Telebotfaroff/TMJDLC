@@ -38,7 +38,7 @@ The bot uses WZGram (Pyrogram-compatible MTProto client) for Telegram updates an
 
 ## Configuration
 
-Set only `GITHUB_TOKEN` in Colab. The token must have Contents: Read and write access to the private `gitroff/Database` repository. On first startup, TMJDLC creates the repository layout; add Telegram credentials to `config/secrets.json` there. Bot settings are persisted through the data repository. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and video thumbnail generation.
+Set only `GITHUB_TOKEN` in Colab. The token must have Contents: Read and write access to the private `gitroff/Database` repository. On first startup, TMJDLC creates the repository layout; add Telegram credentials to `config/secrets.json` there. For Premium uploads up to 4GB, also add your Premium MTProto session string as `TG_SESSION_STRING` and keep `TG_PREMIUM_UPLOAD=true`. Bot settings are persisted through the data repository. Optional `TG_HELPER_BOT_TOKENS` accepts comma- or space-separated helper bot tokens. Keep it empty to use only the primary upload bot. FFmpeg and FFprobe are required for media validation and video thumbnail generation.
 
 The worker pauses new downloads when free disk falls below `TMJDLC_MIN_FREE_DISK_GB` (default 3 GiB). Set `TMJDLC_AUTO_CLEAN=false` to disable local-file cleanup.
 
