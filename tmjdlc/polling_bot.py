@@ -2098,8 +2098,10 @@ async def destination_cmd(client, message, *, edit=False):
     return await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
 
 
-async def settings_cmd(client, message, check_access=True):
-    if check_access and await deny(message): return
+async def settings_cmd(client, message, check_access=True, *, edit=False, section="home"):
+    """Render the settings hub or one category in-place."""
+    if check_access and await deny(message):
+        return
     video, paused, upload_concurrency, notifications, upload_destination, upload_backlog, background_download = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
@@ -2114,50 +2116,84 @@ async def settings_cmd(client, message, check_access=True):
     paused = str(paused).lower() in {"1", "true", "yes", "on"}
     notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     background_download = str(background_download).lower() in {"1", "true", "yes", "on"}
-    secondary_status = "🟢 CONNECTED" if _secondary_upload_client and _secondary_upload_client.is_connected else ("🟡 CONFIGURED" if SECONDARY_CONFIGURED else "⚪ NOT SET")
-    video_label = html.escape(str(video))
-    body = (
-        "╭━━━━━━━━━━━━━━━━━━━━━━╮\n"
-        "       <b>⚙️ TMJDLC SETTINGS</b>\n"
-        "       <i>Control every part of your bot</i>\n"
-        "╰━━━━━━━━━━━━━━━━━━━━━━╯\n\n"
-        "🎞 <b>UPLOAD DESTINATION</b>\n"
-        f"Channel: <code>{video_label}</code>\n"
-        f"Delivery: <b>{html.escape(str(upload_destination).upper())}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "⚡ <b>WORKER & UPLOAD</b>\n"
-        f"Download workers: <b>{parallel}/{MAX_WORKERS}</b> (live adjustable)\n"
-        f"Simultaneous upload workers: <b>{upload_concurrency}/{MAX_UPLOAD_WORKERS}</b> (live adjustable)\n"
-        f"Ready backlog: <b>{upload_backlog} per worker</b>\n"
-        f"Background pre-download: <b>{'ON' if background_download else 'OFF'}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "📋 <b>QUEUE & NOTIFICATIONS</b>\n"
-        f"Queue: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
-        f"Progress notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        f"🤖 <b>SECONDARY UPLOADER</b>  {secondary_status}\n"
-        "<i>Credentials remain hidden in your private Database repository.</i>"
-    )
-    markup = InlineKeyboardMarkup([
-        [InlineKeyboardButton("🎞  Upload destination", callback_data="settings:video"),
-         InlineKeyboardButton("☁️  Delivery mode", callback_data="home:destination")],
-        [InlineKeyboardButton("⬇️ Download −", callback_data="settings:workers:down"),
-         InlineKeyboardButton(f"Downloads · {parallel}/4", callback_data="settings:workers:show"),
-         InlineKeyboardButton("＋", callback_data="settings:workers:up")],
-        [InlineKeyboardButton("⬆️ Upload workers", callback_data="settings:section:uploads")],
-        [InlineKeyboardButton(f"{n} " + ("✓" if upload_concurrency == n else "uploads"), callback_data=f"settings:uploads:{n}") for n in (1, 2)],
-        [InlineKeyboardButton(f"{n} " + ("✓" if upload_concurrency == n else "uploads"), callback_data=f"settings:uploads:{n}") for n in (3, 4)],
-        [InlineKeyboardButton("📦 Backlog 0" + (" ✓" if upload_backlog == 0 else ""), callback_data="settings:backlog:0"),
-         InlineKeyboardButton("Backlog 1" + (" ✓" if upload_backlog == 1 else ""), callback_data="settings:backlog:1"),
-         InlineKeyboardButton("Backlog 2" + (" ✓" if upload_backlog == 2 else ""), callback_data="settings:backlog:2")],
-        [InlineKeyboardButton("🚀 Background download: " + ("ON" if background_download else "OFF"), callback_data="settings:background_download:toggle")],
-        [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue", callback_data="queue:pause" if not paused else "queue:resume"),
-         InlineKeyboardButton("🔔 Notifications " + ("ON" if notifications else "OFF"), callback_data="settings:notifications:" + ("off" if notifications else "on"))],
-        [InlineKeyboardButton("🤖  Manage secondary account", callback_data="settings:secondary:menu")],
-        [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
-         InlineKeyboardButton("🏠 Dashboard", callback_data="home:show")],
-    ])
-    await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    secondary_status = "🟢 Connected" if _secondary_upload_client and _secondary_upload_client.is_connected else ("🟡 Configured" if SECONDARY_CONFIGURED else "⚪ Not configured")
+
+    if section == "workers":
+        body = (
+            "⚙️ <b>TRANSFER WORKERS</b>\n"
+            "<i>Changes apply immediately; no Colab restart required.</i>\n\n"
+            f"⬇️ Download workers: <b>{parallel}/{MAX_WORKERS}</b>\n"
+            f"⬆️ Upload workers: <b>{upload_concurrency}/{MAX_UPLOAD_WORKERS}</b>\n"
+            f"📦 Ready backlog: <b>{upload_backlog} per worker</b>\n"
+            f"🚀 Background pre-download: <b>{'ON' if background_download else 'OFF'}</b>"
+        )
+        rows = [
+            [InlineKeyboardButton("⬇️ Download −", callback_data="settings:workers:down"),
+             InlineKeyboardButton(f"Downloads {parallel}/4", callback_data="settings:workers:show"),
+             InlineKeyboardButton("＋", callback_data="settings:workers:up")],
+            [InlineKeyboardButton(f"{n} uploads" + (" ✓" if upload_concurrency == n else ""), callback_data=f"settings:uploads:{n}") for n in (1, 2)],
+            [InlineKeyboardButton(f"{n} uploads" + (" ✓" if upload_concurrency == n else ""), callback_data=f"settings:uploads:{n}") for n in (3, 4)],
+            [InlineKeyboardButton(f"Backlog {n}" + (" ✓" if upload_backlog == n else ""), callback_data=f"settings:backlog:{n}") for n in (0, 1, 2)],
+            [InlineKeyboardButton("🚀 Background pre-download: " + ("ON" if background_download else "OFF"), callback_data="settings:background_download:toggle")],
+        ]
+    elif section == "destination":
+        body = (
+            "🎞 <b>UPLOAD DESTINATION</b>\n\n"
+            f"Channel: <code>{html.escape(str(video))}</code>\n"
+            f"Delivery mode: <b>{html.escape(str(upload_destination).upper())}</b>\n\n"
+            "<i>Choose where completed videos are delivered.</i>"
+        )
+        rows = [
+            [InlineKeyboardButton("🎞 Set Telegram channel", callback_data="settings:video")],
+            [InlineKeyboardButton("📨 Telegram" + (" ✓" if upload_destination == "telegram" else ""), callback_data="settings:destination:telegram")],
+            [InlineKeyboardButton("☁️ GoFile" + (" ✓" if upload_destination == "gofile" else ""), callback_data="settings:destination:gofile")],
+            [InlineKeyboardButton("📨 + ☁️ Both" + (" ✓" if upload_destination == "both" else ""), callback_data="settings:destination:both")],
+        ]
+    elif section == "queue":
+        body = (
+            "📋 <b>QUEUE & NOTIFICATIONS</b>\n\n"
+            f"Queue processing: <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
+            f"Progress notifications: <b>{'ON' if notifications else 'PAUSED'}</b>\n\n"
+            "<i>Pausing the queue lets active transfers finish.</i>"
+        )
+        rows = [
+            [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue", callback_data="queue:pause" if not paused else "queue:resume")],
+            [InlineKeyboardButton("🔔 Notifications " + ("ON" if notifications else "OFF"), callback_data="settings:notifications:" + ("off" if notifications else "on"))],
+            [InlineKeyboardButton("📋 Open queue manager", callback_data="home:queue")],
+        ]
+    elif section == "account":
+        body = (
+            "🤖 <b>TELEGRAM ACCOUNTS</b>\n\n"
+            f"Secondary uploader: <b>{secondary_status}</b>\n\n"
+            "<i>The secondary account uploads only. Credentials are stored privately and never displayed.</i>"
+        )
+        rows = [[InlineKeyboardButton("🤖 Manage secondary uploader", callback_data="settings:secondary:menu")]]
+    else:
+        body = (
+            "⚙️ <b>TMJDLC SETTINGS</b>\n"
+            "<i>Choose a category to configure.</i>\n\n"
+            f"⬇️ Downloads <b>{parallel}/{MAX_WORKERS}</b>  ·  ⬆️ Uploads <b>{upload_concurrency}/{MAX_UPLOAD_WORKERS}</b>\n"
+            f"🎞 Destination <b>{html.escape(str(upload_destination).upper())}</b>\n"
+            f"📋 Queue <b>{'PAUSED' if paused else 'RUNNING'}</b>  ·  🔔 Notifications <b>{'ON' if notifications else 'OFF'}</b>\n"
+            f"🤖 Secondary uploader <b>{secondary_status}</b>"
+        )
+        rows = [
+            [InlineKeyboardButton("⚡ Transfer workers & buffer", callback_data="settings:section:workers")],
+            [InlineKeyboardButton("🎞 Upload destination", callback_data="settings:section:destination")],
+            [InlineKeyboardButton("📋 Queue & notifications", callback_data="settings:section:queue")],
+            [InlineKeyboardButton("🤖 Telegram accounts", callback_data="settings:section:account")],
+            [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
+             InlineKeyboardButton("🏠 Dashboard", callback_data="home:show")],
+        ]
+
+    if section != "home":
+        rows.append([InlineKeyboardButton("⬅️ Settings home", callback_data="settings:section:home"),
+                     InlineKeyboardButton("🏠 Dashboard", callback_data="home:show")])
+    markup = InlineKeyboardMarkup(rows)
+    if edit:
+        return await message.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+    return await message.reply_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
+
 
 
 async def set_channel(message, key):
