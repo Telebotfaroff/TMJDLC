@@ -2157,7 +2157,7 @@ async def settings_cmd(client, message, check_access=True, *, edit=False, sectio
             "<i>Pausing the queue lets active transfers finish.</i>"
         )
         rows = [
-            [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue", callback_data="queue:pause" if not paused else "queue:resume")],
+            [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue", callback_data="settings:queue:pause" if not paused else "settings:queue:resume")],
             [InlineKeyboardButton("🔔 Notifications " + ("ON" if notifications else "OFF"), callback_data="settings:notifications:" + ("off" if notifications else "on"))],
             [InlineKeyboardButton("📋 Open queue manager", callback_data="home:queue")],
         ]
@@ -2738,7 +2738,8 @@ async def callback_handler(client, callback):
                 parse_mode=ParseMode.HTML,
             )
     if data == "settings:secondary:back":
-        await callback.answer()
+        secondary_setup_state.pop(uid, None)
+        await callback.answer("Setup cancelled.")
         return await settings_cmd(client, callback.message, check_access=False, edit=True, section="account")
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
@@ -2753,6 +2754,12 @@ async def callback_handler(client, callback):
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ Cancel", callback_data="settings:section:destination")]]),
             parse_mode=ParseMode.HTML,
         )
+    if data in {"settings:queue:pause", "settings:queue:resume"}:
+        paused_now = data.endswith(":pause")
+        await asyncio.to_thread(queue.set_setting, "queue_paused", "true" if paused_now else "false")
+        await asyncio.to_thread(queue.flush_snapshot)
+        await callback.answer("Queue paused. Active transfers will finish." if paused_now else "Queue resumed.")
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="queue")
     if data.startswith("settings:notifications:"):
         enabled = data.rsplit(":", 1)[-1] == "on"
         global progress_notifications_enabled
