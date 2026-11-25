@@ -2698,8 +2698,10 @@ async def callback_handler(client, callback):
                 await ensure_gofile_ready()
             except Exception as exc:
                 log.exception("GoFile guest setup failed")
-                await callback.message.reply_text(
-                    f"❌ GoFile setup failed: {html.escape(str(exc)[:300])}"
+                await callback.message.edit_text(
+                    f"❌ GoFile setup failed: {html.escape(str(exc)[:300])}",
+                    reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to destination", callback_data="settings:section:destination")]]),
+                    parse_mode=ParseMode.HTML,
                 )
                 return
         else:
@@ -2730,7 +2732,11 @@ async def callback_handler(client, callback):
             )
         except Exception as exc:
             log.exception("Could not remove secondary uploader credentials")
-            return await callback.message.reply_text(f"❌ Could not remove credentials: {html.escape(str(exc)[:300])}")
+            return await callback.message.edit_text(
+                f"❌ Could not remove credentials: {html.escape(str(exc)[:300])}",
+                reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Secondary account", callback_data="settings:secondary:menu")]]),
+                parse_mode=ParseMode.HTML,
+            )
     if data == "settings:secondary:back":
         await callback.answer()
         return await settings_cmd(client, callback.message, check_access=False, edit=True, section="account")
