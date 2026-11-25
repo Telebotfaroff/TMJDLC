@@ -471,10 +471,18 @@ def _dashboard_job_line(index: int, job: dict, metric: dict | None, stage: str) 
     metric = metric or {}
     speed, done, total, eta = metric.get("speed"), metric.get("done"), metric.get("total"), metric.get("eta")
     size = f"{_fmt_bytes(done)} / {_fmt_bytes(total)}" if total else "size pending"
-    speed_text = f"{_fmt_bytes(speed)}/s" if speed else "—"
-    eta_text = _fmt_eta(eta) if eta is not None and eta >= 0 else "calculating…"
-    percent = int(job.get("progress_percent") or 0)
-    return f"{index}. <b>{stage} {code}</b> · {percent}%\n   ⚡ {speed_text} · 📦 {size} · ⏳ {eta_text}"
+    speed_text = f"{_fmt_bytes(speed)}/s" if speed and speed > 0 else "calculating…"
+    eta_text = _fmt_eta(eta) if eta is not None and eta >= 0 else "—"
+    percent = max(0, min(100, int(job.get("progress_percent") or 0)))
+    bar = _progress_bar(percent, 14)
+    job_id = html.escape(str(job.get("id") or "—"))
+    part = metric.get("part")
+    part_text = f" · Part {int(part[0])}/{int(part[1])}" if isinstance(part, (tuple, list)) and len(part) == 2 else ""
+    return (
+        f"{index}. <b>{code}</b> <code>#{job_id}</code>{part_text}\n"
+        f"   <code>{bar}</code> <b>{percent}%</b>\n"
+        f"   ⚡ {speed_text} · 📦 {size} · ⏳ {eta_text}"
+    )
 
 
 async def refresh_live_dashboard(chat_id: int):
@@ -493,13 +501,19 @@ async def refresh_live_dashboard(chat_id: int):
             downloads = [j for j in jobs if j.get("status") == "downloading"]
             uploads = [j for j in jobs if j.get("status") == "uploading"]
             ready = [j for j in jobs if j.get("status") == "ready"]
-            lines = ["⚡ <b>TMJDLC · LIVE TRANSFERS</b>", "", "📥 <b>DOWNLOADS</b>"]
+            active_total = len(downloads) + len(uploads)
+            lines = [
+                "⚡ <b>TMJDLC · LIVE TRANSFERS</b>",
+                f"🟢 <b>{active_total} active</b> · 📥 {len(downloads)} downloading · 📤 {len(uploads)} uploading",
+                "",
+                f"📥 <b>DOWNLOADS · {len(downloads)} ACTIVE</b>",
+            ]
             if downloads:
                 lines.extend(_dashboard_job_line(i, job, _live_transfer_metrics.get(int(job["id"])), "Download")
                              for i, job in enumerate(downloads, 1))
             else:
                 lines.append("   — No active downloads")
-            lines.extend(["", "📤 <b>UPLOADS</b>"])
+            lines.extend(["", f"📤 <b>UPLOADS · {len(uploads)} ACTIVE</b>"])
             if uploads:
                 lines.extend(_dashboard_job_line(i, job, _live_transfer_metrics.get(int(job["id"])), "Upload")
                              for i, job in enumerate(uploads, 1))
@@ -708,25 +722,27 @@ def _progress_text(stage: str, video_id: str, title: str, percent: int, done: fl
     safe_title = html.escape(title or video_id)
     safe_id = html.escape(str(video_id))
     percent = max(0, min(100, int(percent)))
-    eta_label = f"{_fmt_eta(eta)} left" if eta is not None and eta >= 0 else "calculating…"
-    speed_label = f"{_fmt_bytes(speed)}/s" if speed is not None and speed > 0 else "—"
-    attempt_label = f"Retry {attempt - 1}" if attempt > 1 else "First attempt"
+    eta_label = f"{_fmt_eta(eta)} remaining" if eta is not None and eta >= 0 else "calculating…"
+    speed_label = f"{_fmt_bytes(speed)}/s" if speed is not None and speed > 0 else "calculating…"
+    attempt_label = f"Retry {attempt - 1}" if attempt > 1 else "Attempt 1"
+    bar = _progress_bar(percent, 18)
 
     if not is_upload:
         return (
-            f"📥 <b>DOWNLOAD</b> · <b>{safe_title}</b>\n"
-            f"🎬 <code>ID {safe_id}</code>\n"
-            f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
-            f"💾 <b>{_fmt_bytes(done)}</b> / {size}\n"
-            f"🚀 {speed_label}  ·  ⏳ {eta_label}\n"
-            f"🔄 Attempt {attempt}"
+            f"📥 <b>DOWNLOAD IN PROGRESS</b>\n"
+            f"<b>{safe_title}</b>\n"
+            f"🎬 Code: <code>{safe_id}</code>\n"
+            f"<code>{bar}</code> <b>{percent}%</b>\n"
+            f"📦 <b>{_fmt_bytes(done)}</b> / {size}\n"
+            f"⚡ {speed_label}  ·  ⏳ {eta_label}\n"
+            f"🔄 {attempt_label}"
         )
 
     return (
-        f"{icon} <b>{heading}</b>\n"
+        f"📤 <b>{heading}</b>\n"
         f"<b>{safe_title}</b>\n"
-        f"<code>VIDEO ID  {safe_id}</code>\n"
-        f"<code>{_progress_bar(percent)}</code>  <b>{percent}%</b>\n"
+        f"🎬 Code: <code>{safe_id}</code>\n"
+        f"<code>{bar}</code> <b>{percent}%</b>\n"
         f"📦 <b>{_fmt_bytes(done)}</b> / {size}\n"
         f"⚡ {speed_label}  ·  ⏳ {eta_label}\n"
         f"🔁 {attempt_label}"
@@ -905,6 +921,7 @@ async def download_job(job: dict, identity: str):
 
 async def process_job(job: dict, identity: str):
     jid, vid, url = int(job["id"]), str(job["video_id"]), str(job["post_url"])
+    job_started_at = time.monotonic()
     chat_id, message_id = job.get("status_chat_id"), job.get("status_message_id")
     out = WORK / "downloads"
     out.mkdir(parents=True, exist_ok=True)
@@ -1106,12 +1123,13 @@ async def process_job(job: dict, identity: str):
                         if (elapsed >= PROGRESS_INTERVAL_SECONDS
                                 and (percent >= last_upload_notice["percent"] + PROGRESS_STEP or percent >= 100)):
                             speed = last_upload_notice["speed"]
-                            eta = (total - current) / speed if speed else None
-                            _live_transfer_metrics[jid] = {
-                                "speed": speed, "done": uploaded_bytes_before + current,
-                                "total": total_bytes, "eta": eta, "updated": now,
-                            }
                             overall_done = uploaded_bytes_before + current
+                            eta = (total_bytes - overall_done) / speed if speed else None
+                            _live_transfer_metrics[jid] = {
+                                "speed": speed, "done": overall_done,
+                                "total": total_bytes, "eta": eta, "updated": now,
+                                "part": (part_index, part_count),
+                            }
                             overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
                             await asyncio.to_thread(queue.update_progress, jid, identity, "uploading", overall_percent)
                             log.info(
@@ -1258,11 +1276,16 @@ async def process_job(job: dict, identity: str):
                                        output_path=str(path), lease_seconds=LEASE):
             raise RuntimeError("Could not mark job completed because worker ownership was lost.")
         links_text = "\n".join(delivery_links)
+        elapsed_total = max(time.monotonic() - job_started_at, 0.001)
+        file_size = path.stat().st_size
+        average_speed = file_size / elapsed_total
         await status_edit(chat_id, message_id,
-            f"✅ <b>Job completed</b> · <code>#{jid}</code>\n"
-            f"🎬 Video: <code>{html.escape(vid)}</code>\n"
-            f"📦 Uploaded: <b>{_fmt_bytes(path.stat().st_size)}</b>\n"
-            f"🔁 Attempts used: <b>{job['attempts']}</b>\n"
+            f"✅ <b>UPLOAD COMPLETED</b> · <code>#{jid}</code>\n"
+            f"🎬 Code: <code>{html.escape(vid)}</code>\n"
+            f"📦 File size: <b>{_fmt_bytes(file_size)}</b>\n"
+            f"⚡ Average pipeline speed: <b>{_fmt_bytes(average_speed)}/s</b>\n"
+            f"⏱ Total processing time: <b>{_fmt_eta(elapsed_total)}</b>\n"
+            f"🔁 Attempts: <b>{job['attempts']}</b>\n"
             f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}"
             f"{chr(10) + links_text if links_text else ''}")
         if AUTO_CLEAN:
@@ -1296,7 +1319,9 @@ async def process_job(job: dict, identity: str):
             await asyncio.to_thread(queue.set_status, jid, identity, state,
                                     error=error, lease_seconds=LEASE)
             await status_edit(chat_id, message_id,
-                              f"{'⚠️ Requeued' if state == 'queued' else '❌ Failed'} {vid}: {html.escape(error)}")
+                              f"{'🔄 <b>RETRY QUEUED</b>' if state == 'queued' else '❌ <b>JOB FAILED</b>'}\n"
+                              f"🎬 Code: <code>{html.escape(vid)}</code>\n"
+                              f"🧾 {html.escape(error)}")
     finally:
         stop.set()
         heartbeat_task.cancel()
