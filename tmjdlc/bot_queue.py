@@ -716,8 +716,8 @@ class JobQueue:
                 FROM tmjdlc_bot_jobs
                 WHERE status IN ('downloading','ready','uploading')
                 ORDER BY CASE status
-                    WHEN 'uploading' THEN 0 WHEN 'downloading' THEN 1 ELSE 2 END,
-                    updated_at DESC,id ASC
+                    WHEN 'downloading' THEN 0 WHEN 'uploading' THEN 1 ELSE 2 END,
+                    created_at ASC,id ASC
                 LIMIT %s
             """, (max(1, min(50, int(limit))),)).fetchall()
             return [dict(row) for row in rows]
