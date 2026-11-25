@@ -2648,7 +2648,7 @@ async def callback_handler(client, callback):
         return await render_queue(callback.message, edit=True)
     if data == "home:settings":
         await callback.answer()
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True)
     if data == "home:destination":
         await callback.answer()
         return await destination_cmd(client, callback.message, edit=True)
@@ -2682,6 +2682,12 @@ async def callback_handler(client, callback):
             f"Upload workers: {active_uploads}/{MAX_UPLOAD_WORKERS}\nQueue polling: {POLL_SECONDS}s\nLease: {LEASE}s",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🏠 Home", callback_data="home:show")]]),
             parse_mode=ParseMode.HTML)
+    if data.startswith("settings:section:"):
+        section = data.rsplit(":", 1)[-1]
+        if section not in {"home", "workers", "destination", "queue", "account"}:
+            return await callback.answer("Unknown settings category.", show_alert=True)
+        await callback.answer()
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section=section)
     if data.startswith("settings:destination:"):
         mode = data.rsplit(":", 1)[-1]
         if mode not in {"telegram", "gofile", "both"}:
@@ -2699,17 +2705,18 @@ async def callback_handler(client, callback):
         else:
             await callback.answer()
         await asyncio.to_thread(queue.set_setting, "upload_destination", mode)
-        return await destination_cmd(client, callback.message, edit=True)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="destination")
     if data == "settings:secondary:menu":
         await callback.answer()
         return await secondary_account_menu(callback.message, edit=True)
     if data == "settings:secondary:add":
         secondary_setup_state[uid] = {"step": "api_id"}
         await callback.answer("Credential setup started.")
-        return await callback.message.reply_text(
+        return await callback.message.edit_text(
             "➕ <b>Add secondary Telegram uploader</b>\n\n"
             "Send the secondary API ID first. Each credential message is deleted after receipt.\n"
             "Send CANCEL at any time to stop.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ Cancel", callback_data="settings:secondary:back")]]),
             parse_mode=ParseMode.HTML,
         )
     if data == "settings:secondary:remove":
@@ -2726,17 +2733,18 @@ async def callback_handler(client, callback):
             return await callback.message.reply_text(f"❌ Could not remove credentials: {html.escape(str(exc)[:300])}")
     if data == "settings:secondary:back":
         await callback.answer()
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="account")
     if data == "settings:video":
         setup_state[uid] = "upload_channel"
         await callback.answer()
         current = await asyncio.to_thread(queue.get_setting, "upload_channel", "Not set")
-        return await callback.message.reply_text(
+        return await callback.message.edit_text(
             "🎞 <b>Set Telegram video upload channel</b>\n\n"
             f"Current channel: <code>{html.escape(str(current))}</code>\n"
             "Send the public channel @username, or forward a recent post from a private channel. "
             "I will verify that the bot is an administrator with posting permission and save the channel in the private GitHub Database repository.\n"
             "Send CANCEL to stop.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ Cancel", callback_data="settings:section:destination")]]),
             parse_mode=ParseMode.HTML,
         )
     if data.startswith("settings:notifications:"):
@@ -2745,7 +2753,7 @@ async def callback_handler(client, callback):
         progress_notifications_enabled = enabled
         await asyncio.to_thread(queue.set_setting, "progress_notifications", "true" if enabled else "false")
         await callback.answer("Download/upload notifications resumed." if enabled else "Download/upload notifications paused.")
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="queue")
     if data.startswith("settings:uploads:"):
         value = int(data.rsplit(":", 1)[-1])
         if value not in {1, 2, 3, 4}:
@@ -2753,7 +2761,7 @@ async def callback_handler(client, callback):
         await asyncio.to_thread(queue.set_setting, "upload_concurrency", str(value))
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer(f"Simultaneous uploads set to {value}.")
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="workers")
     if data == "settings:background_download:toggle":
         current = str(await asyncio.to_thread(
             queue.get_setting, "background_download", "true"
@@ -2767,7 +2775,7 @@ async def callback_handler(client, callback):
             "Background downloads enabled. Uploads can be kept supplied."
             if enabled else "Background downloads paused while upload slots are busy."
         )
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="workers")
     if data.startswith("settings:backlog:"):
         value = int(data.rsplit(":", 1)[-1])
         if value not in {0, 1, 2}:
@@ -2775,7 +2783,7 @@ async def callback_handler(client, callback):
         await asyncio.to_thread(queue.set_setting, "upload_backlog_per_worker", str(value))
         await asyncio.to_thread(queue.flush_snapshot)
         await callback.answer(f"Upload backlog set to {value} per worker.")
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="workers")
     if data.startswith("settings:workers:"):
         direction = data.rsplit(":", 1)[-1]
         if direction == "up":
@@ -2787,7 +2795,7 @@ async def callback_handler(client, callback):
         async with condition:
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
-        return await settings_cmd(client, callback.message, check_access=False)
+        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="workers")
     if data == "queue:pause":
         await asyncio.to_thread(queue.set_setting, "queue_paused", "true")
         await callback.answer("Queue paused. Active jobs will finish.")
