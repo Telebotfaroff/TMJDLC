@@ -694,6 +694,18 @@ class JobQueue:
             """, (max(1, min(50, limit)), max(0, offset))).fetchall()
             return [dict(row) for row in rows]
 
+    def list_waiting_jobs(self, limit: int = 30) -> list[dict[str, Any]]:
+        """Return queued jobs in FIFO order for the live Telegram dashboard."""
+        with self.connect() as conn:
+            rows = conn.execute("""
+                SELECT id,video_id,post_url,created_at
+                FROM tmjdlc_bot_jobs
+                WHERE status='queued'
+                ORDER BY created_at ASC,id ASC
+                LIMIT %s
+            """, (max(1, min(100, int(limit))),)).fetchall()
+            return [dict(row) for row in rows]
+
     def list_active_jobs(self, limit: int = 20) -> list[dict[str, Any]]:
         """Return live download, ready-to-upload and upload jobs for the process monitor."""
         with self.connect() as conn:
