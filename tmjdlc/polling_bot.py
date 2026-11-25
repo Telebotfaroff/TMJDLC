@@ -1475,20 +1475,18 @@ def save_menu_items(items: list[dict]) -> None:
 
 
 def build_panel_keyboard() -> InlineKeyboardMarkup:
-    # The configurable menu already contains the default quick actions.
-    # Do not append a second hard-coded shortcut row, or actions such as
-    # Live Processes appear twice on /start and /panel.
+    # Keep first-run setup visible even when the user customizes their menu.
+    rows = []
+    if not queue.get_setting("upload_channel", ""):
+        rows.append([InlineKeyboardButton("🎯 Configure upload channel", callback_data="home:destination")])
     visible = [item for item in get_menu_items() if item["enabled"]]
-    rows = [
+    rows.extend([
         [
-            InlineKeyboardButton(
-                item["label"],
-                callback_data=f"home:{item['action']}",
-            )
+            InlineKeyboardButton(item["label"], callback_data=f"home:{item['action']}")
             for item in visible[index:index + 2]
         ]
         for index in range(0, len(visible), 2)
-    ]
+    ])
     rows.append([InlineKeyboardButton("🎛 Customize Menu", callback_data="menu:show")])
     return InlineKeyboardMarkup(rows)
 
@@ -1556,18 +1554,14 @@ async def help_cmd(client, message):
 
 
 async def start_cmd(client, message):
-    if await deny(message): return
-    configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel")
+    if await deny(message):
+        return
+    configured_video = await asyncio.to_thread(queue.get_setting, "upload_channel", "")
     if not configured_video:
         setup_state[message.from_user.id] = "upload_channel"
-        await message.reply_text(
-            "🎞 <b>First-time setup · Video upload channel</b>\n"
-            "Send <code>@channelusername</code> for a public channel, or forward a recent post "
-            "from your private channel. The bot will verify administrator and posting access.\n"
-            "Use /cancelsetup to stop.",
-            parse_mode=ParseMode.HTML,
-        )
-    await panel_cmd(client, message)
+    else:
+        setup_state.pop(message.from_user.id, None)
+    return await render_dashboard(message)
 
 
 
@@ -1632,7 +1626,11 @@ async def render_dashboard(target, *, edit: bool = False):
         f"✅ Completed <b>{counts.get('completed', 0)}</b>   ·   ❌ Failed <b>{counts.get('failed', 0)}</b>",
     ]
     if not destination:
-        lines.extend(["", "⚠️ <b>Setup needed</b> · Configure your upload channel to start uploading."])
+        lines.extend([
+            "",
+            "⚠️ <b>Setup needed</b> · Send <code>@channelusername</code> or forward a post from your private upload channel.",
+            "<i>I'll verify posting access and save the destination.</i>",
+        ])
     if active_jobs:
         lines.extend(["", "✦ <b>RECENT ACTIVITY</b>"])
         for job in active_jobs[:3]:
