@@ -165,7 +165,8 @@ _chat_status_edit_last_sent: dict[int, float] = {}
 # One consolidated progress message per admin chat; original per-job message IDs
 # are retained only as keys for their individual progress blocks.
 _universal_status_message_ids: dict[int, int] = {}
-_universal_status_entries: dict[int, dict[int, tuple[str, float]]] = {}
+_live_transfer_metrics: dict[int, dict] = {}
+_dashboard_refresh_locks: dict[int, asyncio.Lock] = {}
 _synced_upload_peers: set[tuple[int, int]] = set()
 _upload_client_cursor = 0
 _helper_upload_clients: list[Client] = []
@@ -464,76 +465,91 @@ async def deny(message) -> bool:
     return False
 
 
-async def status_edit(chat_id, message_id, text):
-    """Update one shared live-progress message with a block for every active job."""
+def _dashboard_job_line(index: int, job: dict, metric: dict | None, stage: str) -> str:
+    code = html.escape(video_title_from_url(str(job.get("post_url") or ""), str(job.get("video_id") or "")))
+    metric = metric or {}
+    speed, done, total, eta = metric.get("speed"), metric.get("done"), metric.get("total"), metric.get("eta")
+    size = f"{_fmt_bytes(done)} / {_fmt_bytes(total)}" if total else "size pending"
+    speed_text = f"{_fmt_bytes(speed)}/s" if speed else "—"
+    eta_text = _fmt_eta(eta) if eta is not None and eta >= 0 else "calculating…"
+    percent = int(job.get("progress_percent") or 0)
+    return f"{index}. <b>{stage} {code}</b> · {percent}%\n   ⚡ {speed_text} · 📦 {size} · ⏳ {eta_text}"
+
+
+async def refresh_live_dashboard(chat_id: int):
+    """Refresh a persistent dashboard with fixed Downloads, Uploads and Queue sections."""
     if not progress_notifications_enabled or not chat_id:
         return
     chat_id = int(chat_id)
-    source_message_id = int(message_id) if message_id else 0
-    key = (chat_id, source_message_id)
-    message_lock = _status_edit_locks.setdefault(key, asyncio.Lock())
-    chat_lock = _chat_status_edit_locks.setdefault(chat_id, asyncio.Lock())
-    async with message_lock:
-        async with chat_lock:
-            now = time.monotonic()
-            wait_for = CHAT_EDIT_INTERVAL_SECONDS - (now - _chat_status_edit_last_sent.get(chat_id, 0.0))
-            if wait_for > 0:
-                await asyncio.sleep(wait_for)
-
-            canonical_id = _universal_status_message_ids.get(chat_id)
-            if not canonical_id and source_message_id:
-                canonical_id = source_message_id
-                _universal_status_message_ids[chat_id] = canonical_id
-            elif canonical_id and source_message_id and source_message_id != canonical_id:
-                # Remove the old per-job placeholder so the chat keeps only one
-                # progress message. Its progress remains represented in the
-                # consolidated message below.
-                try:
-                    await app.delete_messages(chat_id, source_message_id)
-                except Exception:
-                    pass
-
-            if source_message_id:
-                entries = _universal_status_entries.setdefault(chat_id, {})
-                entries[source_message_id] = (str(text), now)
-                # Keep all live tasks and only the three most recent terminal
-                # results, preventing the single message from growing forever.
-                terminal_words = ("job completed", "completed ", "cancelled ", "failed ", "requeued ")
-                terminal = [
-                    (entry_id, value) for entry_id, value in entries.items()
-                    if any(word in value[0].strip().lower() for word in terminal_words)
-                ]
-                terminal.sort(key=lambda item: item[1][1], reverse=True)
-                for entry_id, _ in terminal[3:]:
-                    entries.pop(entry_id, None)
+    lock = _dashboard_refresh_locks.setdefault(chat_id, asyncio.Lock())
+    async with lock:
+        try:
+            counts, jobs, waiting = await asyncio.gather(
+                asyncio.to_thread(queue.counts),
+                asyncio.to_thread(queue.list_active_jobs, 50),
+                asyncio.to_thread(queue.list_waiting_jobs, 30),
+            )
+            downloads = [j for j in jobs if j.get("status") == "downloading"]
+            uploads = [j for j in jobs if j.get("status") == "uploading"]
+            ready = [j for j in jobs if j.get("status") == "ready"]
+            lines = ["⚡ <b>TMJDLC · LIVE TRANSFERS</b>", "", "📥 <b>DOWNLOADS</b>"]
+            if downloads:
+                lines.extend(_dashboard_job_line(i, job, _live_transfer_metrics.get(int(job["id"])), "Download")
+                             for i, job in enumerate(downloads, 1))
             else:
-                _universal_status_entries.setdefault(chat_id, {})[int(now * 1000)] = (str(text), now)
+                lines.append("   — No active downloads")
+            lines.extend(["", "📤 <b>UPLOADS</b>"])
+            if uploads:
+                lines.extend(_dashboard_job_line(i, job, _live_transfer_metrics.get(int(job["id"])), "Upload")
+                             for i, job in enumerate(uploads, 1))
+            else:
+                lines.append("   — No active uploads")
+            lines.extend(["", f"📚 <b>QUEUE · {int(counts.get('queued', 0) or 0)} waiting</b>"])
+            if waiting:
+                for i, job in enumerate(waiting, 1):
+                    name = html.escape(video_title_from_url(str(job.get("post_url") or ""), str(job.get("video_id") or "")))
+                    lines.append(f"{i}. {name}")
+            else:
+                lines.append("   — Queue empty")
+            if ready:
+                lines.extend(["", f"📦 Ready for upload: <b>{len(ready)}</b>"])
+            body = "\n".join(lines)[:3900]
+            message_id = _universal_status_message_ids.get(chat_id)
+            if message_id:
+                try:
+                    await app.edit_message_text(chat_id, message_id, body, parse_mode=ParseMode.HTML,
+                                                disable_web_page_preview=True)
+                except Exception as exc:
+                    if "MESSAGE_NOT_MODIFIED" not in str(exc):
+                        if "MESSAGE_ID_INVALID" in str(exc) or "MESSAGE_TO_EDIT_NOT_FOUND" in str(exc):
+                            _universal_status_message_ids.pop(chat_id, None)
+                        else:
+                            log.warning("Dashboard edit failed chat=%s: %s", chat_id, exc)
+            if not _universal_status_message_ids.get(chat_id):
+                sent = await app.send_message(chat_id, body, parse_mode=ParseMode.HTML,
+                                               disable_web_page_preview=True)
+                _universal_status_message_ids[chat_id] = sent.id
+        except Exception:
+            log.exception("Could not refresh live transfer dashboard chat_id=%s", chat_id)
 
-            blocks = [
-                value[0] for _, value in sorted(
-                    _universal_status_entries.get(chat_id, {}).items(),
-                    key=lambda item: item[1][1], reverse=True
-                )
-            ]
-            body = "⚡ <b>TMJDLC · LIVE TRANSFERS</b>\n\n" + "\n\n──────────────\n\n".join(blocks)
-            body = body[:3900]
+
+async def status_edit(chat_id, message_id, text):
+    """Edit an individual job notification and independently refresh the stable dashboard."""
+    if not progress_notifications_enabled or not chat_id:
+        return
+    chat_id = int(chat_id)
+    if message_id:
+        key = (chat_id, int(message_id))
+        lock = _status_edit_locks.setdefault(key, asyncio.Lock())
+        async with lock:
             try:
-                if canonical_id:
-                    await app.edit_message_text(
-                        chat_id, canonical_id, body, parse_mode=ParseMode.HTML
-                    )
-                else:
-                    sent = await app.send_message(
-                        chat_id, body, parse_mode=ParseMode.HTML
-                    )
-                    _universal_status_message_ids[chat_id] = sent.id
+                await app.edit_message_text(chat_id, int(message_id), str(text),
+                                            parse_mode=ParseMode.HTML,
+                                            disable_web_page_preview=True)
             except Exception as exc:
                 if "MESSAGE_NOT_MODIFIED" not in str(exc):
-                    log.warning(
-                        "Could not update consolidated status message chat_id=%s message_id=%s: %s",
-                        chat_id, canonical_id, exc
-                    )
-            _chat_status_edit_last_sent[chat_id] = time.monotonic()
+                    log.debug("Job notification edit failed chat=%s message=%s: %s", chat_id, message_id, exc)
+    await refresh_live_dashboard(chat_id)
 
 
 async def resolve_destination_cached(value: str, client: Client = app):
@@ -762,13 +778,20 @@ async def download_job(job: dict, identity: str):
 
     if chat_id is None:
         chat_id = job.get("requested_by")
-    if progress_notifications_enabled and chat_id and not message_id:
+    if progress_notifications_enabled and chat_id:
         try:
-            notice = await app.send_message(int(chat_id), f"🆕 Job #{jid} · {vid} queued for download.")
+            notice = await app.send_message(
+                int(chat_id),
+                f"🆕 <b>New download session · {html.escape(title)}</b>\n"
+                f"🎬 Code: <code>{html.escape(vid)}</code>\n"
+                f"🔗 <a href="{html.escape(url, quote=True)}">Open source video</a>",
+                parse_mode=ParseMode.HTML, disable_web_page_preview=False,
+            )
             chat_id, message_id = notice.chat.id, notice.id
             await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
+            await refresh_live_dashboard(chat_id)
         except Exception:
-            log.exception("Could not create status message for job=%s", jid)
+            log.exception("Could not create fresh download-session notification for job=%s", jid)
 
     try:
         check_stop()
@@ -789,6 +812,8 @@ async def download_job(job: dict, identity: str):
                 if not total:
                     return
                 percent = min(100, int(done * 100 / total))
+                _live_transfer_metrics[jid] = {"speed": data.get("speed"), "done": done, "total": total,
+                                               "eta": data.get("eta"), "updated": time.monotonic()}
                 queue.update_progress(jid, identity, "downloading", percent)
                 now = time.monotonic()
                 if (now - last_notice["time"] >= PROGRESS_INTERVAL_SECONDS
@@ -933,6 +958,8 @@ async def process_job(job: dict, identity: str):
                     done = data.get("downloaded_bytes", 0)
                     if total:
                         percent = min(100, int(done * 100 / total))
+                        _live_transfer_metrics[jid] = {"speed": data.get("speed"), "done": done, "total": total,
+                                                       "eta": data.get("eta"), "updated": time.monotonic()}
                         queue.update_progress(jid, identity, "downloading", percent)
                         now = time.monotonic()
                         if (now - last_download_notice["time"] >= PROGRESS_INTERVAL_SECONDS
@@ -1079,6 +1106,10 @@ async def process_job(job: dict, identity: str):
                                 and (percent >= last_upload_notice["percent"] + PROGRESS_STEP or percent >= 100)):
                             speed = last_upload_notice["speed"]
                             eta = (total - current) / speed if speed else None
+                            _live_transfer_metrics[jid] = {
+                                "speed": speed, "done": uploaded_bytes_before + current,
+                                "total": total_bytes, "eta": eta, "updated": now,
+                            }
                             overall_done = uploaded_bytes_before + current
                             overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
                             await asyncio.to_thread(queue.update_progress, jid, identity, "uploading", overall_percent)
