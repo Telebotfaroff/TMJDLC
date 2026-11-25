@@ -202,9 +202,23 @@ TELEGRAM_SEND_INTERVAL_SECONDS = max(
 )
 
 
+def _defer_telegram_notifications(exc: FloodWait, operation: str) -> None:
+    """Open one shared cooldown after Telegram rate-limits a notification request."""
+    global _telegram_send_blocked_until
+    wait_seconds = max(1, int(getattr(exc, "value", 1)))
+    _telegram_send_blocked_until = max(
+        _telegram_send_blocked_until, time.monotonic() + wait_seconds + 1
+    )
+    log.warning(
+        "Telegram %s FloodWait; suppressing new notifications for %ss. "
+        "Download/upload workers will continue.",
+        operation, wait_seconds,
+    )
+
+
 async def send_telegram_message(*args, **kwargs):
     """Rate-limit outgoing bot messages and suppress sends during Telegram FloodWait."""
-    global _telegram_send_last_at, _telegram_send_blocked_until
+    global _telegram_send_last_at
     async with _telegram_send_lock:
         now = time.monotonic()
         if now < _telegram_send_blocked_until:
@@ -212,21 +226,14 @@ async def send_telegram_message(*args, **kwargs):
         delay = TELEGRAM_SEND_INTERVAL_SECONDS - (now - _telegram_send_last_at)
         if delay > 0:
             await asyncio.sleep(delay)
-        now = time.monotonic()
-        if now < _telegram_send_blocked_until:
+        if time.monotonic() < _telegram_send_blocked_until:
             return None
         try:
             message = await _raw_app_send_message(*args, **kwargs)
             _telegram_send_last_at = time.monotonic()
             return message
         except FloodWait as exc:
-            wait_seconds = max(1, int(getattr(exc, "value", 1)))
-            _telegram_send_blocked_until = time.monotonic() + wait_seconds + 1
-            log.warning(
-                "Telegram notification FloodWait; suppressing new messages for %ss. "
-                "Download/upload workers will continue.",
-                wait_seconds,
-            )
+            _defer_telegram_notifications(exc, "send")
             return None
         except Exception:
             _telegram_send_last_at = time.monotonic()
@@ -534,6 +541,10 @@ async def refresh_live_dashboard(chat_id: int):
     chat_id = int(chat_id)
     lock = _dashboard_refresh_locks.setdefault(chat_id, asyncio.Lock())
     async with lock:
+        now = time.monotonic()
+        if now - _chat_status_edit_last_sent.get(chat_id, 0.0) < CHAT_EDIT_INTERVAL_SECONDS:
+            return
+        _chat_status_edit_last_sent[chat_id] = now
         try:
             counts, jobs, waiting = await asyncio.gather(
                 asyncio.to_thread(queue.counts),
@@ -577,6 +588,8 @@ async def refresh_live_dashboard(chat_id: int):
                     await app.edit_message_text(chat_id, message_id, body, parse_mode=ParseMode.HTML,
                                                 disable_web_page_preview=True)
                 except Exception as exc:
+                    if isinstance(exc, FloodWait):
+                        _defer_telegram_notifications(exc, "dashboard edit")
                     if "MESSAGE_NOT_MODIFIED" not in str(exc):
                         if "MESSAGE_ID_INVALID" in str(exc) or "MESSAGE_TO_EDIT_NOT_FOUND" in str(exc):
                             _universal_status_message_ids.pop(chat_id, None)
@@ -605,6 +618,8 @@ async def status_edit(chat_id, message_id, text):
                                             parse_mode=ParseMode.HTML,
                                             disable_web_page_preview=True)
             except Exception as exc:
+                if isinstance(exc, FloodWait):
+                    _defer_telegram_notifications(exc, "job status edit")
                 if "MESSAGE_NOT_MODIFIED" not in str(exc):
                     log.debug("Job notification edit failed chat=%s message=%s: %s", chat_id, message_id, exc)
     await refresh_live_dashboard(chat_id)
