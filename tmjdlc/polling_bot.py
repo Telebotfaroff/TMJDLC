@@ -52,7 +52,8 @@ TOKEN = os.getenv("TG_BOT_TOKEN", "").strip()
 API_ID = int(os.getenv("TG_API_ID", "0") or 0)
 API_HASH = os.getenv("TG_API_HASH", "").strip()
 ADMINS = {int(x.strip()) for x in os.getenv("TG_ADMIN_IDS", "").split(",") if x.strip()}
-MAX_WORKERS = max(1, min(2, int(os.getenv("TMJDLC_MAX_PARALLEL", "2"))))
+# Four download worker tasks are pre-created; the runtime setting activates 1–4.
+MAX_WORKERS = 4
 UPLOAD_TRANSMISSION_SLOTS = max(1, min(32, int(os.getenv("TMJDLC_UPLOAD_TRANSMISSION_SLOTS", os.getenv("TMJDLC_UPLOAD_WORKERS", "8")))))
 HELPER_BOT_TOKENS = [token.strip() for token in re.split(r"[\s,]+", os.getenv("TG_HELPER_BOT_TOKENS", "")) if token.strip()]
 SECONDARY_BOT_TOKEN = os.getenv("TG_SECONDARY_BOT_TOKEN", "").strip()
@@ -2125,8 +2126,8 @@ async def settings_cmd(client, message, check_access=True):
         f"Delivery: <b>{html.escape(str(upload_destination).upper())}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
         "⚡ <b>WORKER & UPLOAD</b>\n"
-        f"Download workers: <b>{parallel}/{MAX_WORKERS}</b>\n"
-        f"Simultaneous uploads: <b>{upload_concurrency}/4</b>\n"
+        f"Download workers: <b>{parallel}/{MAX_WORKERS}</b> (live adjustable)\n"
+        f"Simultaneous upload workers: <b>{upload_concurrency}/{MAX_UPLOAD_WORKERS}</b> (live adjustable)\n"
         f"Ready backlog: <b>{upload_backlog} per worker</b>\n"
         f"Background pre-download: <b>{'ON' if background_download else 'OFF'}</b>\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
@@ -2140,10 +2141,10 @@ async def settings_cmd(client, message, check_access=True):
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🎞  Upload destination", callback_data="settings:video"),
          InlineKeyboardButton("☁️  Delivery mode", callback_data="home:destination")],
-        [InlineKeyboardButton("⚡  Download workers −", callback_data="settings:workers:down"),
-         InlineKeyboardButton(f"Workers · {parallel}", callback_data="settings:workers:show"),
+        [InlineKeyboardButton("⬇️ Download −", callback_data="settings:workers:down"),
+         InlineKeyboardButton(f"Downloads · {parallel}/4", callback_data="settings:workers:show"),
          InlineKeyboardButton("＋", callback_data="settings:workers:up")],
-        [InlineKeyboardButton("📤  Upload slots", callback_data="settings:section:uploads")],
+        [InlineKeyboardButton("⬆️ Upload workers", callback_data="settings:section:uploads")],
         [InlineKeyboardButton(f"{n} " + ("✓" if upload_concurrency == n else "uploads"), callback_data=f"settings:uploads:{n}") for n in (1, 2)],
         [InlineKeyboardButton(f"{n} " + ("✓" if upload_concurrency == n else "uploads"), callback_data=f"settings:uploads:{n}") for n in (3, 4)],
         [InlineKeyboardButton("📦 Backlog 0" + (" ✓" if upload_backlog == 0 else ""), callback_data="settings:backlog:0"),
