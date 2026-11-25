@@ -1840,7 +1840,7 @@ async def queue_cmd(client, message):
 async def render_processes(target, *, edit: bool = False):
     counts, jobs, paused, upload_concurrency, upload_backlog = await asyncio.gather(
         asyncio.to_thread(queue.counts),
-        asyncio.to_thread(queue.list_active_jobs, 20),
+        asyncio.to_thread(queue.list_active_jobs, 100),
         asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
@@ -1852,46 +1852,82 @@ async def render_processes(target, *, edit: bool = False):
     uploading = [job for job in jobs if job.get("status") == "uploading"]
     ready = [job for job in jobs if job.get("status") == "ready"]
     free_gb = shutil.disk_usage(WORK).free / (1024 ** 3)
+    queued_count = int(counts.get("queued", 0) or 0)
     lines = [
-        "⚡ <b>TMJDLC  |  LIVE CONTROL CENTER</b>",
-        f"{'⏸️' if paused else '🟢'} Queue status: <b>{'PAUSED' if paused else 'RUNNING'}</b>",
-        "",
-        "📊 <b>WORKER OVERVIEW</b>",
-        f"⬇️ Downloads   <b>{len(downloading)}/{parallel}</b> active",
-        f"⬆️ Uploads       <b>{len(uploading)}/{upload_concurrency}</b> active",
-        f"📦 Upload buffer  <b>{len(ready)}</b> ready  ·  limit {upload_backlog}/worker",
-        f"🕒 Queued downloads  <b>{counts.get('queued', 0)}</b>",
-        f"💽 Available storage  <b>{free_gb:.1f} GiB</b>",
+        "⚡ <b>TMJDLC · LIVE PROCESSES</b>",
+        f"{'⏸️' if paused else '🟢'} <b>{'PAUSED' if paused else 'RUNNING'}</b>  ·  "
+        f"⬇️ {len(downloading)}/{parallel}  ·  ⬆️ {len(uploading)}/{upload_concurrency}",
+        f"📊 Queue <b>{queued_count}</b> waiting  ·  📦 <b>{len(ready)}</b> ready",
+        f"💽 Storage <b>{free_gb:.1f} GiB</b> free  ·  Buffer limit {upload_backlog}/worker",
         "",
     ]
 
-    def add_jobs(label: str, items: list[dict], kind: str):
-        lines.append(f"<b>{label}</b>  <code>{len(items)}</code>")
+    def add_jobs(label: str, items: list[dict], kind: str, display_limit: int | None = None):
+        lines.append(f"<b>{label}</b> · <b>{len(items)}</b>")
         if not items:
-            lines.append("<i>Nothing here right now</i>")
+            lines.append("<i>None</i>")
             return
-        for job in items:
-            title = html.escape(str(job.get("video_id") or "unknown"))
-            stage = html.escape(str(job.get("current_stage") or job.get("status") or "working")).replace("_", " ").title()
+        shown = items if display_limit is None else items[:display_limit]
+        for index, job in enumerate(shown, 1):
+            jid = int(job.get("id") or 0)
+            code = html.escape(video_title_from_url(
+                str(job.get("post_url") or ""), str(job.get("video_id") or "unknown")
+            ))
             percent = max(0, min(100, int(job.get("progress_percent") or 0)))
-            worker = html.escape(str(job.get("worker_id") or "unassigned").split("-")[-1])
+            worker_id = str(job.get("worker_id") or "")
+            worker = html.escape(worker_id.split("-")[-1] if worker_id else "pending")
             attempt = int(job.get("attempts") or 0)
             max_attempts = int(job.get("max_attempts") or 0)
-            lines.append(f"  <b>#{job['id']}</b>  ·  <code>{title}</code>")
-            if kind == "ready":
-                lines.append(f"  🟡 <b>Ready for upload</b>  ·  Worker slot pending")
-            else:
-                bar = _progress_bar(percent, 14)
-                icon = "⬇️" if kind == "download" else "⬆️"
-                lines.append(f"  {icon} {stage}  ·  <b>{percent}%</b>")
-                lines.append(f"  <code>{bar}</code>")
-            lines.append(f"  👷 Worker <code>{worker}</code>  ·  🔁 Attempt <b>{attempt}/{max_attempts}</b>")
+            metric = _live_transfer_metrics.get(jid) or {}
 
-    add_jobs("⬇️ ACTIVE DOWNLOADS", downloading, "download")
+            if kind == "ready":
+                path_value = job.get("output_path")
+                size_bytes = None
+                if path_value:
+                    try:
+                        ready_path = Path(str(path_value))
+                        if ready_path.is_file():
+                            size_bytes = ready_path.stat().st_size
+                    except (OSError, ValueError):
+                        pass
+                size_text = _fmt_bytes(size_bytes) if size_bytes is not None else "size unavailable"
+                lines.append(
+                    f"{index}. <b>#{jid}</b> · <code>{code}</code> · "
+                    f"📦 {size_text} · 🟡 Ready · W{worker}"
+                )
+                continue
+
+            speed = metric.get("speed")
+            done = metric.get("done")
+            total = metric.get("total")
+            eta = metric.get("eta")
+            size_text = (
+                f"{_fmt_bytes(done)} / {_fmt_bytes(total)}"
+                if total else (_fmt_bytes(done) if done is not None else "size pending")
+            )
+            speed_text = f"{_fmt_bytes(speed)}/s" if speed else "—"
+            eta_text = _fmt_eta(eta)
+            icon = "⬇️" if kind == "download" else "⬆️"
+            bar = _progress_bar(percent, 12)
+            lines.append(
+                f"{index}. <b>#{jid}</b> · <code>{code}</code> · <b>{percent}%</b>"
+            )
+            lines.append(
+                f"   {icon} <code>{bar}</code> · 📦 {size_text}"
+            )
+            lines.append(
+                f"   ⚡ {speed_text} · ⏳ {eta_text} · W{worker} · "
+                f"🔁 {attempt}/{max_attempts}"
+            )
+        if display_limit is not None and len(items) > display_limit:
+            lines.append(f"<i>…and {len(items) - display_limit} more ready</i>")
+
+    add_jobs("⬇️ DOWNLOADING", downloading, "download")
     lines.append("")
-    add_jobs("⬆️ ACTIVE UPLOADS", uploading, "upload")
+    add_jobs("⬆️ UPLOADING", uploading, "upload")
     lines.append("")
-    add_jobs("⏳ READY FOR UPLOAD", ready, "ready")
+    add_jobs("🟡 READY FOR UPLOAD", ready, "ready", display_limit=10)
+
     body = "\n".join(lines)[:3900]
     markup = InlineKeyboardMarkup([
         [InlineKeyboardButton("🔄 Refresh", callback_data="processes:refresh"),
