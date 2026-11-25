@@ -784,7 +784,7 @@ async def download_job(job: dict, identity: str):
                 int(chat_id),
                 f"🆕 <b>New download session · {html.escape(title)}</b>\n"
                 f"🎬 Code: <code>{html.escape(vid)}</code>\n"
-                f"🔗 <a href="{html.escape(url, quote=True)}">Open source video</a>",
+                f'🔗 <a href="{html.escape(url, quote=True)}">Open source video</a>',
                 parse_mode=ParseMode.HTML, disable_web_page_preview=False,
             )
             chat_id, message_id = notice.chat.id, notice.id
