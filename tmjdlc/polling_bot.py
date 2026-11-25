@@ -190,6 +190,48 @@ app = Client(
     sleep_threshold=60,
 )
 
+
+# Admin/status notifications are deliberately isolated from media transfers.
+# Telegram FloodWait must never hold a download or upload worker hostage.
+_raw_app_send_message = app.send_message
+_telegram_send_lock = asyncio.Lock()
+_telegram_send_last_at = 0.0
+_telegram_send_blocked_until = 0.0
+TELEGRAM_SEND_INTERVAL_SECONDS = max(
+    1.0, float(os.getenv("TMJDLC_TELEGRAM_SEND_INTERVAL_SECONDS", "1.2"))
+)
+
+
+async def send_telegram_message(*args, **kwargs):
+    """Rate-limit outgoing bot messages and suppress sends during Telegram FloodWait."""
+    global _telegram_send_last_at, _telegram_send_blocked_until
+    async with _telegram_send_lock:
+        now = time.monotonic()
+        if now < _telegram_send_blocked_until:
+            return None
+        delay = TELEGRAM_SEND_INTERVAL_SECONDS - (now - _telegram_send_last_at)
+        if delay > 0:
+            await asyncio.sleep(delay)
+        now = time.monotonic()
+        if now < _telegram_send_blocked_until:
+            return None
+        try:
+            message = await _raw_app_send_message(*args, **kwargs)
+            _telegram_send_last_at = time.monotonic()
+            return message
+        except FloodWait as exc:
+            wait_seconds = max(1, int(getattr(exc, "value", 1)))
+            _telegram_send_blocked_until = time.monotonic() + wait_seconds + 1
+            log.warning(
+                "Telegram notification FloodWait; suppressing new messages for %ss. "
+                "Download/upload workers will continue.",
+                wait_seconds,
+            )
+            return None
+        except Exception:
+            _telegram_send_last_at = time.monotonic()
+            raise
+
 # Use the bot token for every upload. Oversized videos are split into
 # independently playable parts below TELEGRAM_MAX_FILE_BYTES before sending.
 upload_client = Client(
@@ -541,9 +583,10 @@ async def refresh_live_dashboard(chat_id: int):
                         else:
                             log.warning("Dashboard edit failed chat=%s: %s", chat_id, exc)
             if not _universal_status_message_ids.get(chat_id):
-                sent = await app.send_message(chat_id, body, parse_mode=ParseMode.HTML,
+                sent = await send_telegram_message(chat_id, body, parse_mode=ParseMode.HTML,
                                                disable_web_page_preview=True)
-                _universal_status_message_ids[chat_id] = sent.id
+                if sent:
+                    _universal_status_message_ids[chat_id] = sent.id
         except Exception:
             log.exception("Could not refresh live transfer dashboard chat_id=%s", chat_id)
 
@@ -797,16 +840,19 @@ async def download_job(job: dict, identity: str):
         chat_id = job.get("requested_by")
     if progress_notifications_enabled and chat_id:
         try:
-            notice = await app.send_message(
+            notice = await send_telegram_message(
                 int(chat_id),
                 f"🆕 <b>New download session · {html.escape(title)}</b>\n"
                 f"🎬 Code: <code>{html.escape(vid)}</code>\n"
                 f'🔗 <a href="{html.escape(url, quote=True)}">Open source video</a>',
                 parse_mode=ParseMode.HTML, disable_web_page_preview=False,
             )
-            chat_id, message_id = notice.chat.id, notice.id
-            await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
-            await refresh_live_dashboard(chat_id)
+            if notice:
+                chat_id, message_id = notice.chat.id, notice.id
+                await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
+                await refresh_live_dashboard(chat_id)
+            else:
+                log.info("Download notification deferred by Telegram rate limit | job=%s", jid)
         except Exception:
             log.exception("Could not create fresh download-session notification for job=%s", jid)
 
@@ -938,9 +984,12 @@ async def process_job(job: dict, identity: str):
     notify_chat = chat_id or job.get("requested_by")
     if progress_notifications_enabled and notify_chat and not message_id:
         try:
-            notice = await app.send_message(int(notify_chat), f"🆕 Job #{jid} · {vid} queued for processing.")
-            chat_id, message_id = notice.chat.id, notice.id
-            await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
+            notice = await send_telegram_message(int(notify_chat), f"🆕 Job #{jid} · {vid} queued for processing.")
+            if notice:
+                chat_id, message_id = notice.chat.id, notice.id
+                await asyncio.to_thread(queue.set_status_message, jid, chat_id, message_id)
+            else:
+                log.info("Initial job notification deferred by Telegram rate limit | job=%s", jid)
         except Exception:
             log.exception("Could not create Telegram status message for job=%s", jid)
 
@@ -2109,8 +2158,8 @@ async def notify_gofile_folder(folder: dict, reason: str = "completed") -> None:
     delivered = False
     for admin_id in ADMINS:
         try:
-            await app.send_message(admin_id, notice, parse_mode=ParseMode.HTML)
-            delivered = True
+            sent = await send_telegram_message(admin_id, notice, parse_mode=ParseMode.HTML)
+            delivered = delivered or sent is not None
         except Exception:
             log.exception("Could not send GoFile folder notice to admin=%s folder=%s", admin_id, folder_id)
     if delivered:
@@ -2391,23 +2440,23 @@ async def text_handler(client, message):
             pass
         if secret_text.upper() == "CANCEL":
             secondary_setup_state.pop(uid, None)
-            return await app.send_message(message.chat.id, "Secondary account setup cancelled. No credentials were changed.")
+            return await send_telegram_message(message.chat.id, "Secondary account setup cancelled. No credentials were changed.")
         step = secondary_stage.get("step")
         if step == "api_id":
             if not secret_text.isdigit() or int(secret_text) <= 0:
-                return await app.send_message(message.chat.id, "API ID must be a positive number. Send it again, or CANCEL.")
+                return await send_telegram_message(message.chat.id, "API ID must be a positive number. Send it again, or CANCEL.")
             secondary_stage["api_id"] = int(secret_text)
             secondary_stage["step"] = "api_hash"
-            return await app.send_message(message.chat.id, "🔐 Now send the secondary API HASH. It will be deleted after receipt.")
+            return await send_telegram_message(message.chat.id, "🔐 Now send the secondary API HASH. It will be deleted after receipt.")
         if step == "api_hash":
             if len(secret_text) < 20 or len(secret_text) > 128:
-                return await app.send_message(message.chat.id, "That API hash does not look valid. Send it again, or CANCEL.")
+                return await send_telegram_message(message.chat.id, "That API hash does not look valid. Send it again, or CANCEL.")
             secondary_stage["api_hash"] = secret_text
             secondary_stage["step"] = "bot_token"
-            return await app.send_message(message.chat.id, "🤖 Now send the secondary BOT TOKEN. It will be validated before saving.")
+            return await send_telegram_message(message.chat.id, "🤖 Now send the secondary BOT TOKEN. It will be validated before saving.")
         if step == "bot_token":
             try:
-                status_message = await app.send_message(message.chat.id, "⏳ Validating Telegram credentials…")
+                status_message = await send_telegram_message(message.chat.id, "⏳ Validating Telegram credentials…")
                 username = await validate_secondary_credentials(
                     int(secondary_stage["api_id"]), str(secondary_stage["api_hash"]), secret_text
                 )
@@ -2415,16 +2464,18 @@ async def text_handler(client, message):
                     int(secondary_stage["api_id"]), str(secondary_stage["api_hash"]), secret_text
                 )
                 secondary_setup_state.pop(uid, None)
-                return await status_message.edit_text(
-                    f"✅ <b>Secondary uploader connected</b>\nAccount: <b>{html.escape(username)}</b>\n"
+                if status_message:
+                    return await status_message.edit_text(
+                        f"✅ <b>Secondary uploader connected</b>\nAccount: <b>{html.escape(username)}</b>\n"
                     "Credentials saved to the private GitHub Database repository.\n"
                     "The main bot and active queue remain running. Check the account menu for live connection status.",
-                    parse_mode=ParseMode.HTML,
-                )
+                        parse_mode=ParseMode.HTML,
+                    )
+                return None
             except Exception as exc:
                 log.warning("Secondary credential setup failed: %s", type(exc).__name__)
                 secondary_stage["step"] = "bot_token"
-                return await app.send_message(message.chat.id, 
+                return await send_telegram_message(message.chat.id, 
                     f"❌ Could not validate or save the account: {html.escape(str(exc)[:250])}\n"
                     "Send the bot token again, or CANCEL.",
                     parse_mode=ParseMode.HTML,
