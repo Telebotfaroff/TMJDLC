@@ -1,6 +1,7 @@
 # TMJDLC — Javtiful Telegram Downloader
 
 [![Open TMJDLC in Google Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Telebotfaroff/TMJDLC/blob/main/notebooks/TMJDLC_Download_Test.ipynb)
+[![Open TMJDLC in Kaggle](https://kaggle.com/static/images/open-in-kaggle.svg)](https://www.kaggle.com/kernels/welcome?src=https://raw.githubusercontent.com/Telebotfaroff/TMJDLC/main/notebooks/TMJDLC_Download_Test.ipynb)
 
 TMJDLC is a Javtiful Telegram downloader built with Python, WZGram MTProto, yt-dlp, SQLite, and a private GitHub data repository. It downloads videos at **720p automatically**; there is no quality selector or provider selector.
 
