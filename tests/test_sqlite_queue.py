@@ -162,3 +162,27 @@ def test_background_download_still_respects_ready_backlog_limit(tmp_path):
         max_pending_uploads=1, background_download=True,
     ) is None
 
+
+
+def test_manual_retry_preserves_completed_upload_stage_receipts(tmp_path):
+    queue = JobQueue(store=FakeGitHubStore())
+    queue.db_path = tmp_path / "tmjdlc.sqlite3"
+    queue.initialize()
+    job, _ = queue.enqueue("909", "https://javtiful.com/video/909", 720)
+    claimed = queue.claim("download-1", 60)
+    assert claimed is not None
+    receipt = {
+        "chat_id": -100123, "message_id": 456, "fallback": False,
+        "parts": [{"chat_id": -100123, "message_id": 456, "file_id": "file-id"}],
+        "part_count": 1,
+    }
+    assert queue.complete_stage(job["id"], "download-1", "video_upload", receipt) is True
+    assert queue.set_status(job["id"], "download-1", "failed", error="simulated failure") is True
+
+    retried, created = queue.enqueue(
+        "909", "https://javtiful.com/video/909", 720, requested_by=42
+    )
+
+    assert created is True
+    assert retried["status"] == "queued"
+    assert queue.stage_done(job["id"], "video_upload") == receipt
