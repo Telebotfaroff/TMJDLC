@@ -158,7 +158,7 @@ secondary_setup_state: dict[int, dict] = {}
 channel_state: dict[int, dict] = {}
 download_state: set[int] = set()
 upload_ready_event = asyncio.Event()
-# Worker progress/completion messages can be paused independently of queue processing.
+# Per-job progress and completion messages remain enabled during normal processing.
 progress_notifications_enabled = True
 _status_edit_locks: dict[tuple[int, int], asyncio.Lock] = {}
 _chat_status_edit_locks: dict[int, asyncio.Lock] = {}
@@ -2281,7 +2281,7 @@ async def settings_cmd(client, message, check_access=True, *, edit=False, sectio
         rows = [
             [InlineKeyboardButton("⚡ Workers & performance", callback_data="settings:section:workers")],
             [InlineKeyboardButton("🎯 Upload destination", callback_data="settings:section:destination")],
-            [InlineKeyboardButton("📋 Queue & notifications", callback_data="settings:section:queue")],
+            [InlineKeyboardButton("📋 Queue management", callback_data="settings:section:queue")],
             [InlineKeyboardButton("🤖 Telegram accounts", callback_data="settings:section:account")],
             [InlineKeyboardButton("📋 Queue manager", callback_data="home:queue"),
              InlineKeyboardButton("💽 Storage", callback_data="home:storage")],
