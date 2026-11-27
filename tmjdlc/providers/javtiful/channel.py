@@ -61,9 +61,27 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
 
     urls: list[str] = []
     seen_video_ids: set[str] = set()
-    for anchor in soup.select("a[href]"):
-        href = anchor.get("href", "").strip()
-        path = urlsplit(href).path
+
+    # The site has used both ordinary anchors and data-* attributes for video
+    # cards. Collect all known URL-bearing attributes, then normalize them
+    # through urljoin so relative and absolute links behave identically.
+    candidates: list[str] = []
+    for element in soup.select("a[href], [data-href], [data-url], [data-video-url], [data-link]"):
+        for attribute in ("href", "data-href", "data-url", "data-video-url", "data-link"):
+            value = element.get(attribute)
+            if value:
+                candidates.append(str(value).strip())
+
+    # Some listing templates place video paths in inline scripts/JSON instead
+    # of an anchor. Scan only the recognizable Javtiful video path pattern.
+    candidates.extend(re.findall(r"""(?:https?://(?:www\\.)?javtiful\\.com)?/video/\\d+(?:[-/][^\\s"'<>\\\\]*)?""", html, re.I))
+
+    for candidate in candidates:
+        absolute = urljoin(base_url, candidate)
+        parsed = urlsplit(absolute)
+        if parsed.hostname not in {"javtiful.com", "www.javtiful.com"}:
+            continue
+        path = parsed.path
         match = VIDEO_RE.match(path)
         if not match:
             continue
@@ -73,7 +91,7 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
         if video_id in seen_video_ids:
             continue
         seen_video_ids.add(video_id)
-        urls.append(f"{base_url.rstrip('/')}{path}")
+        urls.append(f"{BASE_URL}{path}")
     return name, total, urls
 
 
