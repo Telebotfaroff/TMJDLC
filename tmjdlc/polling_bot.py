@@ -1402,9 +1402,6 @@ async def download_worker_loop(slot: int = 1):
             if slot > parallel:
                 await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
                 continue
-            if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
-                await asyncio.sleep(POLL_SECONDS)
-                continue
             free_gb = shutil.disk_usage(WORK).free / (1024 ** 3)
             if free_gb < MIN_FREE_DISK_GB:
                 log.warning("Download paused: free disk %.2f GiB is below %.2f GiB", free_gb, MIN_FREE_DISK_GB)
@@ -1455,9 +1452,6 @@ async def upload_worker_loop(slot: int = 1):
             ) or MAX_UPLOAD_WORKERS)))
             if slot > max_uploads:
                 await asyncio.sleep(UPLOAD_QUEUE_POLL_SECONDS)
-                continue
-            if str(await asyncio.to_thread(queue.get_setting, "queue_paused", "false")).lower() in {"1", "true", "yes", "on"}:
-                await asyncio.sleep(POLL_SECONDS)
                 continue
             job = await asyncio.to_thread(queue.claim_upload, identity, LEASE)
             if job:
@@ -1603,7 +1597,7 @@ async def help_cmd(client, message):
         "• /retry JOB_ID — retry a failed job\n"
         "• /processes — live download/upload status\n\n"
         "<b>Settings</b>\n"
-        "• /settings — workers, upload concurrency, backlog and notifications\n"
+        "• /settings — workers, upload concurrency and backlog\n"
         "• /setupload — set the Telegram upload channel\n"
         "• /setup — guided destination setup\n"
         "• /cancelsetup — cancel channel setup\n"
@@ -1631,15 +1625,13 @@ async def start_cmd(client, message):
 
 
 async def render_dashboard(target, *, edit: bool = False):
-    counts, active_jobs, destination, mode, notifications, download_workers, upload_workers, paused = await asyncio.gather(
+    counts, active_jobs, destination, mode, download_workers, upload_workers = await asyncio.gather(
         asyncio.to_thread(queue.counts),
         asyncio.to_thread(queue.list_active_jobs, 4),
         asyncio.to_thread(queue.get_setting, "upload_channel", ""),
         asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
-        asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
         asyncio.to_thread(queue.get_setting, "download_concurrency", str(MAX_WORKERS)),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
-        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
     )
     usage = shutil.disk_usage(WORK)
     free_gb = usage.free / (1024 ** 3)
@@ -1652,15 +1644,11 @@ async def render_dashboard(target, *, edit: bool = False):
     ready = int(counts.get("ready", 0) or 0)
     queued = int(counts.get("queued", 0) or 0)
     active = downloads + uploads + ready
-    notifications_on = str(notifications).lower() in {"1", "true", "yes", "on"}
-    paused = str(paused).lower() in {"1", "true", "yes", "on"}
     secondary_online = bool(_secondary_upload_client and _secondary_upload_client.is_connected)
     secondary_label = "Connected" if secondary_online else ("Configured · offline" if SECONDARY_CONFIGURED else "Not configured")
     channel_label = html.escape(str(destination or "Not set"))
     mode_label = html.escape(str(mode or "telegram").replace("_", " ").title())
-    if paused:
-        state_label, state_icon = "PAUSED", "⏸"
-    elif active:
+    if active:
         state_label, state_icon = "WORKING", "🟢"
     elif queued:
         state_label, state_icon = "QUEUED", "🟡"
@@ -1681,7 +1669,6 @@ async def render_dashboard(target, *, edit: bool = False):
         f"│  🎯 Destination   <code>{channel_label}</code>",
         f"│  📤 Delivery          <b>{mode_label}</b>",
         f"│  🤖 Secondary       <b>{html.escape(secondary_label)}</b>",
-        f"└  🔔 Notifications  <b>{'ON' if notifications_on else 'PAUSED'}</b>",
         "",
         "┌ <b>RUNTIME STORAGE</b>",
         f"│  <b>{free_gb:.1f} GiB free</b> / {total_gb:.1f} GiB",
@@ -1880,7 +1867,7 @@ async def queue_channel_batch(message, uid: int):
         channel_state.pop(uid, None)
 
 
-def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
+def queue_keyboard(jobs, offset: int) -> InlineKeyboardMarkup:
     rows = []
     for job in jobs:
         jid, status = int(job["id"]), str(job["status"])
@@ -1899,9 +1886,7 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
         nav.append(InlineKeyboardButton("Older ➡️", callback_data=f"queue:page:{offset+10}"))
     if nav: rows.append(nav)
     rows.extend([
-        [InlineKeyboardButton("⏸ Pause queue" if not paused else "▶️ Resume queue",
-                              callback_data="queue:pause" if not paused else "queue:resume"),
-         InlineKeyboardButton("🛑 Cancel queued", callback_data="queue:cancel_queued")],
+        [InlineKeyboardButton("🛑 Cancel queued", callback_data="queue:cancel_queued")],
         [InlineKeyboardButton("🚨 Cancel ALL tasks", callback_data="queue:cancel_all:ask")],
         [InlineKeyboardButton("🗑 Clear history", callback_data="queue:clear:ask"),
          InlineKeyboardButton("🔄 Refresh", callback_data=f"queue:page:{offset}")],
@@ -1911,15 +1896,13 @@ def queue_keyboard(jobs, offset: int, paused: bool) -> InlineKeyboardMarkup:
 
 
 async def render_queue(target, offset: int = 0, edit: bool = False):
-    counts, jobs, paused = await asyncio.gather(
+    counts, jobs = await asyncio.gather(
         asyncio.to_thread(queue.counts),
         asyncio.to_thread(queue.list_jobs, 10, offset),
-        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
     )
-    paused = str(paused).lower() in {"1", "true", "yes", "on"}
     lines = [
         "📋 <b>QUEUE MANAGER</b>",
-        f"{'⏸ PAUSED' if paused else '🟢 RUNNING'}  ·  <i>Job control and history</i>",
+        "🟢 RUNNING  ·  <i>Job control and history</i>",
         "",
         f"⬇️ Downloading <b>{counts.get('downloading', 0)}</b>   ·   ⬆️ Uploading <b>{counts.get('uploading', 0)}</b>",
         f"📦 Ready <b>{counts.get('ready', 0)}</b>   ·   🕒 Waiting <b>{counts.get('queued', 0)}</b>",
@@ -1948,7 +1931,7 @@ async def render_queue(target, offset: int = 0, edit: bool = False):
                 f"   <i>{status}{stage_text}{progress}</i>"
             )
     body = "\n".join(lines)[:3900]
-    markup = queue_keyboard(jobs, offset, paused)
+    markup = queue_keyboard(jobs, offset)
     if edit:
         try:
             return await target.edit_text(body, reply_markup=markup, parse_mode=ParseMode.HTML)
@@ -1964,16 +1947,14 @@ async def queue_cmd(client, message):
 
 
 async def render_processes(target, *, edit: bool = False):
-    counts, jobs, paused, upload_concurrency, upload_backlog = await asyncio.gather(
+    counts, jobs, upload_concurrency, upload_backlog = await asyncio.gather(
         asyncio.to_thread(queue.counts),
         asyncio.to_thread(queue.list_active_jobs, 100),
-        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
     )
     upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(upload_concurrency or MAX_UPLOAD_WORKERS)))
     upload_backlog = max(0, min(2, int(upload_backlog or 0)))
-    paused = str(paused).lower() in {"1", "true", "yes", "on"}
     downloading = [job for job in jobs if job.get("status") == "downloading"]
     uploading = [job for job in jobs if job.get("status") == "uploading"]
     ready = [job for job in jobs if job.get("status") == "ready"]
@@ -1981,7 +1962,7 @@ async def render_processes(target, *, edit: bool = False):
     queued_count = int(counts.get("queued", 0) or 0)
     lines = [
         "⚡ <b>TMJDLC · LIVE PROCESSES</b>",
-        f"{'⏸️' if paused else '🟢'} <b>{'PAUSED' if paused else 'RUNNING'}</b>  ·  "
+        "🟢 <b>RUNNING</b>  ·  "
         f"⬇️ {len(downloading)}/{parallel}  ·  ⬆️ {len(uploading)}/{upload_concurrency}",
         f"📊 Queue <b>{queued_count}</b> waiting  ·  📦 <b>{len(ready)}</b> ready",
         f"💽 Storage <b>{free_gb:.1f} GiB</b> free  ·  Buffer limit {upload_backlog}/worker",
@@ -2227,19 +2208,15 @@ async def settings_cmd(client, message, check_access=True, *, edit=False, sectio
     """Render the premium settings hub and its inline subpages."""
     if check_access and await deny(message):
         return
-    video, paused, upload_concurrency, notifications, upload_destination, upload_backlog, background_download = await asyncio.gather(
+    video, upload_concurrency, upload_destination, upload_backlog, background_download = await asyncio.gather(
         asyncio.to_thread(queue.get_setting, "upload_channel", "Not set"),
-        asyncio.to_thread(queue.get_setting, "queue_paused", "false"),
         asyncio.to_thread(queue.get_setting, "upload_concurrency", "1"),
-        asyncio.to_thread(queue.get_setting, "progress_notifications", "true"),
         asyncio.to_thread(queue.get_setting, "upload_destination", "telegram"),
         asyncio.to_thread(queue.get_setting, "upload_backlog_per_worker", str(MAX_PENDING_UPLOADS)),
         asyncio.to_thread(queue.get_setting, "background_download", "true"),
     )
     upload_concurrency = max(1, min(MAX_UPLOAD_WORKERS, int(upload_concurrency or MAX_UPLOAD_WORKERS)))
     upload_backlog = max(0, min(2, int(upload_backlog or 0)))
-    paused = str(paused).lower() in {"1", "true", "yes", "on"}
-    notifications = str(notifications).lower() in {"1", "true", "yes", "on"}
     background_download = str(background_download).lower() in {"1", "true", "yes", "on"}
     secondary_status = "Connected" if _secondary_upload_client and _secondary_upload_client.is_connected else ("Configured · offline" if SECONDARY_CONFIGURED else "Not configured")
 
@@ -2277,16 +2254,11 @@ async def settings_cmd(client, message, check_access=True, *, edit=False, sectio
         ]
     elif section == "queue":
         body = (
-            "📋 <b>QUEUE & NOTIFICATIONS</b>\n"
-            "<i>Control job scheduling and Telegram updates.</i>\n\n"
-            f"Queue processing     ·  <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
-            f"Progress notifications ·  <b>{'ON' if notifications else 'OFF'}</b>\n\n"
-            "Pausing stops new jobs from starting; active transfers are allowed to finish. "
-            "Notification settings only affect progress/completion messages."
+            "📋 <b>QUEUE MANAGEMENT</b>\n"
+            "<i>Monitor jobs, cancel individual or queued tasks, retry failures, or clear finished history.</i>\n\n"
+            "Downloads and uploads continue automatically while the bot is running."
         )
         rows = [
-            [InlineKeyboardButton("Pause queue" if not paused else "Resume queue", callback_data="settings:queue:pause" if not paused else "settings:queue:resume")],
-            [InlineKeyboardButton("Turn notifications " + ("OFF" if notifications else "ON"), callback_data="settings:notifications:" + ("off" if notifications else "on"))],
             [InlineKeyboardButton("Open queue manager", callback_data="home:queue")],
         ]
     elif section == "account":
@@ -2303,8 +2275,7 @@ async def settings_cmd(client, message, check_access=True, *, edit=False, sectio
             "Choose a section. Every page opens here, so you can return without filling your chat with messages.\n\n"
             f"⚡ Workers       ·  <b>{parallel} download / {upload_concurrency} upload</b>\n"
             f"🎯 Destination ·  <b>{html.escape(str(upload_destination).upper())}</b>\n"
-            f"📋 Queue           ·  <b>{'PAUSED' if paused else 'RUNNING'}</b>\n"
-            f"🔔 Notifications ·  <b>{'ON' if notifications else 'OFF'}</b>\n"
+            "📋 Queue           ·  <b>Automatic</b>\n"
             f"🤖 Secondary    ·  <b>{html.escape(secondary_status)}</b>"
         )
         rows = [
@@ -2351,7 +2322,7 @@ async def set_channel(message, key):
         )
     await asyncio.to_thread(queue.set_setting, key, str(chat.id))
     await message.reply_text(
-        f"✅ Verified administrator access and saved channel <code>{chat.id}</code> in Neon.",
+        f"✅ Verified administrator access and saved channel <code>{chat.id}</code> in the private GitHub data repository.",
         parse_mode=ParseMode.HTML,
     )
 
@@ -2891,19 +2862,6 @@ async def callback_handler(client, callback):
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("✖️ Cancel", callback_data="settings:section:destination")]]),
             parse_mode=ParseMode.HTML,
         )
-    if data in {"settings:queue:pause", "settings:queue:resume"}:
-        paused_now = data.endswith(":pause")
-        await asyncio.to_thread(queue.set_setting, "queue_paused", "true" if paused_now else "false")
-        await asyncio.to_thread(queue.flush_snapshot)
-        await callback.answer("Queue paused. Active transfers will finish." if paused_now else "Queue resumed.")
-        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="queue")
-    if data.startswith("settings:notifications:"):
-        enabled = data.rsplit(":", 1)[-1] == "on"
-        global progress_notifications_enabled
-        progress_notifications_enabled = enabled
-        await asyncio.to_thread(queue.set_setting, "progress_notifications", "true" if enabled else "false")
-        await callback.answer("Download/upload notifications resumed." if enabled else "Download/upload notifications paused.")
-        return await settings_cmd(client, callback.message, check_access=False, edit=True, section="queue")
     if data.startswith("settings:uploads:"):
         value = int(data.rsplit(":", 1)[-1])
         if value not in {1, 2, 3, 4}:
@@ -2946,14 +2904,6 @@ async def callback_handler(client, callback):
             condition.notify_all()
         await callback.answer(f"Worker concurrency: {parallel}")
         return await settings_cmd(client, callback.message, check_access=False, edit=True, section="workers")
-    if data == "queue:pause":
-        await asyncio.to_thread(queue.set_setting, "queue_paused", "true")
-        await callback.answer("Queue paused. Active jobs will finish.")
-        return await render_queue(callback.message, edit=True)
-    if data == "queue:resume":
-        await asyncio.to_thread(queue.set_setting, "queue_paused", "false")
-        await callback.answer("Queue resumed.")
-        return await render_queue(callback.message, edit=True)
     if data == "queue:cancel_queued":
         count = await asyncio.to_thread(queue.cancel_queued)
         await callback.answer(f"Cancelled {count} queued jobs.", show_alert=True)
@@ -3250,11 +3200,7 @@ async def on_start(client):
     parallel = max(1, min(MAX_WORKERS, int(await asyncio.to_thread(
         queue.get_setting, "download_concurrency", str(MAX_WORKERS)
     ) or MAX_WORKERS)))
-    global progress_notifications_enabled
-    notification_setting = await asyncio.to_thread(
-        queue.get_setting, "progress_notifications", "true"
-    )
-    progress_notifications_enabled = str(notification_setting).lower() in {"1", "true", "yes", "on"}
+    progress_notifications_enabled = True
     orphaned = await asyncio.to_thread(queue.recover_orphaned_jobs, 90)
     recovered = await asyncio.to_thread(queue.recover_expired)
     log.info(
