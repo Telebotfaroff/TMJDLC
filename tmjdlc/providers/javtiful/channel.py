@@ -9,7 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 
 CHANNEL_RE = re.compile(r"^/channel/([A-Za-z0-9_-]+)/?$", re.I)
-VIDEO_RE = re.compile(r"^/video/(\d+)(?:/|$)", re.I)
+VIDEO_RE = re.compile(r"^/video/(\d+)(?:[-/]|$)", re.I)
 TOTAL_RE = re.compile(r"([\d,]+)\s+Videos?", re.I)
 PAGE_SIZE = 23
 BASE_URL = "https://javtiful.com"
@@ -74,7 +74,7 @@ def parse_listing(html: str, base_url: str = BASE_URL) -> tuple[str, int | None,
 
     # Some listing templates place video paths in inline scripts/JSON instead
     # of an anchor. Scan only the recognizable Javtiful video path pattern.
-    candidates.extend(re.findall(r"""(?:https?://(?:www\\.)?javtiful\\.com)?/video/\\d+(?:[-/][^\\s"'<>\\\\]*)?""", html, re.I))
+    candidates.extend(re.findall(r"""(?:https?://(?:www\.)?javtiful\.com)?/video/\d+(?:[-/][^\s"'<>\\]*)?""", html, re.I))
 
     for candidate in candidates:
         absolute = urljoin(base_url, candidate)
