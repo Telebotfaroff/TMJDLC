@@ -111,3 +111,20 @@ def test_discover_channels_follows_listing_pagination():
         seed_urls=["https://javtiful.com/"], max_pages=5
     )
     assert [item["slug"] for item in channels] == ["alpha", "beta"]
+
+def test_parse_listing_supports_new_card_attributes_and_hyphen_urls():
+    html = """
+    <h1>Madonna</h1><p>2,123 Videos</p>
+    <div class="video-card" data-video-url="/video/3001-new-title">
+      <span>Card without anchor</span>
+    </div>
+    <a href="https://www.javtiful.com/video/3002/another-title?ref=channel">Second</a>
+    <a href="/video/3001-duplicate-title">Duplicate</a>
+    """
+    _, total, urls = parse_listing(html)
+    assert total == 2123
+    assert urls == [
+        "https://javtiful.com/video/3001-new-title",
+        "https://javtiful.com/video/3002/another-title",
+    ]
+
