@@ -1220,21 +1220,30 @@ async def process_job(job: dict, identity: str):
                                 "part": (part_index, part_count),
                             }
                             overall_percent = min(100, int(overall_done * 100 / max(total_bytes, 1)))
-                            await asyncio.to_thread(queue.update_progress, jid, identity, "uploading", overall_percent)
+                            async def publish_upload_progress():
+                                try:
+                                    await asyncio.to_thread(
+                                        queue.update_progress, jid, identity,
+                                        "uploading", overall_percent,
+                                    )
+                                    await refresh_live_dashboard(chat_id)
+                                except Exception:
+                                    log.debug(
+                                        "Could not publish upload progress | job_id=%s",
+                                        jid, exc_info=True,
+                                    )
+
+                            # Never block WZGram's MTProto transfer callback on Telegram
+                            # status edits or database writes. Progress publication runs
+                            # in the background so notification throttling cannot throttle
+                            # the actual media upload.
+                            asyncio.create_task(publish_upload_progress())
                             log.info(
                                 "Telegram upload progress | job_id=%s video_id=%s part=%s/%s "
                                 "part_progress=%s%% overall=%s%% speed=%s/s sent=%s/%s",
                                 jid, vid, part_index, part_count, percent, overall_percent,
                                 _fmt_bytes(speed), _fmt_bytes(current), _fmt_bytes(total),
                             )
-                            progress_label = (
-                                f"{title} · Part {part_index}/{part_count}"
-                                if part_count > 1 else title
-                            )
-                            await status_edit(chat_id, message_id, _progress_text(
-                                "Upload", vid, progress_label, overall_percent,
-                                overall_done, total_bytes, speed, eta, int(job["attempts"])
-                            ))
                             last_upload_notice.update(percent=percent, time=now, bytes=current)
 
                     try:
