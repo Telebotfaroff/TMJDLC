@@ -239,6 +239,31 @@ async def send_telegram_message(*args, **kwargs):
             _telegram_send_last_at = time.monotonic()
             raise
 
+async def edit_telegram_message(chat_id: int, message_id: int, text: str, **kwargs):
+    """Rate-limit status edits through the same global Telegram notification gate."""
+    global _telegram_send_last_at
+    async with _telegram_send_lock:
+        now = time.monotonic()
+        if now < _telegram_send_blocked_until:
+            return None
+        delay = TELEGRAM_SEND_INTERVAL_SECONDS - (now - _telegram_send_last_at)
+        if delay > 0:
+            await asyncio.sleep(delay)
+        if time.monotonic() < _telegram_send_blocked_until:
+            return None
+        try:
+            result = await app.edit_message_text(
+                int(chat_id), int(message_id), str(text), **kwargs
+            )
+            _telegram_send_last_at = time.monotonic()
+            return result
+        except FloodWait as exc:
+            _defer_telegram_notifications(exc, "edit")
+            return None
+        except Exception:
+            _telegram_send_last_at = time.monotonic()
+            raise
+
 # Use the bot token for every upload. Oversized videos are split into
 # independently playable parts below TELEGRAM_MAX_FILE_BYTES before sending.
 upload_client = Client(
@@ -585,7 +610,7 @@ async def refresh_live_dashboard(chat_id: int):
             message_id = _universal_status_message_ids.get(chat_id)
             if message_id:
                 try:
-                    await app.edit_message_text(chat_id, message_id, body, parse_mode=ParseMode.HTML,
+                    await edit_telegram_message(chat_id, message_id, body, parse_mode=ParseMode.HTML,
                                                 disable_web_page_preview=True)
                 except Exception as exc:
                     if isinstance(exc, FloodWait):
@@ -614,7 +639,7 @@ async def status_edit(chat_id, message_id, text):
         lock = _status_edit_locks.setdefault(key, asyncio.Lock())
         async with lock:
             try:
-                await app.edit_message_text(chat_id, int(message_id), str(text),
+                await edit_telegram_message(chat_id, int(message_id), str(text),
                                             parse_mode=ParseMode.HTML,
                                             disable_web_page_preview=True)
             except Exception as exc:
@@ -1343,28 +1368,24 @@ async def process_job(job: dict, identity: str):
         elapsed_total = max(time.monotonic() - job_started_at, 0.001)
         file_size = path.stat().st_size
         average_speed = file_size / elapsed_total
-        await status_edit(chat_id, message_id,
-            f"✅ <b>UPLOAD COMPLETED</b> · <code>#{jid}</code>\n"
-            f"🎬 Code: <code>{html.escape(vid)}</code>\n"
-            f"📦 File size: <b>{_fmt_bytes(file_size)}</b>\n"
-            f"⚡ Average pipeline speed: <b>{_fmt_bytes(average_speed)}/s</b>\n"
-            f"⏱ Total processing time: <b>{_fmt_eta(elapsed_total)}</b>\n"
-            f"🔁 Attempts: <b>{job['attempts']}</b>\n"
-            f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}"
-            f"{chr(10) + links_text if links_text else ''}")
+        cleanup_note = ""
         if AUTO_CLEAN:
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
                 await asyncio.to_thread(queue.clear_media_path, vid)
-                await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\n"
-                                  "🧹 Local video files cleaned."
-                                  f"{chr(10) + links_text if links_text else ''}")
+                cleanup_note = "\\n🧹 Local video files cleaned."
             else:
-                await status_edit(chat_id, message_id,
-                                  f"✅ Completed {vid}.\n"
-                                  "⚠️ Upload finished, but some local files could not be cleaned."
-                                  f"{chr(10) + links_text if links_text else ''}")
+                cleanup_note = "\\n⚠️ Upload finished, but some local files could not be cleaned."
+        await status_edit(chat_id, message_id,
+            f"✅ <b>UPLOAD COMPLETED</b> · <code>#{jid}</code>\\n"
+            f"🎬 Code: <code>{html.escape(vid)}</code>\\n"
+            f"📦 File size: <b>{_fmt_bytes(file_size)}</b>\\n"
+            f"⚡ Average pipeline speed: <b>{_fmt_bytes(average_speed)}/s</b>\\n"
+            f"⏱ Total processing time: <b>{_fmt_eta(elapsed_total)}</b>\\n"
+            f"🔁 Attempts: <b>{job['attempts']}</b>\\n"
+            f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}"
+            f"{cleanup_note}"
+            f"{chr(10) + links_text if links_text else ''}")
     except asyncio.CancelledError:
         await asyncio.to_thread(queue.set_status, jid, identity, "cancelled",
                                 error="Cancelled by administrator.", lease_seconds=LEASE)
