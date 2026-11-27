@@ -273,7 +273,7 @@ class JobQueue:
                         WHERE video_id=%s RETURNING *
                     """, (post_url, quality, requested_by, status_chat_id, status_message_id,
                           priority, video_id)).fetchone()
-                    conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (row["id"],))
+                    # Keep completed stage receipts so retries do not duplicate successful uploads.
                     result = (dict(row), True)
                 else:
                     result = (dict(existing), False)
@@ -322,7 +322,7 @@ class JobQueue:
                         WHERE id=%s
                     """, (post_url, quality, requested_by, batch_id,
                           status_chat_id, status_message_id, old["id"]))
-                    conn.execute("DELETE FROM tmjdlc_job_stages WHERE job_id=%s", (old["id"],))
+                    # Keep completed stage receipts so retries can resume without duplicate uploads.
                     added += 1
                 else:
                     skipped += 1
