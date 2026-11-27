@@ -1373,16 +1373,16 @@ async def process_job(job: dict, identity: str):
             cleaned = await cleanup_completed_job(path, vid)
             if cleaned:
                 await asyncio.to_thread(queue.clear_media_path, vid)
-                cleanup_note = "\\n🧹 Local video files cleaned."
+                cleanup_note = "\n🧹 Local video files cleaned."
             else:
-                cleanup_note = "\\n⚠️ Upload finished, but some local files could not be cleaned."
+                cleanup_note = "\n⚠️ Upload finished, but some local files could not be cleaned."
         await status_edit(chat_id, message_id,
-            f"✅ <b>UPLOAD COMPLETED</b> · <code>#{jid}</code>\\n"
-            f"🎬 Code: <code>{html.escape(vid)}</code>\\n"
-            f"📦 File size: <b>{_fmt_bytes(file_size)}</b>\\n"
-            f"⚡ Average pipeline speed: <b>{_fmt_bytes(average_speed)}/s</b>\\n"
-            f"⏱ Total processing time: <b>{_fmt_eta(elapsed_total)}</b>\\n"
-            f"🔁 Attempts: <b>{job['attempts']}</b>\\n"
+            f"✅ <b>UPLOAD COMPLETED</b> · <code>#{jid}</code>\n"
+            f"🎬 Code: <code>{html.escape(vid)}</code>\n"
+            f"📦 File size: <b>{_fmt_bytes(file_size)}</b>\n"
+            f"⚡ Average pipeline speed: <b>{_fmt_bytes(average_speed)}/s</b>\n"
+            f"⏱ Total processing time: <b>{_fmt_eta(elapsed_total)}</b>\n"
+            f"🔁 Attempts: <b>{job['attempts']}</b>\n"
             f"{'📩 Delivered to your private bot chat (fallback).' if fallback_used else ''}"
             f"{cleanup_note}"
             f"{chr(10) + links_text if links_text else ''}")
